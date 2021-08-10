@@ -5,6 +5,7 @@ Matthew Alger, Vanessa Newey
 Geoscience Australia
 """
 
+import importlib.util
 import logging
 import sys
 
@@ -63,6 +64,14 @@ def guess_id_field(shapefile_path: str) -> str:
         'Couldn\'t find an ID field in {}'.format(keys))
 
 
+def run_plugin(plugin_path: str) -> 'module':
+    spec = importlib.util.spec_from_file_location(
+        "dea_conflux.plugin", plugin_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 @click.group()
 @click.version_option(version=dea_conflux.__version__)
 def main():
@@ -96,14 +105,20 @@ def run_one(plugin, shapefile, output, verbose):
     stdout_hdlr = logging.StreamHandler(sys.stdout)
     for logger in loggers:
         if verbose == 0:
-            logger.setLevel(logging.WARNING)
+            logging.basicConfig(level=logging.WARNING)
         elif verbose == 1:
-            logger.setLevel(logging.INFO)
+            logging.basicConfig(level=logging.INFO)
         elif verbose == 2:
-            logger.setLevel(logging.DEBUG)
+            logging.basicConfig(level=logging.DEBUG)
         else:
             raise click.ClickException('Maximum verbosity is -vv')
         logger.addHandler(stdout_hdlr)
+
+    # Read the plugin as a Python module.
+    plugin = run_plugin(plugin)
+    logger.info(f'Using plugin {plugin.__file__}')
+    import dea_conflux.plugin
+    assert plugin == dea_conflux.plugin
 
     # Get the CRS from the shapefile.
     crs = get_crs(shapefile)

@@ -10,4 +10,7 @@ if __name__ == '__main__':
         packages=['dea_conflux'],
         install_requires=[
         ],
+        entry_points = {
+            'console_scripts': ['dea-conflux=dea_conflux.__main__:main'],
+        },
     )
