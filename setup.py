@@ -1,5 +1,13 @@
 from setuptools import setup
-setup(
-    use_scm_version=True,
-    setup_requires=['setuptools_scm'],
-)
+
+if __name__ == '__main__':
+    setup(
+        # setuptools_scm
+        use_scm_version=True,
+        setup_requires=['setuptools_scm'],
+        # package metadata
+        name='dea-conflux',
+        packages=['dea_conflux'],
+        install_requires=[
+        ],
+    )
