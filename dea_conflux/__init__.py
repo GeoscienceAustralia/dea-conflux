@@ -1,2 +1,2 @@
-from __version__ import version
+from dea_conflux.__version__ import version
 __version__ = version
