@@ -9,7 +9,7 @@ if __name__ == '__main__':
         name='dea-conflux',
         packages=['dea_conflux'],
         install_requires=[
-            'click', 'pytest',
+            'click', 'pytest', 'geopandas',
         ],
         entry_points = {
             'console_scripts': ['dea-conflux=dea_conflux.__main__:main'],
