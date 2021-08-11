@@ -65,6 +65,17 @@ def guess_id_field(shapefile_path: str) -> str:
 
 
 def run_plugin(plugin_path: str) -> 'module':
+    """Run a Python plugin from a path.
+
+    Arguments
+    ---------
+    plugin_path : str
+        Path to Python plugin file.
+    
+    Returns
+    -------
+    module
+    """
     spec = importlib.util.spec_from_file_location(
         "dea_conflux.plugin", plugin_path)
     module = importlib.util.module_from_spec(spec)
@@ -123,6 +134,7 @@ def run_one(plugin, shapefile, output, verbose):
     # Get the CRS from the shapefile.
     crs = get_crs(shapefile)
     logger.debug(f'Found CRS: {crs}')
+
     # Guess the ID field.
     id_field = guess_id_field(shapefile)
     logger.debug(f'Guessed ID field: {id_field}')

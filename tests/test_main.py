@@ -8,6 +8,7 @@ import geopandas as gpd
 import pytest
 
 from dea_conflux.__main__ import main
+import dea_conflux.__main__ as main_module
 
 
 # Test directory.
@@ -54,3 +55,7 @@ def test_main(run_main):
     # TODO(MatthewJA): Make this assert that the output makes sense.
     assert result
 
+
+def test_get_crs():
+    crs = main_module.get_crs(TEST_SHP)
+    assert crs.srs == 'epsg:3577'
