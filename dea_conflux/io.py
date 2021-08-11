@@ -27,7 +27,8 @@ def make_name(drill_name: str, uuid: str, centre_date: str) -> str:
     str
         Parquet filename.
     """
-    return f'{drill_name}_{uuid}_{centre_date}.pq'
+    datestring = centre_date.strftime('%Y%m%d-%H%M%S-%f')
+    return f'{drill_name}_{uuid}_{datestring}.pq'
 
 
 def write_table(
