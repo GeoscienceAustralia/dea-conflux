@@ -58,4 +58,4 @@ def test_main(run_main):
 
 def test_get_crs():
     crs = main_module.get_crs(TEST_SHP)
-    assert crs.srs == 'epsg:3577'
+    assert crs.crs_str == 'epsg:3577'
