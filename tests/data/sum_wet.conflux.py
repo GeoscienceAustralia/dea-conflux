@@ -11,4 +11,4 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     return inputs == 128
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
-    return inputs.water.sum()
+    return inputs.sum()
