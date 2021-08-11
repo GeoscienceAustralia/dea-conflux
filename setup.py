@@ -8,6 +8,7 @@ if __name__ == '__main__':
         # package metadata
         name='dea-conflux',
         packages=['dea_conflux'],
+        python_requires='>=3.6',
         install_requires=[
             'click', 'pytest', 'geopandas', 'datacube',
         ],
