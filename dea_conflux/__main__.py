@@ -11,6 +11,7 @@ import sys
 from types import ModuleType
 
 import click
+import datacube
 
 import dea_conflux.__version__
 import dea_conflux.drill
@@ -165,10 +166,14 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     logger.debug(f'Guessed ID field: {id_field}')
 
     # Do the drill!
+    dc = datacube.Datacube(app='dea-conflux-drill')
     table = dea_conflux.drill.drill(
         plugin, shapefile, uuid, id_field, crs,
-        partial=partial)
-    dea_conflux.io.write_table(uuid, table, output)
+        partial=partial, dc=dc)
+    centre_date = dc.index.datasets.get(uuid).center_date
+    dea_conflux.io.write_table(
+        plugin.product_name, uuid,
+        centre_date, table, output)
 
     return 0
 
