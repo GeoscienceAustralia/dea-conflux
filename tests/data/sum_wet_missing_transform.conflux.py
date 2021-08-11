@@ -1,3 +1,5 @@
+import xarray as xr
+
 product_name = 'sum_wet'
 version = '0.0.1'
 
