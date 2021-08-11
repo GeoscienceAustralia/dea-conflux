@@ -10,7 +10,7 @@ if __name__ == '__main__':
         packages=['dea_conflux'],
         python_requires='>=3.6',
         install_requires=[
-            'click', 'pytest', 'geopandas', 'datacube',
+            'click', 'pytest', 'geopandas', 'datacube', 'boto3', 'botocore',
         ],
         entry_points = {
             'console_scripts': ['dea-conflux=dea_conflux.__main__:main'],
