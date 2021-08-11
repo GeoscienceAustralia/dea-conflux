@@ -59,3 +59,8 @@ def test_main(run_main):
 def test_get_crs():
     crs = main_module.get_crs(TEST_SHP)
     assert crs.epsg == 3577
+
+
+def test_guess_id_field():
+    id_field = main_module.guess_id_field(TEST_SHP)
+    assert id_field == 'UID'
