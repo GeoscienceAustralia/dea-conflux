@@ -170,7 +170,7 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     table = dea_conflux.drill.drill(
         plugin, shapefile, uuid, id_field, crs,
         partial=partial, dc=dc)
-    centre_date = dc.index.datasets.get(uuid).center_date
+    centre_date = dc.index.datasets.get(uuid).center_time
     dea_conflux.io.write_table(
         plugin.product_name, uuid,
         centre_date, table, output)
