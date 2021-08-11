@@ -130,7 +130,7 @@ def find_datasets(
     # fall within this extent.
     datasets = []
     for input_product in plugin.input_products:
-        datasets.extent(
+        datasets.extend(
             dc.find_datasets(
                 product=input_product,
                 geopolygon=metadata.extent,
