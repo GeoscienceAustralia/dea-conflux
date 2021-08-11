@@ -56,6 +56,7 @@ def write_table(
     # TODO(MatthewJA): Support S3 write.
     if output.startswith('s3'):
         raise NotImplementedError()
+    # TODO(MatthewJA): os.makedirs if output dir doesn't exist
     
     filename = make_name(drill_name, uuid, centre_date)
     table.to_parquet(f'{output}/{filename}')
