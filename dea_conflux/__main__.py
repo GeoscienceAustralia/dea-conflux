@@ -116,7 +116,7 @@ def main():
               type=click.Path(exists=True, dir_okay=False),
               help='Path to Conflux plugin (.py).')
 @click.option('--uuid', '-i',
-              type='str',
+              type=str,
               help='ID of scene to process.')
 @click.option('--shapefile', '-s', type=click.Path(),
               # Don't mandate existence since this might be s3://.
