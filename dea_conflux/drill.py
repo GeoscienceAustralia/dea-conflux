@@ -145,7 +145,7 @@ def drill(
         id_field: str,
         crs: CRS,
         partial=True,
-        dc: datacube.Datacube = None) -> pd.Dataframe:
+        dc: datacube.Datacube = None) -> pd.DataFrame:
     """Perform a polygon drill.
 
     Arguments
