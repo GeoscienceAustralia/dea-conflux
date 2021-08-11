@@ -48,6 +48,6 @@ def test_find_datasets_gives_other(dc):
     uuid = TEST_WOFL_ID
     datasets = find_datasets(dc, plugin, uuid)
     assert len(datasets) == 2
-    ids = {ds.id for ds in datasets}
+    ids = {str(ds.id) for ds in datasets}
     assert uuid in ids
     assert TEST_FC_ID in ids
