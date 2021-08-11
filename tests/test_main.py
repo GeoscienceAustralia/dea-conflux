@@ -78,3 +78,7 @@ def test_validate_plugin_no_transform():
     plugin = main_module.run_plugin(TEST_PLUGIN_MISSING_TRANSFORM)
     with pytest.raises(ValueError):
         main_module.validate_plugin(plugin)
+
+
+# TODO(MatthewJA): Add a test on scene 234fec8f-1de7-488a-a115-818ebd4bfec4.
+# This is a WOfL that we are already loading for testing.

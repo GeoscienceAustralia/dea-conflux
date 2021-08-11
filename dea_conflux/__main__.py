@@ -1,23 +1,27 @@
-"""Run a polygon drill step on a scene.
+"""CLI: Run a polygon drill step on a scene.
 
-2021
 Matthew Alger, Vanessa Newey
 Geoscience Australia
+2021
 """
 
 import importlib.util
 import logging
 import sys
+from types import ModuleType
 
 import click
 
 import dea_conflux.__version__
+import dea_conflux.drill
+import dea_conflux.io
+from dea_conflux.types import CRS
 
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-def get_crs(shapefile_path: str) -> "CRS":
+def get_crs(shapefile_path: str) -> CRS:
     """Get the CRS of a shapefile.
 
     Arguments
@@ -64,7 +68,7 @@ def guess_id_field(shapefile_path: str) -> str:
         'Couldn\'t find an ID field in {}'.format(keys))
 
 
-def run_plugin(plugin_path: str) -> 'module':
+def run_plugin(plugin_path: str) -> ModuleType:
     """Run a Python plugin from a path.
 
     Arguments
@@ -83,13 +87,8 @@ def run_plugin(plugin_path: str) -> 'module':
     return module
 
 
-def validate_plugin(plugin):
+def validate_plugin(plugin: ModuleType):
     """Check that a plugin declares required globals."""
-    # Verify that the plugin has been imported.
-    import dea_conflux.plugin
-    if dea_conflux.plugin is not plugin:
-        raise RuntimeError('Plugin not loaded correctly')
-
     # Check globals.
     required_globals = [
         'product_name', 'version', 'input_products',
@@ -97,7 +96,7 @@ def validate_plugin(plugin):
     for name in required_globals:
         if not hasattr(plugin, name):
             raise ValueError(f'Plugin missing {name}')
-    
+
     # Check that functions are runnable.
     required_functions = ['transform', 'summarise']
     for name in required_functions:
@@ -116,6 +115,9 @@ def main():
 @click.option('--plugin', '-p',
               type=click.Path(exists=True, dir_okay=False),
               help='Path to Conflux plugin (.py).')
+@click.option('--uuid', '-i',
+              type='str',
+              help='ID of scene to process.')
 @click.option('--shapefile', '-s', type=click.Path(),
               # Don't mandate existence since this might be s3://.
               help='REQUIRED. Path to the polygon '
@@ -123,8 +125,10 @@ def main():
 @click.option('--output', '-o', type=click.Path(), default=None,
               # Don't mandate existence since this might be s3://.
               help='REQUIRED. Path to the output directory.')
+@click.option('--partial/--no-partial', default=True,
+              help='Include polygons that only partially intersect the scene.')
 @click.option('-v', '--verbose', count=True)
-def run_one(plugin, shapefile, output, verbose):
+def run_one(plugin, uuid, shapefile, output, partial, verbose):
     """
     Run dea-conflux on one scene.
     """
@@ -150,8 +154,7 @@ def run_one(plugin, shapefile, output, verbose):
     # Read the plugin as a Python module.
     plugin = run_plugin(plugin)
     logger.info(f'Using plugin {plugin.__file__}')
-    import dea_conflux.plugin
-    assert plugin == dea_conflux.plugin
+    validate_plugin(plugin)
 
     # Get the CRS from the shapefile.
     crs = get_crs(shapefile)
@@ -160,6 +163,12 @@ def run_one(plugin, shapefile, output, verbose):
     # Guess the ID field.
     id_field = guess_id_field(shapefile)
     logger.debug(f'Guessed ID field: {id_field}')
+
+    # Do the drill!
+    table = dea_conflux.drill.drill(
+        plugin, shapefile, uuid, id_field, crs,
+        partial=partial)
+    dea_conflux.io.write_table(uuid, table, output)
 
     return 0
 

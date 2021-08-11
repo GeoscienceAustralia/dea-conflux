@@ -7,3 +7,6 @@ pip-wheel-metadata
 
 # Python
 __pycache__
+
+# VS code
+.vscode/*
