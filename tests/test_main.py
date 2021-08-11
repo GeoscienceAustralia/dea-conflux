@@ -4,7 +4,6 @@ import re
 import sys
 
 from click.testing import CliRunner
-import geopandas as gpd
 import pytest
 
 from dea_conflux.__main__ import main
@@ -17,6 +16,9 @@ logging.basicConfig(level=logging.INFO)
 
 # Path to Canberra test shapefile.
 TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
+
+TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
+TEST_PLUGIN_MISSING_TRANSFORM = HERE / 'data' / 'sum_wet_missing_transform.conflux.py'
 
 
 def setup_module(module):
@@ -64,3 +66,15 @@ def test_get_crs():
 def test_guess_id_field():
     id_field = main_module.guess_id_field(TEST_SHP)
     assert id_field == 'UID'
+
+
+def test_validate_plugin():
+    plugin = main_module.run_plugin(TEST_PLUGIN_OK)
+    main_module.validate_plugin(plugin)
+    assert True  # haven't thrown an exception
+
+
+def test_validate_plugin_no_transform():
+    plugin = main_module.run_plugin(TEST_PLUGIN_MISSING_TRANSFORM)
+    with pytest.raises(ValueError):
+        main_module.validate_plugin(plugin)

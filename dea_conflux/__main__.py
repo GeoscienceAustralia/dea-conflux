@@ -83,6 +83,28 @@ def run_plugin(plugin_path: str) -> 'module':
     return module
 
 
+def validate_plugin(plugin):
+    """Check that a plugin declares required globals."""
+    # Verify that the plugin has been imported.
+    import dea_conflux.plugin
+    if dea_conflux.plugin is not plugin:
+        raise RuntimeError('Plugin not loaded correctly')
+
+    # Check globals.
+    required_globals = [
+        'product_name', 'version', 'input_products',
+        'transform', 'summarise']
+    for name in required_globals:
+        if not hasattr(plugin, name):
+            raise ValueError(f'Plugin missing {name}')
+    
+    # Check that functions are runnable.
+    required_functions = ['transform', 'summarise']
+    for name in required_functions:
+        assert hasattr(getattr(plugin, name), '__call__')
+
+
+
 @click.group()
 @click.version_option(version=dea_conflux.__version__)
 def main():
