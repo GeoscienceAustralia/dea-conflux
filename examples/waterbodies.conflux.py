@@ -2,6 +2,7 @@ import xarray as xr
 
 product_name = 'waterbodies'
 version = '0.0.1'
+resampling = 'nearest'
 
 input_products = {
     'ga_ls_wo_3': ['water'],

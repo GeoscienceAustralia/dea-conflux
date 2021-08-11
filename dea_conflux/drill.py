@@ -8,11 +8,13 @@ Geoscience Australia
 from types import ModuleType
 from typing import Union
 import logging
+import warnings
 
 import datacube
 from datacube.utils.geometry import assign_crs
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 import rasterio.features
 import xarray as xr
 
@@ -108,14 +110,14 @@ def find_datasets(
         plugin: ModuleType,
         uuid: str) -> [datacube.model.Dataset]:
     """Find the datasets that a plugin requires given a related scene UUID.
-    
+
     Arguments
     ---------
     dc : Datacube
         A Datacube to search.
     plugin : module
         Plugin defining input products.
-    
+
     uuid : str
         UUID of scene to look up.
 
@@ -128,14 +130,30 @@ def find_datasets(
     metadata = dc.index.datasets.get(uuid)
     # Find the datasets that have the same centre time and
     # fall within this extent.
-    datasets = []
+    datasets = {}
     for input_product in plugin.input_products:
-        datasets.extend(
-            dc.find_datasets(
+        datasets_ = dc.find_datasets(
                 product=input_product,
                 geopolygon=metadata.extent,
-                time=metadata.center_time))
+                time=metadata.center_time)
+        assert len(datasets_) == 1, "Found multiple datasets at same time"
+        datasets[input_product] = datasets_[0]
     return datasets
+
+
+def dataset_to_dict(ds: xr.Dataset) -> dict:
+    """Convert a 0d dataset into a dict.
+    
+    Arguments
+    ---------
+    ds : xr.Dataset
+    
+    Returns
+    -------
+    dict
+    """
+    return {key: val['data']
+            for key, val in ds.to_dict()['data_vars'].items()}
 
 
 def drill(
@@ -179,24 +197,86 @@ def drill(
         Columns = output bands
     """
 
+    if not partial:
+        raise NotImplementedError()
+
     # Get a datacube if we don't have one already.
     if not dc:
         dc = datacube.Datacube(app='dea-conflux-drill')
-    
+
     # Open the shapefile if it's not already open.
     try:
         shapefile = gpd.read_file(shapefile)
     except AttributeError:
         # Must have already been open.
         pass
-    
+
     shapefile = shapefile.set_index(id_field)
 
     # Assign a one-indexed numeric column for the polygons.
     # This will allow us to build a polygon enumerated raster.
-    shapefile['one_index'] = range(1, len(shapefile.index) + 1)
+    attr_col = 'one_index'
+    shapefile[attr_col] = range(1, len(shapefile.index) + 1)
+    one_index_to_id = {v: k for k, v in shapefile[attr_col].to_dict().items()}
 
     # Get required datasets.
-    datasets = find_datasets(plugin, uuid)
+    datasets = find_datasets(dc, plugin, uuid)
 
-    # Build the enumerated raster.
+    # Load the image of the input scene so we can build the raster.
+    # TODO(MatthewJA): If this is also a dataset required for drilling,
+    # we will load it twice - and even worse, we'll load it with
+    # more bands than we need the first time! Ignore for MVP.
+    reference_dataset = dc.index.datasets.get(uuid)
+    reference_scene = dc.load(datasets=[reference_dataset])
+
+    # Build the enumerated polygon raster.
+    polygon_raster = xr_rasterise(shapefile, reference_scene, attr_col)
+
+    # Load the images.
+    resampling = 'nearest'
+    if hasattr(plugin, 'resampling'):
+        resampling = plugin.resampling
+
+    bands = {}
+    for product, measurements in plugin.input_products.items():
+        for band in measurements:
+            assert band not in bands, "Duplicate band: {}{}".format(
+                product, band
+            )
+        da = dc.load(datasets=[datasets[product]],
+                     measurements=measurements,
+                     crs=crs, resampling=resampling)
+        for band in measurements:
+            bands[band] = da[band]
+    ds = xr.Dataset(bands).isel(time=0)
+
+    # Transform the data.
+    # Force warnings to raise exceptions.
+    # This means users have to explicitly ignore warnings.
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error')
+        ds_transformed = plugin.transform(ds)
+
+    # For each polygon, perform the summary.
+    summaries = {}  # ID -> summary
+    ids_in_range = np.unique(polygon_raster)
+    for oid in ids_in_range:
+        if oid == 0:
+            continue
+
+        mask = polygon_raster == oid
+        values = {band: ds_transformed[band].values[mask]
+                  for band in bands}
+        values = xr.Dataset(values)
+        # Force warnings to raise exceptions.
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            summary = plugin.summarise(values)
+        # Convert that summary (a 0d dataset) into a dict.
+        summary = dataset_to_dict(summary)
+        summaries[oid] = summary
+
+    summary_df = pd.DataFrame(summaries).T
+    summary_df.index = summary_df.index.map(one_index_to_id)
+
+    return summary_df
