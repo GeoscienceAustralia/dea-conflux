@@ -6,6 +6,7 @@ import sys
 
 from click.testing import CliRunner
 import datacube
+import pandas as pd
 import pytest
 
 import dea_conflux.io as io
