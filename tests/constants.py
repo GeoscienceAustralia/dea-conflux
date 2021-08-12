@@ -1,5 +1,7 @@
 """Test constants."""
 
+from pathlib import Path
+
 # Test directory.
 HERE = Path(__file__).parent.resolve()
 

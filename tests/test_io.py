@@ -8,7 +8,7 @@ import datacube
 import pytest
 
 import dea_conflux.io as io
-from constants import *
+from .constants import *
 
 logging.basicConfig(level=logging.INFO)
 

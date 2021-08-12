@@ -8,17 +8,7 @@ import pytest
 
 from dea_conflux.__main__ import main
 import dea_conflux.__main__ as main_module
-
-
-# Test directory.
-HERE = Path(__file__).parent.resolve()
-logging.basicConfig(level=logging.INFO)
-
-# Path to Canberra test shapefile.
-TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
-
-TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
-TEST_PLUGIN_MISSING_TRANSFORM = HERE / 'data' / 'sum_wet_missing_transform.conflux.py'
+from .constants import *
 
 
 def setup_module(module):
