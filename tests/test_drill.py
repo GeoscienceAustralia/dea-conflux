@@ -8,7 +8,7 @@ import datacube
 import pytest
 
 from dea_conflux.__main__ import run_plugin
-from dea_conflux.drill import find_datasets
+from dea_conflux.drill import find_datasets, drill
 
 # Test directory.
 HERE = Path(__file__).parent.resolve()
@@ -50,3 +50,16 @@ def test_find_datasets_gives_other(dc):
     assert len(datasets) == 2
     assert str(datasets['wofs_albers'].id) == uuid
     assert str(datasets['ls7_fc_albers'].id) == TEST_FC_ID
+
+
+def test_drill_integration(dc):
+    plugin = run_plugin(TEST_PLUGIN_OK)
+    drill_result = drill(
+        plugin,
+        TEST_SHP,
+        TEST_WOFL_ID,
+        'UID',
+        'EPSG:3577',
+        partial=True,
+        dc=dc)
+    assert drill_result
