@@ -267,7 +267,8 @@ def drill(
         mask = polygon_raster == oid
         values = {band: ds_transformed[band].values[mask]
                   for band in bands}
-        values = xr.Dataset(values)
+        values = xr.Dataset(
+            data_vars={k: xr.DataArray(v) for k, v in values.items()})
         # Force warnings to raise exceptions.
         with warnings.catch_warnings():
             warnings.filterwarnings('error')
