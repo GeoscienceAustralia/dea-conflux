@@ -9,7 +9,7 @@ import pytest
 
 from dea_conflux.__main__ import run_plugin
 from dea_conflux.drill import find_datasets, drill
-from dea_conflux.tests.constants import *
+from .constants import *
 
 def setup_module(module):
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
