@@ -40,7 +40,7 @@ def test_find_datasets_gives_self(dc):
     uuid = TEST_WOFL_ID
     datasets = find_datasets(dc, plugin, uuid)
     assert len(datasets) == 1
-    assert str(datasets[0].id) == uuid
+    assert str(datasets['wofs_albers'].id) == uuid
 
 
 def test_find_datasets_gives_other(dc):
@@ -48,6 +48,5 @@ def test_find_datasets_gives_other(dc):
     uuid = TEST_WOFL_ID
     datasets = find_datasets(dc, plugin, uuid)
     assert len(datasets) == 2
-    ids = {str(ds.id) for ds in datasets}
-    assert uuid in ids
-    assert TEST_FC_ID in ids
+    assert str(datasets['wofs_albers'].id) == uuid
+    assert str(datasets['ls7_fc_albers'].id) == TEST_FC_ID
