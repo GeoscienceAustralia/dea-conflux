@@ -62,4 +62,5 @@ def test_drill_integration(dc):
         'EPSG:3577',
         partial=True,
         dc=dc)
-    assert drill_result
+    assert len(drill_result) == 86
+    assert len(drill_result.columns) == 1
