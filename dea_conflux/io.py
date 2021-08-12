@@ -6,6 +6,8 @@ Geoscience Australia
 """
 
 import datetime
+import os
+from pathlib import Path
 
 import pandas as pd
 
@@ -59,15 +61,14 @@ def write_table(
     output : str
         Path to output directory.
     """
-    try:
-        output.startswith
-    except AttributeError:
-        # "Support" pathlib paths
-        output = str(output)
+    output = str(output)
+
     # TODO(MatthewJA): Support S3 write.
     if output.startswith('s3'):
         raise NotImplementedError()
-    # TODO(MatthewJA): os.makedirs if output dir doesn't exist
+    
+    path = Path(output)
+    os.makedirs(path, exist_ok=True)
     
     filename = make_name(drill_name, uuid, centre_date)
-    table.to_parquet(f'{output}/{filename}')
+    table.to_parquet(path / filename)
