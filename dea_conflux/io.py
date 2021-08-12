@@ -5,10 +5,15 @@ Geoscience Australia
 2021
 """
 
+import datetime
+
 import pandas as pd
 
 
-def make_name(drill_name: str, uuid: str, centre_date: str) -> str:
+def make_name(
+        drill_name: str,
+        uuid: str,
+        centre_date: datetime.datetime) -> str:
     """Make filename for Parquet.
     
     Arguments
@@ -19,7 +24,7 @@ def make_name(drill_name: str, uuid: str, centre_date: str) -> str:
     uuid : str
         UUID of reference dataset.
     
-    centre_date : str
+    centre_date : datetime
         Centre date of reference dataset.
     
     Returns
@@ -33,7 +38,8 @@ def make_name(drill_name: str, uuid: str, centre_date: str) -> str:
 
 def write_table(
         drill_name: str, uuid: str,
-        centre_date: str, table: pd.DataFrame, output: str):
+        centre_date: datetime.datetime,
+        table: pd.DataFrame, output: str):
     """Write a table to Parquet.
     
     Arguments
@@ -44,7 +50,7 @@ def write_table(
     uuid : str
         UUID of reference dataset.
     
-    centre_date : str
+    centre_date : datetime
         Centre date of reference dataset.
     
     table : pd.DataFrame
