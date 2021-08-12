@@ -59,6 +59,11 @@ def write_table(
     output : str
         Path to output directory.
     """
+    try:
+        output.startswith
+    except AttributeError:
+        # "Support" pathlib paths
+        output = str(output)
     # TODO(MatthewJA): Support S3 write.
     if output.startswith('s3'):
         raise NotImplementedError()
