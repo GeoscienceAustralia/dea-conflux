@@ -100,7 +100,7 @@ def stack_waterbodies(paths: [Path], output_dir: str):
         filename = outpath / uid[:4] / f'{uid}.csv'
         logger.info(f'Writing {filename}')
         os.makedirs(filename.parent, exist_ok=True)
-        df.to_csv(filename)
+        df.to_csv(filename, index_label='date')
 
 
 def stack(
