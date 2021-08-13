@@ -65,5 +65,5 @@ def test_string_date():
     random.seed(0)
     for _ in range(100):
         d = random.randrange(1, 1628000000)  # from the beginning of time...
-        d = datetime.fromtimestamp(d)
+        d = datetime.datetime.fromtimestamp(d)
         assert io.string_to_date(io.date_to_string(d)) == d
