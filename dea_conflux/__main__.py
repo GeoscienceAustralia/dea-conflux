@@ -12,10 +12,12 @@ from types import ModuleType
 
 import click
 import datacube
+from datacube.ui import click as ui
 
 import dea_conflux.__version__
 import dea_conflux.drill
 import dea_conflux.io
+import dea_conflux.hopper
 import dea_conflux.stack
 from dea_conflux.types import CRS
 
@@ -184,6 +186,23 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     dea_conflux.io.write_table(
         plugin.product_name, uuid,
         centre_date, table, output)
+
+    return 0
+
+
+@main.command()
+@click.argument('product', type=str)
+@ui.parsed_search_expressions
+@click.option('-v', '--verbose', count=True)
+def get_ids(product, expressions, verbose):
+    """Get IDs based on an expression."""
+    logging_setup(verbose)
+    dss = dea_conflux.hopper.find_datasets(
+        expressions,
+        [product])
+    ids = [str(ds.id) for ds in dss]
+    for id_ in ids:
+        print(id_)
 
     return 0
 
