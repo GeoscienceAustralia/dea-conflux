@@ -195,7 +195,7 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
 @click.option('--pattern', required=False, default='.*',
               help='Regular expression for filename matching.')
 @click.option('--mode',
-              type=click.Choice(['waterbodies'],
+              type=click.Choice(['waterbodies']),
               case_sensitive=False,
               default='waterbodies',
               required=False)
