@@ -210,7 +210,12 @@ def stack(parquet_path, output, pattern, mode, verbose):
     if parquet_path.startswith('s3'):
         raise NotImplementedError('S3 not yet supported')
 
-    dea_conflux.stack.stack(parquet_path, output, pattern, mode)
+    # Convert mode to StackMode
+    mode_map = {
+        'waterbodies': dea_conflux.stack.StackMode.WATERBODIES,
+    }
+
+    dea_conflux.stack.stack(parquet_path, output, pattern, mode[mode_map])
 
     return 0
 
