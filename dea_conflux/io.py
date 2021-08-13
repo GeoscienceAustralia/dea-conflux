@@ -53,7 +53,7 @@ def string_to_date(date: str) -> datetime.datetime:
     -------
     datetime
     """
-    return datetime.strptime(date, DATE_FORMAT)
+    return datetime.datetime.strptime(date, DATE_FORMAT)
 
 
 def make_name(
