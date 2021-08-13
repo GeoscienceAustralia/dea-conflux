@@ -46,3 +46,16 @@ def test_write_table(conflux_table, tmp_path):
                    conflux_table, tmp_path / 'outdir')
     outpath = tmp_path / 'outdir' / 'name_uuid_20180101-000000-000000.pq'
     assert outpath.exists()
+    }, index=['uid1', 'uid2', 'uid3'])
+
+
+def test_read_write_table(conflux_table, tmp_path):
+    test_date = datetime.datetime(2018, 1, 1)
+    io.write_table('name', 'uuid', test_date,
+                   conflux_table, tmp_path / 'outdir')
+    outpath = tmp_path / 'outdir' / 'name_uuid_20180101-000000-000000.pq'
+    table = io.read_table(outpath)
+    assert len(table) == 3
+    assert len(table.columns) == 2
+    assert table.attrs['date'] == '20180101-000000-000000'
+    assert table.attrs['drill'] == 'name'

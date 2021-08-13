@@ -133,9 +133,9 @@ def find_datasets(
     datasets = {}
     for input_product in plugin.input_products:
         datasets_ = dc.find_datasets(
-                product=input_product,
-                geopolygon=metadata.extent,
-                time=metadata.center_time)
+            product=input_product,
+            geopolygon=metadata.extent,
+            time=metadata.center_time)
         assert len(datasets_) == 1, "Found multiple datasets at same time"
         datasets[input_product] = datasets_[0]
     return datasets

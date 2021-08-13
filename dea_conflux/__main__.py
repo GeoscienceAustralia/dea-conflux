@@ -16,6 +16,7 @@ import datacube
 import dea_conflux.__version__
 import dea_conflux.drill
 import dea_conflux.io
+import dea_conflux.stack
 from dea_conflux.types import CRS
 
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
@@ -104,6 +105,32 @@ def validate_plugin(plugin: ModuleType):
         assert hasattr(getattr(plugin, name), '__call__')
 
 
+def logging_setup(verbose: int):
+    """Set up logging.
+    
+    Arguments
+    ---------
+    verbose : int
+        Verbosity level (0, 1, 2).
+    """
+    loggers = [logging.getLogger(name)
+               for name in logging.root.manager.loggerDict
+               if not name.startswith('fiona')
+               and not name.startswith('sqlalchemy')
+               and not name.startswith('boto')]
+    # For compatibility with docker+pytest+click stack...
+    stdout_hdlr = logging.StreamHandler(sys.stdout)
+    for logger in loggers:
+        if verbose == 0:
+            logging.basicConfig(level=logging.WARNING)
+        elif verbose == 1:
+            logging.basicConfig(level=logging.INFO)
+        elif verbose == 2:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            raise click.ClickException('Maximum verbosity is -vv')
+        logger.addHandler(stdout_hdlr)
+
 
 @click.group()
 @click.version_option(version=dea_conflux.__version__)
@@ -133,24 +160,7 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     """
     Run dea-conflux on one scene.
     """
-    # Set up logging.
-    loggers = [logging.getLogger(name)
-               for name in logging.root.manager.loggerDict
-               if not name.startswith('fiona')
-               and not name.startswith('sqlalchemy')
-               and not name.startswith('boto')]
-    # For compatibility with docker+pytest+click stack...
-    stdout_hdlr = logging.StreamHandler(sys.stdout)
-    for logger in loggers:
-        if verbose == 0:
-            logging.basicConfig(level=logging.WARNING)
-        elif verbose == 1:
-            logging.basicConfig(level=logging.INFO)
-        elif verbose == 2:
-            logging.basicConfig(level=logging.DEBUG)
-        else:
-            raise click.ClickException('Maximum verbosity is -vv')
-        logger.addHandler(stdout_hdlr)
+    logging_setup(verbose)
 
     # Read the plugin as a Python module.
     plugin = run_plugin(plugin)
@@ -174,6 +184,33 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     dea_conflux.io.write_table(
         plugin.product_name, uuid,
         centre_date, table, output)
+
+    return 0
+
+
+@main.command()
+@click.option('--from', '-f', type=click.Path(), default=None,
+              # Don't mandate existence since this might be s3://.
+              help='REQUIRED. Path to the Parquet directory.')
+@click.option('--pattern', required=False, default='.*',
+              help='Regular expression for filename matching.')
+@click.option('--mode',
+              type=click.Choice(['waterbodies'],
+              case_sensitive=False,
+              default='waterbodies',
+              required=False)
+@click.option('-v', '--verbose', count=True)
+def stack(path, pattern, mode, verbose):
+    """
+    Stack outputs of dea-conflux into other formats.
+    """
+    logging_setup(verbose)
+
+    # TODO(MatthewJA): Support S3
+    if path.startswith('s3'):
+        raise NotImplementedError('S3 not yet supported')
+
+    dea_conflux.stack.stack(path, pattern, mode)
 
     return 0
 
