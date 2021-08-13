@@ -72,21 +72,17 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     return all_paths
 
 
-def stack_waterbodies(paths: [str], output_dir: str):
+def stack_waterbodies(paths: [Path], output_dir: str):
     """Stack Parquet files into CSVs like DEA Waterbodies does.
     
     Arguments
     ---------
-    paths : [str]
+    paths : [Path]
         List of paths to Parquet files to stack.
     
     output_dir : str
         Path to output directory.
     """
-    # TODO(MatthewJA): Support S3.
-    if output_dir.startswith('s3'):
-        raise NotImplementedError('S3 not yet supported')
-
     # id -> [series of date x bands]
     id_to_series = collections.defaultdict(list)
     for path in paths:
@@ -130,6 +126,10 @@ def stack(
         a collection of polygon CSVs.
     """
     # TODO(MatthewJA): Support S3.
+    try:
+        path.startswith
+    except AttributeError:
+        path = str(path)
     if path.startswith('s3'):
         raise NotImplementedError('S3 not yet supported')
 
