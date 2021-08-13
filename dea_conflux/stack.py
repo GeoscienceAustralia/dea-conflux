@@ -16,6 +16,8 @@ import pandas as pd
 import dea_conflux.io
 from dea_conflux.io import PARQUET_EXTENSIONS
 
+logger = logging.getLogger(__name__)
+
 
 class StackMode(enum.Enum):
     WATERBODIES = 'waterbodies'
@@ -71,7 +73,7 @@ def stack_waterbodies(paths: [str], output_dir: str):
     # id -> [series of date x bands]
     id_to_series = collections.defaultdict(list)
     for path in paths:
-        df = dea_conflux.io.read_table()
+        df = dea_conflux.io.read_table(path)
         date = df.attrs['date']
         # df is ids x bands
         # for each ID...

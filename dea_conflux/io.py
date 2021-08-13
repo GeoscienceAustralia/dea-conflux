@@ -14,6 +14,8 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet
 
+logger = logging.getLogger(__name__)
+
 
 # File extensions to recognise as Parquet files.
 PARQUET_EXTENSIONS = {'.pq', '.parquet'}
