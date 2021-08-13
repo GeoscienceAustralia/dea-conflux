@@ -7,6 +7,7 @@ Geoscience Australia
 
 import collections
 import enum
+import logging
 import os
 from pathlib import Path
 import re
