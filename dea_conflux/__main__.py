@@ -189,9 +189,10 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
 
 
 @main.command()
-@click.option('--from', '-f', type=click.Path(), default=None,
+@click.option('--parquet-path', type=click.Path(),
               # Don't mandate existence since this might be s3://.
               help='REQUIRED. Path to the Parquet directory.')
+@click.option('--output', type=click.Path())
 @click.option('--pattern', required=False, default='.*',
               help='Regular expression for filename matching.')
 @click.option('--mode',
@@ -199,17 +200,17 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
               default='waterbodies',
               required=False)
 @click.option('-v', '--verbose', count=True)
-def stack(path, pattern, mode, verbose):
+def stack(parquet_path, output, pattern, mode, verbose):
     """
     Stack outputs of dea-conflux into other formats.
     """
     logging_setup(verbose)
 
     # TODO(MatthewJA): Support S3
-    if path.startswith('s3'):
+    if parquet_path.startswith('s3'):
         raise NotImplementedError('S3 not yet supported')
 
-    dea_conflux.stack.stack(path, pattern, mode)
+    dea_conflux.stack.stack(parquet_path, output, pattern, mode)
 
     return 0
 

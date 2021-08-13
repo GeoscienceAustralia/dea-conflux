@@ -120,4 +120,3 @@ def stack(
         raise NotImplementedError('Only waterbodies stacking is implemented')
 
     return stack_waterbodies(paths)
-    
