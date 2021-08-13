@@ -17,7 +17,7 @@ import dea_conflux.io
 from dea_conflux.io import PARQUET_EXTENSIONS
 
 
-class StackMode(Enum):
+class StackMode(enum.Enum):
     WATERBODIES = 'waterbodies'
 
 
