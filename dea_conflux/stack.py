@@ -119,4 +119,4 @@ def stack(
     if mode != StackMode.WATERBODIES:
         raise NotImplementedError('Only waterbodies stacking is implemented')
 
-    return stack_waterbodies(paths)
+    return stack_waterbodies(paths, output_dir)
