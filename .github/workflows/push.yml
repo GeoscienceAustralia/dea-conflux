@@ -3,7 +3,7 @@ name: Push
 on:
   push:
     branches:
-      - stable
+      - main
     paths:
       - 'dea_conflux/**'
       - '.github/workflows/push.yml'
