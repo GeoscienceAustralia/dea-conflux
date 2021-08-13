@@ -46,7 +46,6 @@ def test_write_table(conflux_table, tmp_path):
                    conflux_table, tmp_path / 'outdir')
     outpath = tmp_path / 'outdir' / 'name_uuid_20180101-000000-000000.pq'
     assert outpath.exists()
-    }, index=['uid1', 'uid2', 'uid3'])
 
 
 def test_read_write_table(conflux_table, tmp_path):
