@@ -196,7 +196,6 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
               help='Regular expression for filename matching.')
 @click.option('--mode',
               type=click.Choice(['waterbodies']),
-              case_sensitive=False,
               default='waterbodies',
               required=False)
 @click.option('-v', '--verbose', count=True)
