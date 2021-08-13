@@ -40,6 +40,9 @@ def find_datasets(
     -------
     Generator of datasets
     """
+    if dc is None:
+        dc = datacube.Datacube()
+
     # Find many datasets across many products with a limit
     count = 0
 
