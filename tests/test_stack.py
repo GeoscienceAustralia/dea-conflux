@@ -53,5 +53,5 @@ def test_waterbodies_stacking(tmp_path):
     assert outpath.exists()
     csv = pd.read_csv(outpath)
     assert len(csv) == 2
-    assert len(csv.columns) == 3
+    assert len(csv.columns) == 4  # 3 bands + date
     assert int(csv.iloc[1].px_wet) == 1205
