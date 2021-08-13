@@ -48,7 +48,7 @@ def find_datasets(
 
     for product in products:
         datasets = dc.index.datasets.search(
-            product=product.name, **query,
+            product=product, **query,
         )
 
         try:
