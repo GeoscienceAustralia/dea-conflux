@@ -6,6 +6,7 @@ Geoscience Australia
 """
 
 import collections
+import datetime
 import enum
 import logging
 import os
@@ -22,6 +23,21 @@ logger = logging.getLogger(__name__)
 
 class StackMode(enum.Enum):
     WATERBODIES = 'waterbodies'
+
+
+def waterbodies_format_date(date: datetime.datetime) -> str:
+    """Format a date to match DEA Waterbodies.
+
+    Arguments
+    ---------
+    date : datetime
+
+    Returns
+    -------
+    str
+    """
+    # e.g. 1987-05-24T01:30:18Z
+    return date.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
@@ -75,7 +91,8 @@ def stack_waterbodies(paths: [str], output_dir: str):
     id_to_series = collections.defaultdict(list)
     for path in paths:
         df = dea_conflux.io.read_table(path)
-        date = df.attrs['date']
+        date = dea_conflux.io.string_to_date(df.attrs['date'])
+        date = waterbodies_format_date(date)
         # df is ids x bands
         # for each ID...
         for uid, series in df.iterrows():

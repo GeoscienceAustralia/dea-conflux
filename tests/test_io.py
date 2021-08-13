@@ -1,6 +1,7 @@
 import datetime
 import logging
 from pathlib import Path
+import random
 import re
 import sys
 
@@ -58,3 +59,11 @@ def test_read_write_table(conflux_table, tmp_path):
     assert len(table.columns) == 2
     assert table.attrs['date'] == '20180101-000000-000000'
     assert table.attrs['drill'] == 'name'
+
+
+def test_string_date():
+    random.seed(0)
+    for _ in range(100):
+        d = random.randrange(1, 1628000000)  # from the beginning of time...
+        d = datetime.fromtimestamp(d)
+        assert io.string_to_date(io.date_to_string(d)) == d

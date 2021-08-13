@@ -24,6 +24,9 @@ PARQUET_EXTENSIONS = {'.pq', '.parquet'}
 # Metadata key for Parquet files.
 PARQUET_META_KEY = 'conflux.metadata'.encode('ascii')
 
+# Format of string date metadata.
+DATE_FORMAT = '%Y%m%d-%H%M%S-%f'
+
 
 def date_to_string(date: datetime.datetime) -> str:
     """Serialise a date.
@@ -36,7 +39,21 @@ def date_to_string(date: datetime.datetime) -> str:
     -------
     str
     """
-    return date.strftime('%Y%m%d-%H%M%S-%f')
+    return date.strftime(DATE_FORMAT)
+
+
+def string_to_date(date: str) -> datetime.datetime:
+    """Unserialise a date.
+
+    Arguments
+    ---------
+    date : str
+    
+    Returns
+    -------
+    datetime
+    """
+    return datetime.strptime(date, DATE_FORMAT)
 
 
 def make_name(
