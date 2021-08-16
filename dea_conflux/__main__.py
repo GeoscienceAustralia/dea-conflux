@@ -6,13 +6,16 @@ Geoscience Australia
 """
 
 import importlib.util
+import json
 import logging
 import sys
 from types import ModuleType
+import uuid as pyuuid
 
 import click
 import datacube
 from datacube.ui import click as ui
+import fsspec
 
 import dea_conflux.__version__
 import dea_conflux.drill
@@ -191,18 +194,120 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
 
 
 @main.command()
+@click.option('--plugin', '-p',
+              type=click.Path(exists=True, dir_okay=False),
+              help='Path to Conflux plugin (.py).')
+@click.option('--queue', '-q',
+              help='Queue to read IDs from.')
+@click.option('--shapefile', '-s', type=click.Path(),
+              # Don't mandate existence since this might be s3://.
+              help='REQUIRED. Path to the polygon '
+              'shapefile to run polygon drill on.')
+@click.option('--output', '-o', type=click.Path(), default=None,
+              # Don't mandate existence since this might be s3://.
+              help='REQUIRED. Path to the output directory.')
+@click.option('--partial/--no-partial', default=True,
+              help='Include polygons that only partially intersect the scene.')
+@click.option('-v', '--verbose', count=True)
+def run_one(plugin, queue, shapefile, output, partial, verbose):
+    """
+    Run dea-conflux on a scene from a queue.
+    """
+    logging_setup(verbose)
+
+    # Read the plugin as a Python module.
+    plugin = run_plugin(plugin)
+    logger.info(f'Using plugin {plugin.__file__}')
+    validate_plugin(plugin)
+
+    # Get the CRS from the shapefile.
+    crs = get_crs(shapefile)
+    logger.debug(f'Found CRS: {crs}')
+
+    # Guess the ID field.
+    id_field = guess_id_field(shapefile)
+    logger.debug(f'Guessed ID field: {id_field}')
+
+    # Read ID/s from the queue.
+    import boto3
+
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName=queue)
+    queue_url = queue.url
+
+    dc = datacube.Datacube(app='dea-conflux-drill')
+    while True:
+        response = queue.receive_messages(
+            AttributeNames=['All'],
+            MaxNumberOfMessages=1,
+        )
+
+        messages = response
+
+        if len(messages) == 0:
+            logger.info('No messages received from queue')
+            break
+
+        entries = [
+            {'Id': msg.message_id,
+             'ReceiptHandle': msg.receipt_handle}
+            for msg in messages
+        ]
+
+        # Process each ID.
+        ids = [e.body for e in messages]
+        logger.info(f'Read {ids} from queue')
+
+        # Loop through the scenes to produce parquet files.
+        for i, (entry, id_) in enumerate(zip(entries, ids)):
+            logger.info('Processing {} ({}/{})'.format(
+                id_,
+                i + 1,
+                len(ids)))
+            table = dea_conflux.drill.drill(
+                plugin, shapefile, id_, id_field, crs,
+                partial=partial, dc=dc)
+            centre_date = dc.index.datasets.get(id_).center_time
+            dea_conflux.io.write_table(
+                plugin.product_name, id_,
+                centre_date, table, output)
+
+            # Delete from queue.
+            logger.info(f'Successful, deleting {id_}')
+            resp = queue.delete_messages(
+                QueueUrl=queue_url, Entries=[entry],
+            )
+
+            if len(resp['Successful']) != 1:
+                raise RuntimeError(
+                    f"Failed to delete message: {entry}"
+                )
+
+    return 0
+
+
+@main.command()
 @click.argument('product', type=str)
 @ui.parsed_search_expressions
 @click.option('-v', '--verbose', count=True)
-def get_ids(product, expressions, verbose):
+@click.option('--s3/--stdout', default=False)
+def get_ids(product, expressions, verbose, s3):
     """Get IDs based on an expression."""
     logging_setup(verbose)
     dss = dea_conflux.hopper.find_datasets(
         expressions,
         [product])
     ids = [str(ds.id) for ds in dss]
-    for id_ in ids:
-        print(id_)
+    if not s3:
+        # stdout
+        for id_ in ids:
+            print(id_)
+    else:
+        out_path = 's3://dea-public-data-dev/waterbodies/conflux/' + \
+            'conflux_ids_' + str(pyuuid.uuid4()) + '.json'
+        with fsspec.open(out_path, 'w') as f:
+            f.write('\n'.join(ids))
+        print(json.dumps({'ids_path': out_path}), end='')
 
     return 0
 

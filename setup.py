@@ -11,7 +11,7 @@ if __name__ == '__main__':
         python_requires='>=3.6',
         install_requires=[
             'click', 'pytest', 'geopandas', 'datacube', 'boto3', 'botocore',
-            'pyarrow',
+            'pyarrow', 'fsspec', 's3fs',
         ],
         entry_points={
             'console_scripts': ['dea-conflux=dea_conflux.__main__:main'],

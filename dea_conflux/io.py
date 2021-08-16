@@ -107,12 +107,11 @@ def write_table(
     """
     output = str(output)
 
-    # TODO(MatthewJA): Support S3 write.
-    if output.startswith('s3'):
-        raise NotImplementedError()
-    
-    path = Path(output)
-    os.makedirs(path, exist_ok=True)
+    is_s3 = output.startswith('s3://')
+
+    if not is_s3:
+        path = Path(output)
+        os.makedirs(path, exist_ok=True)
     
     filename = make_name(drill_name, uuid, centre_date)
 
@@ -139,7 +138,7 @@ def write_table(
     # Write the table.
     pyarrow.parquet.write_table(
         table_pa,
-        path / filename,
+        path + '/' + filename,
         compression='GZIP')
 
 
