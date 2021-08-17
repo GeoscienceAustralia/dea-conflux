@@ -1,6 +1,6 @@
 """CLI: Run a polygon drill step on a scene.
 
-Matthew Alger, Vanessa Newey
+Matthew Alger, Vanessa Newey, Alex Leith
 Geoscience Australia
 2021
 """
@@ -21,6 +21,7 @@ import dea_conflux.__version__
 import dea_conflux.drill
 import dea_conflux.io
 import dea_conflux.hopper
+import dea_conflux.queues
 import dea_conflux.stack
 from dea_conflux.types import CRS
 
@@ -209,7 +210,7 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
 @click.option('--partial/--no-partial', default=True,
               help='Include polygons that only partially intersect the scene.')
 @click.option('-v', '--verbose', count=True)
-def run_one(plugin, queue, shapefile, output, partial, verbose):
+def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
     """
     Run dea-conflux on a scene from a queue.
     """
@@ -310,6 +311,47 @@ def get_ids(product, expressions, verbose, s3):
         print(json.dumps({'ids_path': out_path}), end='')
 
     return 0
+
+
+@main.command()
+@click.option('--txt', type=click.Path(), required=True,
+              help='REQUIRED. Path to TXT file to push to queue.')
+@click.option('--queue', required=True,
+              help='REQUIRED. Queue name to push to.')
+@click.option('-v', '--verbose', count=True)
+def push_to_queue(txt, queue, verbose):
+    """
+    Push lines of a text file to a SQS queue.
+    """
+    # Cribbed from datacube-alchemist
+    logging_setup(verbose)
+    alive_queue = dea_conflux.queues.get_queue(queue)
+
+    def post_messages(messages, count):
+        alive_queue.send_messages(Entries=messages)
+        logger.info(f"Added {count} messages...")
+        return []
+
+    count = 0
+    messages = []
+    logger.info("Adding messages...")
+    with open(txt) as file:
+        ids = [line.strip() for line in file]
+    logger.debug(f'Adding IDs {ids}')
+    for id_ in ids:
+        message = {
+            "Id": str(count),
+            "MessageBody": str(id_),
+        }
+        messages.append(message)
+
+        count += 1
+        if count % 10 == 0:
+            messages = post_messages(messages, count)
+
+    # Post the last messages if there are any
+    if len(messages) > 0:
+        post_messages(messages, count)
 
 
 @main.command()
