@@ -208,7 +208,7 @@ def drill(
     # Open the shapefile if it's not already open.
     try:
         with fsspec.open(shapefile) as f:
-            shapefile = gpd.read_file(f)
+            shapefile = gpd.read_file(f, driver='ESRI Shapefile')
     except TypeError:
         # Must have already been open.
         pass
