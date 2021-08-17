@@ -40,7 +40,7 @@ jobs:
       uses: aquasecurity/trivy-action@master
       if: github.event_name == 'release'
       with:
-        image-ref: 'docker.io/geoscienceaustralia/dea-waterbodies:${{ env.RELEASE }}'
+        image-ref: 'docker.io/geoscienceaustralia/dea-conflux:${{ env.RELEASE }}'
         format: 'table'
         exit-code: '1'
         ignore-unfixed: true
@@ -64,7 +64,7 @@ jobs:
       uses: aquasecurity/trivy-action@master
       if: github.event_name != 'release'
       with:
-        image-ref: 'docker.io/geoscienceaustralia/dea-waterbodies:${{ env.RELEASE }}'
+        image-ref: 'docker.io/geoscienceaustralia/dea-conflux:${{ env.RELEASE }}'
         format: 'table'
         exit-code: '1'
         ignore-unfixed: true
