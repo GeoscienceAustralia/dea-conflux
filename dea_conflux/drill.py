@@ -12,6 +12,7 @@ import warnings
 
 import datacube
 from datacube.utils.geometry import assign_crs
+import fsspec
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -206,8 +207,9 @@ def drill(
 
     # Open the shapefile if it's not already open.
     try:
-        shapefile = gpd.read_file(shapefile)
-    except AttributeError:
+        with fsspec.open(shapefile) as f:
+            shapefile = gpd.read_file(f)
+    except TypeError:
         # Must have already been open.
         pass
 
