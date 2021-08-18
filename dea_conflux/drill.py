@@ -211,7 +211,7 @@ def drill(
     gpd.io.file._VALID_URLS.discard('s3')
     try:
         logger.info(f'Attempting to read {shapefile}')
-        shapefile = gpd.read_file(f, driver='ESRI Shapefile')
+        shapefile = gpd.read_file(shapefile, driver='ESRI Shapefile')
     except TypeError:
         # Must have already been open.
         pass
