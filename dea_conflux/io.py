@@ -138,7 +138,7 @@ def write_table(
     # Write the table.
     pyarrow.parquet.write_table(
         table_pa,
-        path + '/' + filename,
+        output + '/' + filename,
         compression='GZIP')
 
 
