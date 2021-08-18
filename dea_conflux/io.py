@@ -136,9 +136,11 @@ def write_table(
     table_pa = table_pa.replace_schema_metadata(combined_meta)
 
     # Write the table.
+    if not output.endswith('/'):
+        output = output + '/'
     pyarrow.parquet.write_table(
         table_pa,
-        output + '/' + filename,
+        output + filename,
         compression='GZIP')
 
 
