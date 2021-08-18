@@ -206,12 +206,17 @@ def drill(
         dc = datacube.Datacube(app='dea-conflux-drill')
 
     # Open the shapefile if it's not already open.
+    # awful little hack to get around a datacube bug...
+    has_s3 = 's3' in gpd.io.file._VALID_URLS
+    gpd.io.file._VALID_URLS.discard('s3')
     try:
         logger.info(f'Attempting to read {shapefile}')
-        shapefile = gpd.read_file(shapefile, driver='ESRI Shapefile')
+        shapefile = gpd.read_file(f, driver='ESRI Shapefile')
     except TypeError:
         # Must have already been open.
         pass
+    if has_s3:
+        gpd.io.file._VALID_URLS.add('s3')
 
     shapefile = shapefile.set_index(id_field)
 
