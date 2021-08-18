@@ -215,14 +215,18 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
     Run dea-conflux on a scene from a queue.
     """
     logging_setup(verbose)
+    # TODO(MatthewJA): Refactor this to combine with run-one.
 
     # Read the plugin as a Python module.
     plugin = run_plugin(plugin)
     logger.info(f'Using plugin {plugin.__file__}')
     validate_plugin(plugin)
 
-    # Get the CRS from the shapefile.
-    crs = get_crs(shapefile)
+    # Get the CRS from the shapefile if one isn't specified.
+    if hasattr(plugin, 'output_crs'):
+        crs = plugin.output_crs
+    else:
+        crs = get_crs(shapefile)
     logger.debug(f'Found CRS: {crs}')
 
     # Guess the ID field.

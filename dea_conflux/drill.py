@@ -252,7 +252,8 @@ def drill(
             )
         da = dc.load(datasets=[datasets[product]],
                      measurements=measurements,
-                     crs=crs, resampling=resampling)
+                     output_crs=crs, resampling=resampling,
+                     resolution=getattr(plugin, 'resolution', None))
         for band in measurements:
             bands[band] = da[band]
     ds = xr.Dataset(bands).isel(time=0)

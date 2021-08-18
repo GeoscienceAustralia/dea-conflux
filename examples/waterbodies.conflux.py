@@ -3,9 +3,11 @@ import xarray as xr
 product_name = 'waterbodies'
 version = '0.0.1'
 resampling = 'nearest'
+output_crs = 'EPSG:3577'
+resolution = (-25, 25)
 
 input_products = {
-    'ga_ls_wo_3': ['water'],
+    'wofs_albers': ['water'],
 }
 
 def transform(inputs: xr.Dataset) -> xr.Dataset:
