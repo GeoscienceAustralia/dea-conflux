@@ -207,6 +207,7 @@ def drill(
 
     # Open the shapefile if it's not already open.
     try:
+        logger.info(f'Attempting to read {shapefile}')
         shapefile = gpd.read_file(shapefile, driver='ESRI Shapefile')
     except TypeError:
         # Must have already been open.
