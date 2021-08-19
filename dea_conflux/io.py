@@ -124,12 +124,13 @@ def write_table(
 
     is_s3 = output.startswith('s3://')
 
+    foldername = date_to_string_day(centre_date)
+
     if not is_s3:
         path = Path(output)
-        os.makedirs(path, exist_ok=True)
+        os.makedirs(path / foldername, exist_ok=True)
     
     filename = make_name(drill_name, uuid, centre_date)
-    foldername = date_to_string_day(centre_date)
 
     # Convert the table to pyarrow.
     table_pa = pyarrow.Table.from_pandas(table)
