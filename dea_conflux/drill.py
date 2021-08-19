@@ -17,6 +17,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 import rasterio.features
+import shapely.geometry
 import xarray as xr
 
 from dea_conflux.types import CRS
@@ -40,7 +41,7 @@ def xr_rasterise(gdf: gpd.GeoDataFrame,
     Arguments
     ----------
     gdf : geopandas.GeoDataFrame
-        Vectors to rasterise.
+        Vectors to rasterise in the same CRS as the da.
     da : xarray.DataArray / xarray.Dataset
         Template for raster.
     attribute_col : string
@@ -55,6 +56,7 @@ def xr_rasterise(gdf: gpd.GeoDataFrame,
     crs = da.geobox.crs
     if crs is None:
         raise ValueError("da must have a CRS")
+    assert crs == gdf.crs
 
     # Same for transform
     transform = da.geobox.transform
@@ -73,16 +75,8 @@ def xr_rasterise(gdf: gpd.GeoDataFrame,
     except ValueError:
         y, x = len(xy_coords[0]), len(xy_coords[1])
 
-    # Reproject shapefile to match CRS of raster
     logger.debug(
         f'Rasterizing to match xarray.DataArray dimensions ({y}, {x})')
-
-    try:
-        gdf_reproj = gdf.to_crs(crs=crs)
-    except TypeError:
-        # Sometimes the crs can be a datacube utils CRS object
-        # so convert to string before reprojecting
-        gdf_reproj = gdf.to_crs(crs={'init': str(crs)})
 
     # Use the geometry and attributes from `gdf` to create an iterable
     shapes = zip(gdf_reproj.geometry, gdf_reproj[attribute_col])
@@ -104,6 +98,125 @@ def xr_rasterise(gdf: gpd.GeoDataFrame,
         xarr = assign_crs(xarr, str(crs))
 
     return xarr
+
+
+def _get_directions(og_geom, int_geom):
+    """Helper to get direction of intersection between geometry, intersection.
+    
+    Arguments
+    ---------
+    og_geom : shapely.geometry.Polygon
+        Original polygon.
+    
+    int_geom : shapely.geometry.Polygon
+        Polygon after intersecting with extent.
+    
+    Returns
+    -------
+        set of directions in which the polygon overflows the extent.
+    """
+    boundary_intersections = int_geom.boundary.difference(og_geom.boundary)
+    try:
+        boundary_intersection_lines = list(boundary_intersections)
+    except TypeError:
+        # Not a multiline
+        boundary_intersection_lines = [boundary_intersections]
+    # Split up multilines.
+    boundary_intersection_lines_ = []
+    for line_ in boundary_intersection_lines:
+        coords = list(line_.coords)
+        for a, b in zip(coords[:-1], coords[1:]):
+            boundary_intersection_lines_.append(shapely.geometry.LineString((a, b)))
+    boundary_intersection_lines = boundary_intersection_lines_
+
+    boundary_directions = set()
+    for line in boundary_intersection_lines:
+        angle = np.arctan2(line.coords[1][1] - line.coords[0][1],
+                           line.coords[1][0] - line.coords[0][0])
+        horizontal = abs(angle) <= np.pi / 4 or abs(angle) >= 3 * np.pi / 4
+
+        if horizontal:
+            ys_line = [c[1] for c in line.coords]
+            southern_coord_line = min(ys_line)
+            northern_coord_line = max(ys_line)
+
+            # Find corresponding southernmost/northernmost point
+            # in intersection
+            try:
+                ys_poly = [c[1] for g in int_geom.boundary for c in g.coords]
+            except TypeError:
+                ys_poly = [c[1] for c in int_geom.boundary.coords]
+            southern_coord_poly = min(ys_poly)
+            northern_coord_poly = max(ys_poly)
+
+            # If the south/north match the south/north, we have the
+            # south/north boundary
+            if southern_coord_poly == southern_coord_line:
+                # We are south!
+                boundary_directions.add('South')
+            elif northern_coord_poly == northern_coord_line:
+                boundary_directions.add('North')
+        else:
+            xs_line = [c[0] for c in line.coords]
+            western_coord_line = min(xs_line)
+            eastern_coord_line = max(xs_line)
+
+            # Find corresponding southernmost/northernmost point
+            # in intersection
+            try:
+                xs_poly = [c[0] for g in int_geom.boundary for c in g.coords]
+            except TypeError:
+                xs_poly = [c[0] for c in int_geom.boundary.coords]
+            western_coord_poly = min(xs_poly)
+            eastern_coord_poly = max(xs_poly)
+
+            # If the south/north match the south/north, we have the
+            # south/north boundary
+            if western_coord_poly == western_coord_line:
+                # We are west!
+                boundary_directions.add('West')
+            elif eastern_coord_poly == eastern_coord_line:
+                boundary_directions.add('East')
+    return boundary_directions
+
+
+def get_intersections(
+        gdf: gpd.GeoDataFrame,
+        extent: shapely.geometry.Polygon) -> gpd.GeoDataFrame:
+    """Find which polygons intersect with an extent and in what direction.
+
+    Arguments
+    ---------
+    gdf : gpd.GeoDataFrame
+        Set of polygons.
+    
+    extent : shapely.geometry.Polygon
+        Extent polygon to check intersection against.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        Table of intersections.
+    """
+    all_intersection = gdf.geometry.intersection(extent)
+    # Which ones have decreased in area thanks to our intersection?
+    intersects_mask = ~(all_intersection.area == 0)
+    ratios = all_intersection.area / gdf.area
+    directions = []
+    dir_names = ['North', 'South', 'East', 'West']
+    for ratio, intersects, idx in zip(
+            ratios, intersects_mask, ratios.index):
+        # idx is index into gdf
+        if not intersects:
+            directions.append({d: False for d in dir_names})
+            continue
+        og_geom = gdf.loc[idx].geometry
+        # Buffer to dodge some bad geometry behaviour
+        int_geom = all_intersection.loc[idx].buffer(0)
+        dirs = _get_directions(og_geom, int_geom)
+        directions.append({d: d in dirs for d in dir_names})
+        assert any(directions[-1].values())
+    return pd.DataFrame(directions, index=ratios.index)
 
 
 def find_datasets(
@@ -234,7 +347,21 @@ def drill(
     # we will load it twice - and even worse, we'll load it with
     # more bands than we need the first time! Ignore for MVP.
     reference_dataset = dc.index.datasets.get(uuid)
-    reference_scene = dc.load(datasets=[reference_dataset])
+    reference_scene = dc.load(datasets=[reference_dataset],
+                              output_crs=crs)
+
+    # Reproject shapefile to match CRS of raster
+    try:
+        gdf_reproj = gdf.to_crs(crs=crs)
+    except TypeError:
+        # Sometimes the crs can be a datacube utils CRS object
+        # so convert to string before reprojecting
+        gdf_reproj = gdf.to_crs(crs={'init': str(crs)})
+
+    # Detect intersections.
+    intersection_features = get_intersections(
+        gdf_reproj, reference_scene.extent.geom)
+    # TODO(MatthewJA): Implement intersections table into Parquet output.
 
     # Build the enumerated polygon raster.
     polygon_raster = xr_rasterise(shapefile, reference_scene, attr_col)

@@ -5,10 +5,11 @@ import sys
 
 from click.testing import CliRunner
 import datacube
+import geopandas as gpd
 import pytest
 
 from dea_conflux.__main__ import run_plugin
-from dea_conflux.drill import find_datasets, drill
+from dea_conflux.drill import find_datasets, drill, _get_directions
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,6 +18,8 @@ HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
 TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
+# Path to a polygon overlapping the test WOfL.
+TEST_OVERLAP_GEOJSON = HERE / 'data' / 'edge_overlap.geojson'
 
 TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
 TEST_PLUGIN_COMBINED = HERE / 'data' / 'sum_pv_wet.conflux.py'
@@ -65,3 +68,11 @@ def test_drill_integration(dc):
         dc=dc)
     assert len(drill_result) == 86
     assert len(drill_result.columns) == 1
+
+
+def test_get_directions():
+    gdf = gpd.read_file(TEST_OVERLAP_GEOJSON)
+    extent = dc.index.datasets.get(TEST_WOFL_ID).extent.geom
+    intersection = gdf.geometry.intersection(extent)
+    dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
+    assert dirs == {'North'}

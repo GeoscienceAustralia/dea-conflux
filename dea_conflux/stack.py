@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 
+import boto3
 import pandas as pd
 
 import dea_conflux.io
