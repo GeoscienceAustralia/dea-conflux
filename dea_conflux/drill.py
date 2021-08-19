@@ -79,7 +79,7 @@ def xr_rasterise(gdf: gpd.GeoDataFrame,
         f'Rasterizing to match xarray.DataArray dimensions ({y}, {x})')
 
     # Use the geometry and attributes from `gdf` to create an iterable
-    shapes = zip(gdf_reproj.geometry, gdf_reproj[attribute_col])
+    shapes = zip(gdf.geometry, gdf[attribute_col])
 
     # Rasterise shapes into an array
     arr = rasterio.features.rasterize(shapes=shapes,
