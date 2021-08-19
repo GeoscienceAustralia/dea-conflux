@@ -70,7 +70,7 @@ def test_drill_integration(dc):
     assert len(drill_result.columns) == 1
 
 
-def test_get_directions():
+def test_get_directions(dc):
     gdf = gpd.read_file(TEST_OVERLAP_GEOJSON)
     extent = dc.index.datasets.get(TEST_WOFL_ID).extent.geom
     intersection = gdf.geometry.intersection(extent)
