@@ -276,7 +276,7 @@ def drill(
         uuid: str,
         id_field: str,
         crs: CRS,
-        output_resolution: (int, int),
+        resolution: (int, int),
         partial=True,
         dc: datacube.Datacube = None) -> pd.DataFrame:
     """Perform a polygon drill.
@@ -352,15 +352,16 @@ def drill(
     # more bands than we need the first time! Ignore for MVP.
     reference_dataset = dc.index.datasets.get(uuid)
     reference_scene = dc.load(datasets=[reference_dataset],
-                              output_crs=crs, resolution=resolution)
+                              output_crs=crs,
+                              resolution=resolution)
 
     # Reproject shapefile to match CRS of raster
     try:
-        gdf_reproj = gdf.to_crs(crs=crs)
+        gdf_reproj = shapefile.to_crs(crs=crs)
     except TypeError:
         # Sometimes the crs can be a datacube utils CRS object
         # so convert to string before reprojecting
-        gdf_reproj = gdf.to_crs(crs={'init': str(crs)})
+        gdf_reproj = shapefile.to_crs(crs={'init': str(crs)})
 
     # Detect intersections.
     intersection_features = get_intersections(
@@ -368,7 +369,7 @@ def drill(
     # TODO(MatthewJA): Implement intersections table into Parquet output.
 
     # Build the enumerated polygon raster.
-    polygon_raster = xr_rasterise(shapefile, reference_scene, attr_col)
+    polygon_raster = xr_rasterise(gdf_reproj, reference_scene, attr_col)
 
     # Load the images.
     resampling = 'nearest'
