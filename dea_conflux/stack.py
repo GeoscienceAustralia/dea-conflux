@@ -97,6 +97,7 @@ def stack_waterbodies(paths: [Path], output_dir: str):
     outpath = Path(output_dir)
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
+        df.sort_values('date', inplace=True)
         filename = outpath / uid[:4] / f'{uid}.csv'
         logger.info(f'Writing {filename}')
         os.makedirs(filename.parent, exist_ok=True)
