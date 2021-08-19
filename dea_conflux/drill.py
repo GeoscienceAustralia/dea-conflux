@@ -207,7 +207,7 @@ def get_intersections(
     for ratio, intersects, idx in zip(
             ratios, intersects_mask, ratios.index):
         # idx is index into gdf
-        if not intersects:
+        if not intersects or ratio == 1:
             directions.append({d: False for d in dir_names})
             continue
         og_geom = gdf.loc[idx].geometry
