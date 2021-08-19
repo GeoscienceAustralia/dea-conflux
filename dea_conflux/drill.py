@@ -276,6 +276,7 @@ def drill(
         uuid: str,
         id_field: str,
         crs: CRS,
+        output_resolution: (int, int),
         partial=True,
         dc: datacube.Datacube = None) -> pd.DataFrame:
     """Perform a polygon drill.
@@ -296,6 +297,9 @@ def drill(
 
     crs : datacube.utils.geometry.CRS
         CRS to output to.
+    
+    resolution : (int, int)
+        Raster resolution in (-metres, metres).
 
     partial : bool
         Optional (True). Whether to include polygons that partially
@@ -348,7 +352,7 @@ def drill(
     # more bands than we need the first time! Ignore for MVP.
     reference_dataset = dc.index.datasets.get(uuid)
     reference_scene = dc.load(datasets=[reference_dataset],
-                              output_crs=crs)
+                              output_crs=crs, resolution=resolution)
 
     # Reproject shapefile to match CRS of raster
     try:

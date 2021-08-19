@@ -64,6 +64,7 @@ def test_drill_integration(dc):
         TEST_WOFL_ID,
         'UID',
         'EPSG:3577',
+        (-25, 25),
         partial=True,
         dc=dc)
     assert len(drill_result) == 86

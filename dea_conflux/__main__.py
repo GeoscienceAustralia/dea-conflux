@@ -100,7 +100,8 @@ def validate_plugin(plugin: ModuleType):
     # Check globals.
     required_globals = [
         'product_name', 'version', 'input_products',
-        'transform', 'summarise']
+        'transform', 'summarise', 'resolution',
+        'output_crs']
     for name in required_globals:
         if not hasattr(plugin, name):
             raise ValueError(f'Plugin missing {name}')
@@ -173,9 +174,19 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     logger.info(f'Using plugin {plugin.__file__}')
     validate_plugin(plugin)
 
-    # Get the CRS from the shapefile.
-    crs = get_crs(shapefile)
+    # Get the CRS from the shapefile if one isn't specified.
+    if hasattr(plugin, 'output_crs'):
+        crs = plugin.output_crs
+    else:
+        crs = get_crs(shapefile)
     logger.debug(f'Found CRS: {crs}')
+
+    # Get the output resolution from the plugin.
+    # TODO(MatthewJA): Make this optional by guessing
+    # the resolution, if at all possible.
+    # I think this is doable provided that everything
+    # is in native CRS.
+    resolution = plugin.resolution
 
     # Guess the ID field.
     id_field = guess_id_field(shapefile)
@@ -184,7 +195,7 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     # Do the drill!
     dc = datacube.Datacube(app='dea-conflux-drill')
     table = dea_conflux.drill.drill(
-        plugin, shapefile, uuid, id_field, crs,
+        plugin, shapefile, uuid, id_field, crs, resolution,
         partial=partial, dc=dc)
     centre_date = dc.index.datasets.get(uuid).center_time
     dea_conflux.io.write_table(
@@ -229,6 +240,13 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
         crs = get_crs(shapefile)
     logger.debug(f'Found CRS: {crs}')
 
+    # Get the output resolution from the plugin.
+    # TODO(MatthewJA): Make this optional by guessing
+    # the resolution, if at all possible.
+    # I think this is doable provided that everything
+    # is in native CRS.
+    resolution = plugin.resolution
+
     # Guess the ID field.
     id_field = guess_id_field(shapefile)
     logger.debug(f'Guessed ID field: {id_field}')
@@ -270,7 +288,7 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
                 i + 1,
                 len(ids)))
             table = dea_conflux.drill.drill(
-                plugin, shapefile, id_, id_field, crs,
+                plugin, shapefile, id_, id_field, crs, resolution,
                 partial=partial, dc=dc)
             centre_date = dc.index.datasets.get(id_).center_time
             dea_conflux.io.write_table(
