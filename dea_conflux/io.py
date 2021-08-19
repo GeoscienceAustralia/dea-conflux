@@ -26,6 +26,7 @@ PARQUET_META_KEY = 'conflux.metadata'.encode('ascii')
 
 # Format of string date metadata.
 DATE_FORMAT = '%Y%m%d-%H%M%S-%f'
+DATE_FORMAT_DAY = '%Y%m%d'
 
 
 def date_to_string(date: datetime.datetime) -> str:
@@ -40,6 +41,20 @@ def date_to_string(date: datetime.datetime) -> str:
     str
     """
     return date.strftime(DATE_FORMAT)
+
+
+def date_to_string_day(date: datetime.datetime) -> str:
+    """Serialise a date discarding hours/mins/seconds.
+
+    Arguments
+    ---------
+    date : datetime
+    
+    Returns
+    -------
+    str
+    """
+    return date.strftime(DATE_FORMAT_DAY)
 
 
 def string_to_date(date: str) -> datetime.datetime:
@@ -114,6 +129,7 @@ def write_table(
         os.makedirs(path, exist_ok=True)
     
     filename = make_name(drill_name, uuid, centre_date)
+    foldername = date_to_string_day(centre_date)
 
     # Convert the table to pyarrow.
     table_pa = pyarrow.Table.from_pandas(table)
@@ -140,7 +156,7 @@ def write_table(
         output = output + '/'
     pyarrow.parquet.write_table(
         table_pa,
-        output + filename,
+        output + foldername + '/' + filename,
         compression='GZIP')
 
 
