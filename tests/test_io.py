@@ -45,7 +45,7 @@ def test_write_table(conflux_table, tmp_path):
     test_date = datetime.datetime(2018, 1, 1)
     io.write_table('name', 'uuid', test_date,
                    conflux_table, tmp_path / 'outdir')
-    outpath = tmp_path / 'outdir' / 'name_uuid_20180101-000000-000000.pq'
+    outpath = tmp_path / 'outdir' / '20180101' / 'name_uuid_20180101-000000-000000.pq'
     assert outpath.exists()
 
 
@@ -53,7 +53,7 @@ def test_read_write_table(conflux_table, tmp_path):
     test_date = datetime.datetime(2018, 1, 1)
     io.write_table('name', 'uuid', test_date,
                    conflux_table, tmp_path / 'outdir')
-    outpath = tmp_path / 'outdir' / 'name_uuid_20180101-000000-000000.pq'
+    outpath = tmp_path / 'outdir' / '20180101' / 'name_uuid_20180101-000000-000000.pq'
     table = io.read_table(outpath)
     assert len(table) == 3
     assert len(table.columns) == 2
