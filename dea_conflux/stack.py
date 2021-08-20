@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import re
 
-import boto3
+import s3fs
 import pandas as pd
 
 import dea_conflux.io
@@ -47,7 +47,7 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     Arguments
     ---------
     path : str
-        Path to search for Parquet files.
+        Path (s3 or local) to search for Parquet files.
     
     pattern : str
         Regex to match filenames against.
@@ -59,16 +59,33 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     """
     pattern = re.compile(pattern)
     all_paths = []
-    for root, dir_, files in os.walk(path):
-        paths = [Path(root) / file for file in files]
-        for path in paths:
-            if path.suffix not in PARQUET_EXTENSIONS:
+
+    if path.startswith('s3://'):
+        # Find Parquet files on S3.
+        fs = s3fs.S3FileSystem(anon=True)
+        files = fs.find(path)
+        for file in files:
+            _, ext = os.path.splitext(file)
+            if ext not in PARQUET_EXTENSIONS:
                 continue
 
-            if not pattern.match(path.name):
+            _, filename = os.path.split(file)
+            if not pattern.match(filename):
                 continue
 
-            all_paths.append(path)
+            all_paths.append(file)
+    else:
+        # Find Parquet files locally.
+        for root, dir_, files in os.walk(path):
+            paths = [Path(root) / file for file in files]
+            for path_ in paths:
+                if path_.suffix not in PARQUET_EXTENSIONS:
+                    continue
+
+                if not pattern.match(path_.name):
+                    continue
+
+                all_paths.append(path_)
 
     return all_paths
 

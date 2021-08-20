@@ -4,8 +4,10 @@ from pathlib import Path
 import re
 import sys
 
+import boto3
 from click.testing import CliRunner
 import datacube
+from moto import mock_s3
 import pandas as pd
 import pytest
 
@@ -54,3 +56,26 @@ def test_waterbodies_stacking(tmp_path):
     csv = pd.read_csv(outpath)
     assert len(csv) == 2
     assert len(csv.columns) == 4  # 3 bands + date
+
+@mock_s3
+def test_find_parquet_files_s3():
+    # Set up some Parquet files to find.
+    s3 = boto3.resource('s3', region_name='ap-southeast-2')
+    bucket_name = 'testbucket'
+    s3.create_bucket(Bucket=bucket_name)
+    parquet_keys = [
+        'hello.pq',
+        'hello/world.pq',
+        'hello/world/this/is.parquet']
+    not_parquet_keys = [
+        'not_parquet',
+        'hello/alsonotparquet']
+    for key in parquet_keys + not_parquet_keys:
+        s3.Object(bucket_name, key).put(Body=b'')
+    
+    res = dea_conflux.stack.find_parquet_files(f's3://{testbucket}')
+    for key in parquet_keys:
+        assert f's3://{testbucket}/{key}' in res
+    for key in not_parquet_keys:
+        assert f's3://{testbucket}/{key}' not in res
+
