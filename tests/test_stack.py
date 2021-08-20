@@ -87,12 +87,23 @@ def test_find_parquet_files_s3(mock_AWSResponse):
     not_parquet_keys = [
         'not_parquet',
         'hello/alsonotparquet']
-    for key in parquet_keys + not_parquet_keys:
+    parquet_keys_constrained = [
+        'hello/world/missme.pq',
+        'hello/missme/world.pq'
+    ]
+    for key in parquet_keys + not_parquet_keys + parquet_keys_constrained:
         s3.Object(bucket_name, key).put(Body=b'')
     
     res = dea_conflux.stack.find_parquet_files(f's3://{bucket_name}')
-    for key in parquet_keys:
+    for key in parquet_keys + parquet_keys_constrained:
         assert f's3://{bucket_name}/{key}' in res
     for key in not_parquet_keys:
         assert f's3://{bucket_name}/{key}' not in res
 
+    # Repeat that test with a constraint.
+    res = dea_conflux.stack.find_parquet_files(
+        f's3://{bucket_name}', pattern='^((?!missme).)*')
+    for key in parquet_keys:
+        assert f's3://{bucket_name}/{key}' in res
+    for key in not_parquet_keys + parquet_keys_constrained:
+        assert f's3://{bucket_name}/{key}' not in res
