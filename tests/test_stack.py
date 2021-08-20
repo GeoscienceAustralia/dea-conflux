@@ -75,9 +75,9 @@ def test_find_parquet_files_s3():
     for key in parquet_keys + not_parquet_keys:
         s3.Object(bucket_name, key).put(Body=b'')
     
-    res = dea_conflux.stack.find_parquet_files(f's3://{testbucket}')
+    res = dea_conflux.stack.find_parquet_files(f's3://{bucket_name}')
     for key in parquet_keys:
-        assert f's3://{testbucket}/{key}' in res
+        assert f's3://{bucket_name}/{key}' in res
     for key in not_parquet_keys:
-        assert f's3://{testbucket}/{key}' not in res
+        assert f's3://{bucket_name}/{key}' not in res
 
