@@ -60,6 +60,12 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     pattern = re.compile(pattern)
     all_paths = []
 
+    # "Support" pathlib Paths
+    try:
+        path.startswith
+    except AttributeError:
+        path = str(path)
+
     if path.startswith('s3://'):
         # Find Parquet files on S3.
         fs = s3fs.S3FileSystem(anon=True)
