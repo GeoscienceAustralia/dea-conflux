@@ -426,7 +426,9 @@ def drill(
     summary_df.index = summary_df.index.map(one_index_to_id)
 
     # Merge in the edge information.
-    summary_df = pd.concat([summary_df, intersection_features],
-                            axis='columns')
+    summary_df = summary_df.join(
+        # left join only includes objects with some
+        # representation in the scene
+        intersection_features, how='left')
 
     return summary_df
