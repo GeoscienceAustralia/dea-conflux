@@ -73,7 +73,7 @@ def test_waterbodies_stacking(tmp_path):
     assert len(csv.columns) == 4  # 3 bands + date
 
 @mock_s3
-def test_find_parquet_files_s3():
+def test_find_parquet_files_s3(mock_AWSResponse):
     # Set up some Parquet files to find.
     s3 = boto3.resource('s3', region_name='ap-southeast-2')
     bucket_name = 'testbucket'
