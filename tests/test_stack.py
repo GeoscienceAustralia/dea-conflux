@@ -5,8 +5,10 @@ import re
 import sys
 
 import boto3
+import botocore
 from click.testing import CliRunner
 import datacube
+import moto
 from moto import mock_s3
 import pandas as pd
 import pytest
@@ -44,6 +46,19 @@ def conflux_table():
         'band1': [0, 1, 2],
         'band2': [5, 4, 3],
     }, index=['uid1', 'uid2', 'uid3'])
+
+
+# https://github.com/aio-libs/aiobotocore/issues/755
+@pytest.fixture()
+def mock_AWSResponse() -> None:
+    class MockedAWSResponse(botocore.awsrequest.AWSResponse):
+        raw_headers = {}  # type: ignore
+
+        async def read(self):  # type: ignore
+            return self.text
+
+    botocore.awsrequest.AWSResponse = MockedAWSResponse
+    moto.core.models.AWSResponse = MockedAWSRespons
 
 
 def test_waterbodies_stacking(tmp_path):
