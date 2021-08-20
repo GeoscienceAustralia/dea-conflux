@@ -366,7 +366,12 @@ def drill(
     # Detect intersections.
     intersection_features = get_intersections(
         gdf_reproj, reference_scene.extent.geom)
-    # TODO(MatthewJA): Implement intersections table into Parquet output.
+    intersection_features.rename(inplace=True, columns={
+        'North': 'conflux_n',
+        'South': 'conflux_s',
+        'East': 'conflux_e',
+        'West': 'conflux_w',
+    })
 
     # Build the enumerated polygon raster.
     polygon_raster = xr_rasterise(gdf_reproj, reference_scene, attr_col)
@@ -419,5 +424,9 @@ def drill(
 
     summary_df = pd.DataFrame(summaries).T
     summary_df.index = summary_df.index.map(one_index_to_id)
+
+    # Merge in the edge information.
+    summary_df = pd.concat([summary_df, intersection_features],
+                            axis='columns')
 
     return summary_df
