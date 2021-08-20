@@ -58,7 +58,7 @@ def mock_AWSResponse() -> None:
             return self.text
 
     botocore.awsrequest.AWSResponse = MockedAWSResponse
-    moto.core.models.AWSResponse = MockedAWSRespons
+    moto.core.models.AWSResponse = MockedAWSResponse
 
 
 def test_waterbodies_stacking(tmp_path):
