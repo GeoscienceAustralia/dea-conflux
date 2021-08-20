@@ -198,7 +198,7 @@ def get_intersections(
     gpd.GeoDataFrame
         Table of intersections.
     """
-    all_intersection = gdf.geometry.intersection(extent)
+    all_intersection = gdf.geometry.intersection(extent.buffer(0))
     # Which ones have decreased in area thanks to our intersection?
     intersects_mask = ~(all_intersection.area == 0)
     ratios = all_intersection.area / gdf.area
