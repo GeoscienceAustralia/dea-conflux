@@ -22,8 +22,10 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       
-      - name: lcov
-        uses: danielealbano/lcov-action@v1
+      - name: Build coverage
+        run: |
+          pip install pytest
+          pytest --cov eodatasets3 --cov-report=xml
 
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@1.1.3
