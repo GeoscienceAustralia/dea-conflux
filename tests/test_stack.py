@@ -89,7 +89,6 @@ def test_find_parquet_files_s3(mock_AWSResponse):
         'hello/alsonotparquet']
     parquet_keys_constrained = [
         'hello/world/missme.pq',
-        'hello/missme/world.pq'
     ]
     for key in parquet_keys + not_parquet_keys + parquet_keys_constrained:
         s3.Object(bucket_name, key).put(Body=b'')
