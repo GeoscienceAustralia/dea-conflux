@@ -24,7 +24,7 @@ jobs:
       
       - name: Build coverage
         run: |
-          pip install pytest
+          pip install pytest pytest-cov
           pytest --cov eodatasets3 --cov-report=xml
 
       - name: Coveralls GitHub Action
