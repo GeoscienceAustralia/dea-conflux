@@ -102,7 +102,7 @@ def test_find_parquet_files_s3(mock_AWSResponse):
 
     # Repeat that test with a constraint.
     res = dea_conflux.stack.find_parquet_files(
-        f's3://{bucket_name}', pattern='^((?!missme).)*')
+        f's3://{bucket_name}', pattern='[^m]*$')
     for key in parquet_keys:
         assert f's3://{bucket_name}/{key}' in res
     for key in not_parquet_keys + parquet_keys_constrained:
