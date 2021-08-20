@@ -62,7 +62,9 @@ def test_find_parquet_files_s3():
     # Set up some Parquet files to find.
     s3 = boto3.resource('s3', region_name='ap-southeast-2')
     bucket_name = 'testbucket'
-    s3.create_bucket(Bucket=bucket_name)
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={
+        'LocationConstraint': 'ap-southeast-2',
+    })
     parquet_keys = [
         'hello.pq',
         'hello/world.pq',
