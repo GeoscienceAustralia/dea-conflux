@@ -73,7 +73,7 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
             if not pattern.match(filename):
                 continue
 
-            all_paths.append(file)
+            all_paths.append(f's3://{file}')
     else:
         # Find Parquet files locally.
         for root, dir_, files in os.walk(path):
