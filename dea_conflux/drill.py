@@ -250,7 +250,10 @@ def find_datasets(
             product=input_product,
             geopolygon=metadata.extent,
             time=metadata.center_time)
-        assert len(datasets_) == 1, "Found multiple datasets at same time"
+        if len(datasets_) > 1:
+            raise ValueError("Found multiple datasets at same time")
+        elif len(datasets_) == 0:
+            raise ValueError("Found no datasets associated with given scene")
         datasets[input_product] = datasets_[0]
     return datasets
 
