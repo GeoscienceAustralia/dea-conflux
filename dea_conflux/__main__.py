@@ -117,7 +117,8 @@ def load_and_reproject_shapefile(
         shapefile = shapefile.to_crs(crs={'init': str(crs)})
     
     # zero-buffer to fix some oddities.
-    return shapefile.buffer(0)
+    shapefile.geometry = shapefile.geometry.buffer(0)
+    return shapefile
 
 
 def run_plugin(plugin_path: str) -> ModuleType:
