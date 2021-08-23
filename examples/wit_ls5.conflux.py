@@ -43,7 +43,14 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
                        'tcw': tcw > -350,
                        'bs': masked_bs,
                        'pv': masked_pv,
-                       'npv': masked_npv})
+                       'npv': masked_npv,
+                       'nbart_blue': inputs.nbart_blue,
+                       'nbart_green': inputs.nbart_green,
+                       'nbart_red': inputs.nbart_red,
+                       'nbart_nir': inputs.nbart_nir,
+                       'nbart_swir_1': inputs.nbart_swir_1,
+                       'nbart_swir_2': inputs.nbart_swir_2,
+                       })
 
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
