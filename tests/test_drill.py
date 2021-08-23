@@ -8,7 +8,7 @@ import datacube
 import geopandas as gpd
 import pytest
 
-from dea_conflux.__main__ import run_plugin
+from dea_conflux.__main__ import run_plugin, load_and_reproject_shapefile
 from dea_conflux.drill import find_datasets, drill, _get_directions
 
 logging.basicConfig(level=logging.INFO)
@@ -58,11 +58,12 @@ def test_find_datasets_gives_other(dc):
 
 def test_drill_integration(dc):
     plugin = run_plugin(TEST_PLUGIN_OK)
+    shp = load_and_reproject_shapefile(
+        TEST_SHP, 'UID', 'EPSG:3577')
     drill_result = drill(
         plugin,
-        TEST_SHP,
+        shp,
         TEST_WOFL_ID,
-        'UID',
         'EPSG:3577',
         (-25, 25),
         partial=True,
