@@ -18,7 +18,7 @@ input_products = {
 
 def _tcw(ds: xr.Dataset) -> xr.DataArray:
     # Tasseled Cap Wetness, Crist 1985
-    ds = ds / 10000.0
+    ds = ds  # don't normalise!
     return (0.0315 * ds.nbart_blue + 0.2021 * ds.nbart_green
             + 0.3102 * ds.nbart_red + 0.1594 * ds.nbart_nir
             + -0.6806 * ds.nbart_swir_1 + -0.6109 * ds.nbart_swir_2)
@@ -40,7 +40,7 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     masked_pv = inputs.pv.where(mask)
     masked_npv = inputs.npv.where(mask)
     return xr.Dataset({'water': masked_wet,
-                       'tcw': tcw > -350,
+                       'tcw': tcw,
                        'bs': masked_bs,
                        'pv': masked_pv,
                        'npv': masked_npv,
