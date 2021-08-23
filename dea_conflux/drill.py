@@ -273,6 +273,31 @@ def dataset_to_dict(ds: xr.Dataset) -> dict:
             for key, val in ds.to_dict()['data_vars'].items()}
 
 
+def filter_shapefile(
+        gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset) -> gpd.GeoDataFrame:
+    """Filter a shapefile to only include nearby objects.
+    
+    Arguments
+    ---------
+    gdf : gpd.GeoDataFrame
+    ds : datacube.model.Dataset
+    
+    Returns
+    -------
+    gpd.GeoDataFrame
+    """
+    width = ds.extent.boundingbox.right - ds.extent.boundingbox.left
+    height = ds.extent.boundingbox.top - ds.extent.boundingbox.bottom
+    centroids = gdf.centroid
+    included = ((centroids.x > (ds.extent.boundingbox.left - width)) &
+                (centroids.x < (ds.extent.boundingbox.right + width)) &
+                (centroids.y < (ds.extent.boundingbox.top + height)) &
+                (centroids.y > (ds.extent.boundingbox.bottom - height)))
+    gdf = gdf[included]
+    return gdf
+
+
 def drill(
         plugin: ModuleType,
         shapefile: gpd.GeoDataFrame,
@@ -343,6 +368,9 @@ def drill(
     reference_scene = dc.load(datasets=[reference_dataset],
                               output_crs=crs,
                               resolution=resolution)
+
+    # Filter out polygons that aren't anywhere near this scene.
+    shapefile = filter_shapefile(shapefile, reference_scene)
 
     # Detect intersections.
     intersection_features = get_intersections(
