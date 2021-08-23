@@ -198,7 +198,7 @@ def get_intersections(
     gpd.GeoDataFrame
         Table of intersections.
     """
-    all_intersection = gdf.geometry.buffer(0).intersection(extent.buffer(0))
+    all_intersection = gdf.geometry.intersection(extent)
     # Which ones have decreased in area thanks to our intersection?
     intersects_mask = ~(all_intersection.area == 0)
     ratios = all_intersection.area / gdf.area
@@ -275,9 +275,8 @@ def dataset_to_dict(ds: xr.Dataset) -> dict:
 
 def drill(
         plugin: ModuleType,
-        shapefile: Union[str, gpd.GeoDataFrame],
+        shapefile: gpd.GeoDataFrame,
         uuid: str,
-        id_field: str,
         crs: CRS,
         resolution: (int, int),
         partial=True,
@@ -289,14 +288,12 @@ def drill(
     plugin : module
         Plugin to drill with.
 
-    shapefile : str / GeoDataFrame
-        Either a path to a shapefile or a shapefile loaded into GeoPandas.
+    shapefile : GeoDataFrame
+        A shapefile loaded into GeoPandas, in the correct CRS,
+        with the ID as the index.
 
     uuid : str
         ID of scene to process.
-
-    id_field : str
-        The name of the ID field in the shapefile.
 
     crs : datacube.utils.geometry.CRS
         CRS to output to.
@@ -321,29 +318,18 @@ def drill(
     if not partial:
         raise NotImplementedError()
 
+    assert str(shapefile.crs) == str(crs)
+
     # Get a datacube if we don't have one already.
     if not dc:
         dc = datacube.Datacube(app='dea-conflux-drill')
 
-    # Open the shapefile if it's not already open.
-    # awful little hack to get around a datacube bug...
-    has_s3 = 's3' in gpd.io.file._VALID_URLS
-    gpd.io.file._VALID_URLS.discard('s3')
-    try:
-        logger.info(f'Attempting to read {shapefile}')
-        shapefile = gpd.read_file(shapefile, driver='ESRI Shapefile')
-    except TypeError:
-        # Must have already been open.
-        pass
-    if has_s3:
-        gpd.io.file._VALID_URLS.add('s3')
-
-    shapefile = shapefile.set_index(id_field)
-
     # Assign a one-indexed numeric column for the polygons.
     # This will allow us to build a polygon enumerated raster.
-    attr_col = 'one_index'
-    shapefile[attr_col] = range(1, len(shapefile.index) + 1)
+    attr_col = '_conflux_one_index'
+    if attr_col not in shapefile.columns:
+        # This mutates the (in-memory) shapefile, but that's OK.
+        shapefile[attr_col] = range(1, len(shapefile.index) + 1)
     one_index_to_id = {v: k for k, v in shapefile[attr_col].to_dict().items()}
 
     # Get required datasets.
@@ -358,17 +344,9 @@ def drill(
                               output_crs=crs,
                               resolution=resolution)
 
-    # Reproject shapefile to match CRS of raster
-    try:
-        gdf_reproj = shapefile.to_crs(crs=crs)
-    except TypeError:
-        # Sometimes the crs can be a datacube utils CRS object
-        # so convert to string before reprojecting
-        gdf_reproj = shapefile.to_crs(crs={'init': str(crs)})
-
     # Detect intersections.
     intersection_features = get_intersections(
-        gdf_reproj, reference_scene.extent.geom)
+        shapefile, reference_scene.extent.geom)
     intersection_features.rename(inplace=True, columns={
         'North': 'conflux_n',
         'South': 'conflux_s',
@@ -377,7 +355,7 @@ def drill(
     })
 
     # Build the enumerated polygon raster.
-    polygon_raster = xr_rasterise(gdf_reproj, reference_scene, attr_col)
+    polygon_raster = xr_rasterise(shapefile, reference_scene, attr_col)
 
     # Load the images.
     resampling = 'nearest'

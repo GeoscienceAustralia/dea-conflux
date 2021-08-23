@@ -16,6 +16,7 @@ import click
 import datacube
 from datacube.ui import click as ui
 import fsspec
+import geopandas as gpd
 
 import dea_conflux.__version__
 import dea_conflux.drill
@@ -74,6 +75,49 @@ def guess_id_field(shapefile_path: str) -> str:
             return guess
     raise ValueError(
         'Couldn\'t find an ID field in {}'.format(keys))
+
+
+def load_and_reproject_shapefile(
+        shapefile: str,
+        id_field: str,
+        crs: CRS) -> gpd.GeoDataFrame:
+    """Load a shapefile, project into CRS, and set index.
+    
+    Arguments
+    ---------
+    shapefile : str
+        Path to shapefile.
+    
+    id_field : str
+        Name of ID field. This will become the index.
+    
+    crs : CRS
+        CRS to reproject into.
+        
+    Returns
+    -------
+    GeoDataFrame
+    """
+    # awful little hack to get around a datacube bug...
+    has_s3 = 's3' in gpd.io.file._VALID_URLS
+    gpd.io.file._VALID_URLS.discard('s3')
+    logger.info(f'Attempting to read {shapefile}')
+    shapefile = gpd.read_file(shapefile, driver='ESRI Shapefile')
+    if has_s3:
+        gpd.io.file._VALID_URLS.add('s3')
+
+    shapefile = shapefile.set_index(id_field)
+
+    # Reproject shapefile to match target CRS
+    try:
+        shapefile = shapefile.to_crs(crs=crs)
+    except TypeError:
+        # Sometimes the crs can be a datacube utils CRS object
+        # so convert to string before reprojecting
+        shapefile = shapefile.to_crs(crs={'init': str(crs)})
+    
+    # zero-buffer to fix some oddities.
+    return shapefile.buffer(0)
 
 
 def run_plugin(plugin_path: str) -> ModuleType:
@@ -192,10 +236,15 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     id_field = guess_id_field(shapefile)
     logger.debug(f'Guessed ID field: {id_field}')
 
+    # Load and reproject the shapefile.
+    shapefile = load_and_reproject_shapefile(
+        shapefile, id_field, crs,
+    )
+
     # Do the drill!
     dc = datacube.Datacube(app='dea-conflux-drill')
     table = dea_conflux.drill.drill(
-        plugin, shapefile, uuid, id_field, crs, resolution,
+        plugin, shapefile, uuid, crs, resolution,
         partial=partial, dc=dc)
     centre_date = dc.index.datasets.get(uuid).center_time
     dea_conflux.io.write_table(
@@ -251,6 +300,11 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
     id_field = guess_id_field(shapefile)
     logger.debug(f'Guessed ID field: {id_field}')
 
+    # Load and reproject the shapefile.
+    shapefile = load_and_reproject_shapefile(
+        shapefile, id_field, crs,
+    )
+
     # Read ID/s from the queue.
     import boto3
 
@@ -288,7 +342,7 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
                 i + 1,
                 len(ids)))
             table = dea_conflux.drill.drill(
-                plugin, shapefile, id_, id_field, crs, resolution,
+                plugin, shapefile, id_, crs, resolution,
                 partial=partial, dc=dc)
             centre_date = dc.index.datasets.get(id_).center_time
             dea_conflux.io.write_table(
