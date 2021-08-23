@@ -26,11 +26,11 @@ def _tcw(ds: xr.Dataset) -> xr.DataArray:
 
 def transform(inputs: xr.Dataset) -> xr.Dataset:
     # Masking
-    cloud = inputs.water & (1 << 6)
-    shadow = inputs.water & (1 << 5)
+    cloud = (inputs.water & (1 << 6)) > 0
+    shadow = (inputs.water & (1 << 5)) > 0
     mask = ~cloud & ~shadow
     # TCW
-    tcw = _tcw(inputs).where(mask)
+    tcw = (_tcw(inputs) > -350).where(mask)
     # WO
     is_wet = inputs.water == 128
     is_ok = is_wet | (inputs.water == 0)
@@ -58,13 +58,13 @@ def summarise(inputs: xr.Dataset) -> xr.Dataset:
     # water takes priority
     output['water'] = inputs.water.sum()
     # TCW comes in where there is no water
-    output['wet'] = inputs.where(
+    output['wet'] = inputs.tcw.where(
         ~inputs.water.astype(bool)).sum()
     # FC everywhere else
     fc_mask = ~inputs.water.astype(bool) & ~inputs.tcw.astype(bool)
-    output['bs'] = inputs.bs.where(fc_mask)
-    output['pv'] = inputs.pv.where(fc_mask)
-    output['npv'] = inputs.npv.where(fc_mask)
+    output['bs'] = inputs.bs.where(fc_mask).sum()
+    output['pv'] = inputs.pv.where(fc_mask).sum()
+    output['npv'] = inputs.npv.where(fc_mask).sum()
 
     output['pc_missing'] = inputs.bs.isnull().mean()
     return xr.Dataset(output)
