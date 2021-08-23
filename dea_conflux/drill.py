@@ -404,6 +404,7 @@ def drill(
     with warnings.catch_warnings():
         warnings.filterwarnings('error')
         ds_transformed = plugin.transform(ds)
+    transformed_bands = list(ds_transformed.keys())
 
     # For each polygon, perform the summary.
     summaries = {}  # ID -> summary
@@ -414,7 +415,7 @@ def drill(
 
         mask = polygon_raster == oid
         values = {band: ds_transformed[band].values[mask]
-                  for band in bands}
+                  for band in transformed_bands}
         values = xr.Dataset(
             data_vars={k: xr.DataArray(v) for k, v in values.items()})
         # Force warnings to raise exceptions.
