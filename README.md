@@ -1,5 +1,6 @@
 # DEA Conflux
 
+![GitHub](https://img.shields.io/github/license/GeoscienceAustralia/dea-conflux)
 [![Test](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/test.yml/badge.svg)](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/test.yml) [![Lint](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/lint.yml/badge.svg)](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/lint.yml)
 
 This is a prototype tool for processing bulk polygon drills.
