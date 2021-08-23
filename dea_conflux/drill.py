@@ -318,7 +318,7 @@ def drill(
     if not partial:
         raise NotImplementedError()
 
-    assert str(shapefile.crs) == str(crs)
+    assert str(shapefile.crs).lower() == str(crs).lower()
 
     # Get a datacube if we don't have one already.
     if not dc:
