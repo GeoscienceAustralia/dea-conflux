@@ -36,7 +36,7 @@ dea-conflux run-one --uuid SCENE_ID --plugin PLUGIN_PATH -o OUTPUT_PATH -s SHAPE
 Conflux can also read from an AWS SQS queue. Messages must be the UUID of a scene.
 
 ```bash
-dea-conflux run-one --queue QUEUE_NAME --plugin PLUGIN_PATH -o OUTPUT_PATH -s SHAPEFILE_PATH
+dea-conflux run-from-queue --queue QUEUE_NAME --plugin PLUGIN_PATH -o OUTPUT_PATH -s SHAPEFILE_PATH
 ```
 
 ### Plugins
