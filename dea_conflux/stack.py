@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 
+import fsspec
 import s3fs
 import pandas as pd
 
@@ -96,12 +97,12 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     return all_paths
 
 
-def stack_waterbodies(paths: [Path], output_dir: str):
+def stack_waterbodies(paths: [str], output_dir: str):
     """Stack Parquet files into CSVs like DEA Waterbodies does.
     
     Arguments
     ---------
-    paths : [Path]
+    paths : [str]
         List of paths to Parquet files to stack.
     
     output_dir : str
@@ -118,14 +119,16 @@ def stack_waterbodies(paths: [Path], output_dir: str):
         for uid, series in df.iterrows():
             series.name = date
             id_to_series[uid].append(series)
-    outpath = Path(output_dir)
+    outpath = output_dir
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
         df.sort_index(inplace=True)
-        filename = outpath / uid[:4] / f'{uid}.csv'
+        filename = f'{outpath}/{uid[:4]}/{uid}.csv'
         logger.info(f'Writing {filename}')
-        os.makedirs(filename.parent, exist_ok=True)
-        df.to_csv(filename, index_label='date')
+        if not outpath.startswith('s3://'):
+            os.makedirs(Path(filename).parent, exist_ok=True)
+        with fsspec.open(filename, 'w') as f:
+            df.to_csv(f, index_label='date')
 
 
 def stack(
@@ -150,15 +153,7 @@ def stack(
         Method of stacking. Default is like DEA Waterbodies v1,
         a collection of polygon CSVs.
     """
-    # TODO(MatthewJA): Support S3.
-    try:
-        path.startswith
-    except AttributeError:
-        path = str(path)
-    if path.startswith('s3'):
-        raise NotImplementedError('S3 not yet supported')
-
-    path = Path(path)
+    path = str(path)
     
     paths = find_parquet_files(path, pattern)
 
