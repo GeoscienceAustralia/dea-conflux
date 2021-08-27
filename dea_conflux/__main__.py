@@ -449,10 +449,6 @@ def stack(parquet_path, output, pattern, mode, verbose):
     """
     logging_setup(verbose)
 
-    # TODO(MatthewJA): Support S3
-    if parquet_path.startswith('s3'):
-        raise NotImplementedError('S3 not yet supported')
-
     # Convert mode to StackMode
     mode_map = {
         'waterbodies': dea_conflux.stack.StackMode.WATERBODIES,
