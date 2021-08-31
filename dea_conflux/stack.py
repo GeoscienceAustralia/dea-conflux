@@ -16,6 +16,7 @@ import re
 import fsspec
 import s3fs
 import pandas as pd
+from tqdm.auto import tqdm
 
 import dea_conflux.io
 from dea_conflux.io import PARQUET_EXTENSIONS
@@ -97,7 +98,7 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     return all_paths
 
 
-def stack_waterbodies(paths: [str], output_dir: str):
+def stack_waterbodies(paths: [str], output_dir: str, verbose: bool=False):
     """Stack Parquet files into CSVs like DEA Waterbodies does.
     
     Arguments
@@ -107,9 +108,14 @@ def stack_waterbodies(paths: [str], output_dir: str):
     
     output_dir : str
         Path to output directory.
+
+    verbose : bool
     """
     # id -> [series of date x bands]
     id_to_series = collections.defaultdict(list)
+    logger.info('Reading...')
+    if verbose:
+        paths = tqdm(paths)
     for path in paths:
         df = dea_conflux.io.read_table(path)
         date = dea_conflux.io.string_to_date(df.attrs['date'])
@@ -120,6 +126,7 @@ def stack_waterbodies(paths: [str], output_dir: str):
             series.name = date
             id_to_series[uid].append(series)
     outpath = output_dir
+    logger.info('Writing...')
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
         df.sort_index(inplace=True)
@@ -135,7 +142,8 @@ def stack(
         path: str,
         output_dir: str,
         pattern: str = '.*',
-        mode: StackMode = StackMode.WATERBODIES):
+        mode: StackMode = StackMode.WATERBODIES,
+        verbose: bool=False):
     """Stack Parquet files.
 
     Arguments
@@ -152,6 +160,8 @@ def stack(
     mode : StackMode
         Method of stacking. Default is like DEA Waterbodies v1,
         a collection of polygon CSVs.
+
+    verbose : bool
     """
     path = str(path)
     
@@ -160,4 +170,4 @@ def stack(
     if mode != StackMode.WATERBODIES:
         raise NotImplementedError('Only waterbodies stacking is implemented')
 
-    return stack_waterbodies(paths, output_dir)
+    return stack_waterbodies(paths, output_dir, verbose=verbose)

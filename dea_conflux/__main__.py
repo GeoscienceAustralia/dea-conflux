@@ -454,7 +454,8 @@ def stack(parquet_path, output, pattern, mode, verbose):
         'waterbodies': dea_conflux.stack.StackMode.WATERBODIES,
     }
 
-    dea_conflux.stack.stack(parquet_path, output, pattern, mode_map[mode])
+    dea_conflux.stack.stack(parquet_path, output, pattern, mode_map[mode],
+                            verbose=verbose)
 
     return 0
 
