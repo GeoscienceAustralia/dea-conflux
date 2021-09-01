@@ -270,8 +270,12 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
               help='REQUIRED. Path to the output directory.')
 @click.option('--partial/--no-partial', default=True,
               help='Include polygons that only partially intersect the scene.')
+              help='REQUIRED. Path to the output directory.')
+@click.option('--overwrite/--no-overwrite', default=False,
+              help='Rerun scenes that have already been processed.')
 @click.option('-v', '--verbose', count=True)
-def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
+def run_from_queue(plugin, queue, shapefile, output, partial,
+                   overwrite, verbose):
     """
     Run dea-conflux on a scene from a queue.
     """
@@ -314,7 +318,8 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
     queue_url = queue.url
 
     dc = datacube.Datacube(app='dea-conflux-drill')
-    while True:
+    message_retries = 10
+    while message_retries > 0:
         response = queue.receive_messages(
             AttributeNames=['All'],
             MaxNumberOfMessages=1,
@@ -324,7 +329,10 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
 
         if len(messages) == 0:
             logger.info('No messages received from queue')
-            break
+            message_retries -= 1
+            continue
+
+        message_retries = 10
 
         entries = [
             {'Id': msg.message_id,
@@ -346,9 +354,17 @@ def run_from_queue(plugin, queue, shapefile, output, partial, verbose):
                 plugin, shapefile, id_, crs, resolution,
                 partial=partial, dc=dc)
             centre_date = dc.index.datasets.get(id_).center_time
-            dea_conflux.io.write_table(
+
+            exists = dea_conflux.io.table_exists(
                 plugin.product_name, id_,
-                centre_date, table, output)
+                centre_date, output)
+            
+            if overwrite or not exists:
+                dea_conflux.io.write_table(
+                    plugin.product_name, id_,
+                    centre_date, table, output)
+            else:
+                logger.info(f'{id_} already exists, skipping')
 
             # Delete from queue.
             logger.info(f'Successful, deleting {id_}')

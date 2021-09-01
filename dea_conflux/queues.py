@@ -17,4 +17,3 @@ def get_queue(queue_name: str):
     sqs = boto3.resource("sqs")
     queue = sqs.get_queue_by_name(QueueName=queue_name)
     return queue
-

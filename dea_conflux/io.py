@@ -11,6 +11,7 @@ import logging
 import os
 from pathlib import Path
 
+import s3fs
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
@@ -97,6 +98,50 @@ def make_name(
     return f'{drill_name}_{uuid}_{datestring}.pq'
 
 
+def table_exists(
+        drill_name: str, uuid: str,
+        centre_date: datetime.datetime,
+        output: str) -> bool:
+    """Check whether a table already exists.
+
+    Arguments
+    ---------
+    drill_name : str
+        Name of the drill.
+
+    uuid : str
+        UUID of reference dataset.
+    
+    centre_date : datetime
+        Centre date of reference dataset.
+    
+    table : pd.DataFrame
+        Dataframe with index polygons and columns bands.
+    
+    output : str
+        Path to output directory.
+    
+    Returns
+    -------
+    bool
+    """
+    name = make_name(drill_name, uuid, centre_date)
+    foldername = date_to_string_day(centre_date)
+
+    if not output.endswith('/'):
+        output = output + '/'
+    if not foldername.endwith('/'):
+        foldername = foldername + '/'
+
+    path = output + foldername + name
+
+    if not output.startswith('s3://'):
+        # local
+        return os.path.exists(path)
+    
+    return s3fs.S3FileSystem().exists(path)
+
+
 def write_table(
         drill_name: str, uuid: str,
         centre_date: datetime.datetime,
@@ -155,9 +200,13 @@ def write_table(
     # Write the table.
     if not output.endswith('/'):
         output = output + '/'
+    
+    if not foldername.endwith('/'):
+        foldername = foldername + '/'
+
     pyarrow.parquet.write_table(
         table_pa,
-        output + foldername + '/' + filename,
+        output + foldername + filename,
         compression='GZIP')
 
 
