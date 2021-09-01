@@ -270,7 +270,6 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
               help='REQUIRED. Path to the output directory.')
 @click.option('--partial/--no-partial', default=True,
               help='Include polygons that only partially intersect the scene.')
-              help='REQUIRED. Path to the output directory.')
 @click.option('--overwrite/--no-overwrite', default=False,
               help='Rerun scenes that have already been processed.')
 @click.option('-v', '--verbose', count=True)
