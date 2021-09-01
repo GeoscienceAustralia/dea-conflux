@@ -130,7 +130,7 @@ def table_exists(
 
     if not output.endswith('/'):
         output = output + '/'
-    if not foldername.endwith('/'):
+    if not foldername.endswith('/'):
         foldername = foldername + '/'
 
     path = output + foldername + name
