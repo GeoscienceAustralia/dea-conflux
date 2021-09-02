@@ -372,6 +372,10 @@ def drill(
     # Filter out polygons that aren't anywhere near this scene.
     shapefile = filter_shapefile(shapefile, reference_scene)
 
+    if len(shapefile) == 0:
+        logger.warning(f'No polygons found in scene {uuid}')
+        return pd.DataFrame({})
+
     # Detect intersections.
     intersection_features = get_intersections(
         shapefile, reference_scene.extent.geom)
