@@ -129,6 +129,7 @@ def stack_waterbodies(
             series.name = date
             id_to_series[uid].append(series)
     outpath = output_dir
+    outpath = str(outpath)  # handle Path type
     logger.info('Writing...')
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)

@@ -201,7 +201,7 @@ def write_table(
     if not output.endswith('/'):
         output = output + '/'
     
-    if not foldername.endwith('/'):
+    if not foldername.endswith('/'):
         foldername = foldername + '/'
 
     pyarrow.parquet.write_table(
