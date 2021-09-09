@@ -8,11 +8,13 @@ input_products = {
     'ls7_fc_albers': ['PV'],
 }
 
+
 def transform(inputs: xr.Dataset) -> xr.Dataset:
     return xr.Dataset({
         'water': inputs.water == 128,
         'pv': inputs.PV > 0.5,
     })
+
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
     return inputs.sum()

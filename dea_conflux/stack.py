@@ -98,7 +98,10 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     return all_paths
 
 
-def stack_waterbodies(paths: [str], output_dir: str, verbose: bool=False):
+def stack_waterbodies(
+        paths: [str],
+        output_dir: str,
+        verbose: bool = False):
     """Stack Parquet files into CSVs like DEA Waterbodies does.
     
     Arguments
@@ -143,7 +146,7 @@ def stack(
         output_dir: str,
         pattern: str = '.*',
         mode: StackMode = StackMode.WATERBODIES,
-        verbose: bool=False):
+        verbose: bool = False):
     """Stack Parquet files.
 
     Arguments
