@@ -40,8 +40,8 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     pv = inputs.pv.clip(0, 100) / 100
     npv = inputs.npv.clip(0, 100) / 100
     sum_fc = bs + pv + npv
-    masked_bs = (bs / sum_fc).where(mask) 
-    masked_pv = (pv / sum_fc).where(mask) 
+    masked_bs = (bs / sum_fc).where(mask)
+    masked_pv = (pv / sum_fc).where(mask)
     masked_npv = (npv / sum_fc).where(mask)
     return xr.Dataset({'water': masked_wet,
                        'tcw': tcw,
