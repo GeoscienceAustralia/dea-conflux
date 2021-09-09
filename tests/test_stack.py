@@ -1,13 +1,9 @@
-import datetime
 import logging
 from pathlib import Path
-import re
 import sys
 
 import boto3
 import botocore
-from click.testing import CliRunner
-import datacube
 import moto
 from moto import mock_s3
 import pandas as pd
@@ -27,7 +23,8 @@ LAKE_GINNINDERRA_ID = 'r3dp84s8n'
 
 TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
 TEST_PLUGIN_COMBINED = HERE / 'data' / 'sum_pv_wet.conflux.py'
-TEST_PLUGIN_MISSING_TRANSFORM = HERE / 'data' / 'sum_wet_missing_transform.conflux.py'
+TEST_PLUGIN_MISSING_TRANSFORM = (
+    HERE / 'data' / 'sum_wet_missing_transform.conflux.py')
 
 TEST_PQ_DATA = HERE / 'data' / 'canberra_waterbodies_pq'
 
@@ -71,6 +68,7 @@ def test_waterbodies_stacking(tmp_path):
     csv = pd.read_csv(outpath)
     assert len(csv) == 2
     assert len(csv.columns) == 4  # 3 bands + date
+
 
 @mock_s3
 def test_find_parquet_files_s3(mock_AWSResponse):

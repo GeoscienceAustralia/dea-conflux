@@ -12,7 +12,6 @@ import warnings
 
 import datacube
 from datacube.utils.geometry import assign_crs
-import fsspec
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def xr_rasterise(gdf: gpd.GeoDataFrame,
                  da: Union[xr.DataArray, xr.Dataset],
-                 attribute_col: str) -> xr.DataArray:    
+                 attribute_col: str) -> xr.DataArray:
     """
     Rasterizes a geopandas.GeoDataFrame into an xarray.DataArray.
 
@@ -126,7 +125,8 @@ def _get_directions(og_geom, int_geom):
     for line_ in boundary_intersection_lines:
         coords = list(line_.coords)
         for a, b in zip(coords[:-1], coords[1:]):
-            boundary_intersection_lines_.append(shapely.geometry.LineString((a, b)))
+            boundary_intersection_lines_.append(
+                shapely.geometry.LineString((a, b)))
     boundary_intersection_lines = boundary_intersection_lines_
 
     boundary_directions = set()
