@@ -36,9 +36,13 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     is_ok = is_wet | (inputs.water == 0)
     masked_wet = is_wet.where(is_ok)
     # FC
-    masked_bs = inputs.bs.where(mask)
-    masked_pv = inputs.pv.where(mask)
-    masked_npv = inputs.npv.where(mask)
+    bs = inputs.bs.clip(0, 100) / 100
+    pv = inputs.pv.clip(0, 100) / 100
+    npv = inputs.npv.clip(0, 100) / 100
+    sum_fc = bs + pv + npv
+    masked_bs = (bs / sum_fc).where(mask) 
+    masked_pv = (pv / sum_fc).where(mask) 
+    masked_npv = (npv / sum_fc).where(mask)
     return xr.Dataset({'water': masked_wet,
                        'tcw': tcw,
                        'bs': masked_bs,
@@ -59,6 +63,5 @@ def summarise(inputs: xr.Dataset) -> xr.Dataset:
     output['bs'] = inputs.bs.where(fc_mask).sum()
     output['pv'] = inputs.pv.where(fc_mask).sum()
     output['npv'] = inputs.npv.where(fc_mask).sum()
-
-    output['pc_missing'] = inputs.bs.isnull().mean()
+    output['px_missing'] = inputs.bs.isnull().sum()
     return xr.Dataset(output)
