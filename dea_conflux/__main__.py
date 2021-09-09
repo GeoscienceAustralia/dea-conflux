@@ -68,6 +68,7 @@ def guess_id_field(shapefile_path: str) -> str:
     possible_guesses = [
         # In order of preference.
         'UID', 'WB_ID', 'FID_1', 'FID', 'ID', 'OBJECTID',
+        'ORIG_FID',
     ]
     possible_guesses += [k.lower() for k in possible_guesses]
     for guess in possible_guesses:

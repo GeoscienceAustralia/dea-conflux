@@ -10,3 +10,6 @@ __pycache__
 
 # VS code
 .vscode/*
+
+# ipynb
+.ipynb_checkpoints
