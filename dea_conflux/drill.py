@@ -222,7 +222,8 @@ def get_intersections(
 def find_datasets(
         dc: datacube.Datacube,
         plugin: ModuleType,
-        uuid: str) -> [datacube.model.Dataset]:
+        uuid: str,
+        strict: bool = False) -> [datacube.model.Dataset]:
     """Find the datasets that a plugin requires given a related scene UUID.
 
     Arguments
@@ -231,9 +232,10 @@ def find_datasets(
         A Datacube to search.
     plugin : module
         Plugin defining input products.
-
     uuid : str
         UUID of scene to look up.
+    strict : bool
+        Default False. Error on duplicate scenes (otherwise warn).
 
     Returns
     -------
@@ -251,7 +253,13 @@ def find_datasets(
             geopolygon=metadata.extent,
             time=metadata.center_time)
         if len(datasets_) > 1:
-            raise ValueError("Found multiple datasets at same time")
+            if strict:
+                raise ValueError(
+                    f"Found multiple datasets at same time for {uuid}")
+            else:
+                warnings.warn(
+                    f"Found multiple datasets at same time for {uuid}, "
+                    "choosing one arbitrarily", RuntimeWarning)
         elif len(datasets_) == 0:
             raise ValueError("Found no datasets associated with given scene")
         datasets[input_product] = datasets_[0]
