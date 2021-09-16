@@ -13,6 +13,7 @@ HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
 TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
+TEST_ID_FIELD = 'uid'
 
 TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
 TEST_PLUGIN_COMBINED = HERE / 'data' / 'sum_pv_wet.conflux.py'
@@ -67,7 +68,7 @@ def test_get_crs():
 
 def test_guess_id_field():
     id_field = main_module.guess_id_field(TEST_SHP)
-    assert id_field == 'UID'
+    assert id_field == TEST_ID_FIELD
 
 
 def test_validate_plugin():

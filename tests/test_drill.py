@@ -16,6 +16,7 @@ HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
 TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
+TEST_ID_FIELD = 'uid'
 # Path to a polygon overlapping the test WOfL.
 TEST_OVERLAP_GEOJSON = HERE / 'data' / 'edge_overlap.geojson'
 
@@ -60,7 +61,7 @@ def test_find_datasets_gives_other(dc):
 def test_drill_integration(dc):
     plugin = run_plugin(TEST_PLUGIN_OK)
     shp = load_and_reproject_shapefile(
-        TEST_SHP, 'UID', 'EPSG:3577')
+        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')
     drill_result = drill(
         plugin,
         shp,
@@ -87,7 +88,7 @@ def test_south_overedge(dc):
     test_sth_polygon_id = 'r39zjddbt'   
     plugin = run_plugin(TEST_PLUGIN_OK_C3)
     shp = load_and_reproject_shapefile(
-        TEST_SHP, 'UID', 'EPSG:3577')
+        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')
     shp = shp.loc[[test_sth_polygon_id]]
     drill_result = drill(
         plugin,
