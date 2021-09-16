@@ -70,7 +70,7 @@ def test_drill_integration(dc):
         (-25, 25),
         partial=True,
         dc=dc)
-    assert len(drill_result) == 86
+    assert len(drill_result) == 87
     # 5 columns, one output and 4 directions
     assert len(drill_result.columns) == 5
     assert 'conflux_n' in drill_result.columns
@@ -100,4 +100,4 @@ def test_south_overedge(dc):
         overedge=True,
         dc=dc)
     assert len(drill_result) == 1
-    assert drill_result.water[0] == 41  
+    assert drill_result.water[0] == 41
