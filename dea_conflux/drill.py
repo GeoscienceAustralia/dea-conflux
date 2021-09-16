@@ -313,6 +313,7 @@ def drill(
         crs: CRS,
         resolution: (int, int),
         partial=True,
+        overedge = False,
         dc: datacube.Datacube = None) -> pd.DataFrame:
     """Perform a polygon drill.
 
@@ -337,6 +338,10 @@ def drill(
     partial : bool
         Optional (True). Whether to include polygons that partially
         overlap with the scene.
+
+    overedge : bool
+        Optional (False). Whether to include data from other scenes 
+        in partially overedge polygons.
 
     dc : datacube.Datacube
         Optional existing Datacube.

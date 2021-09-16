@@ -20,12 +20,14 @@ TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
 TEST_OVERLAP_GEOJSON = HERE / 'data' / 'edge_overlap.geojson'
 
 TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
+TEST_PLUGIN_OK_C3 = HERE / 'data' / 'sum_wet_c3.conflux.py'
 TEST_PLUGIN_COMBINED = HERE / 'data' / 'sum_pv_wet.conflux.py'
 TEST_PLUGIN_MISSING_TRANSFORM = (
     HERE / 'data' / 'sum_wet_missing_transform.conflux.py')
 
 TEST_WOFL_ID = '234fec8f-1de7-488a-a115-818ebd4bfec4'
 TEST_FC_ID = '4d243358-152e-404c-bb65-7ea64b21ca38'
+TEST_C3_WO_ID = '4c116812-58e5-52fb-ac71-4cdf12bf6943'
 
 
 def setup_module(module):
@@ -79,3 +81,22 @@ def test_get_directions(dc):
     intersection = gdf.geometry.intersection(extent)
     dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
     assert dirs == {'North'}
+
+
+def test_south_overedge(dc):
+    test_sth_polygon_id = 'r39zjddbt'   
+    plugin = run_plugin(TEST_PLUGIN_OK_C3)
+    shp = load_and_reproject_shapefile(
+        TEST_SHP, 'UID', 'EPSG:3577')
+    shp = shp.loc[[test_sth_polygon_id]]
+    drill_result = drill(
+        plugin,
+        shp,
+        TEST_C3_WO_ID,
+        'EPSG:3577',
+        (-30, 30),
+        partial=True,
+        overedge=True,
+        dc=dc)
+    assert len(drill_result) == 1
+    assert drill_result.water[0] == 41  
