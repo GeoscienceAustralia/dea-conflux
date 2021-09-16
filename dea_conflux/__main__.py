@@ -70,8 +70,10 @@ def guess_id_field(shapefile_path: str) -> str:
         'UID', 'WB_ID', 'FID_1', 'FID', 'ID', 'OBJECTID',
         'ORIG_FID',
     ]
-    possible_guesses += [k.lower() for k in possible_guesses]
     for guess in possible_guesses:
+        if guess in keys:
+            return guess
+        guess = guess.lower()
         if guess in keys:
             return guess
     raise ValueError(
