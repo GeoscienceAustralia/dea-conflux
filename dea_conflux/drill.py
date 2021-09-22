@@ -5,6 +5,7 @@ Geoscience Australia
 2021
 """
 
+import datetime
 from types import ModuleType
 from typing import Union
 import logging
@@ -281,10 +282,44 @@ def dataset_to_dict(ds: xr.Dataset) -> dict:
             for key, val in ds.to_dict()['data_vars'].items()}
 
 
-def filter_shapefile(
+def filter_shapefile_quick(
+        gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset,
+        buffer=True) -> gpd.GeoDataFrame:
+    """Filter a shapefile to only include nearby objects.
+
+    Checks if centroids are in a (buffered) bounding box.
+    
+    Arguments
+    ---------
+    gdf : gpd.GeoDataFrame
+    ds : datacube.model.Dataset
+    buffer : bool
+        Optional (True). Extend the bounding box by the
+        width of a scene.
+    
+    Returns
+    -------
+    gpd.GeoDataFrame
+    """
+    centroids = gdf.centroid
+    width = height = 0
+    if buffer:
+        width = ds.extent.boundingbox.right - ds.extent.boundingbox.left
+        height = ds.extent.boundingbox.top - ds.extent.boundingbox.bottom
+    included = ((centroids.x > (ds.extent.boundingbox.left - width)) &
+                (centroids.x < (ds.extent.boundingbox.right + width)) &
+                (centroids.y < (ds.extent.boundingbox.top + height)) &
+                (centroids.y > (ds.extent.boundingbox.bottom - height)))
+
+    gdf = gdf[included]
+    return gdf
+
+
+def filter_shapefile_intersections(
         gdf: gpd.GeoDataFrame,
         ds: datacube.model.Dataset) -> gpd.GeoDataFrame:
-    """Filter a shapefile to only include nearby objects.
+    """Filter a shapefile to remove objects more than 1 scene away.
     
     Arguments
     ---------
@@ -297,13 +332,14 @@ def filter_shapefile(
     """
     width = ds.extent.boundingbox.right - ds.extent.boundingbox.left
     height = ds.extent.boundingbox.top - ds.extent.boundingbox.bottom
-    centroids = gdf.centroid
-    included = ((centroids.x > (ds.extent.boundingbox.left - width)) &
-                (centroids.x < (ds.extent.boundingbox.right + width)) &
-                (centroids.y < (ds.extent.boundingbox.top + height)) &
-                (centroids.y > (ds.extent.boundingbox.bottom - height)))
-    gdf = gdf[included]
-    return gdf
+    bb = ds.extent.boundingbox
+    testbox = shapely.geometry.Polygon([
+        (bb.left - width, bb.bottom - height),
+        (bb.left - width, bb.top + height),
+        (bb.right + width, bb.top + height),
+        (bb.right + width, bb.bottom - height),
+    ])
+    return gdf[gdf.geometry.intersects(testbox.boundary)]
 
 
 def drill(
@@ -313,8 +349,9 @@ def drill(
         crs: CRS,
         resolution: (int, int),
         partial=True,
-        overedge = False,
-        dc: datacube.Datacube = None) -> pd.DataFrame:
+        overedge=False,
+        dc: datacube.Datacube = None,
+        time_buffer=datetime.timedelta(hours=1)) -> pd.DataFrame:
     """Perform a polygon drill.
 
     Arguments
@@ -340,11 +377,15 @@ def drill(
         overlap with the scene.
 
     overedge : bool
-        Optional (False). Whether to include data from other scenes 
+        Optional (False). Whether to include data from other scenes
         in partially overedge polygons.
 
     dc : datacube.Datacube
         Optional existing Datacube.
+    
+    time_buffer : datetime.timedelta
+        Optional (default 1 hour). Only consider datasets within
+        this time range for overedge.
 
     Returns
     -------
@@ -352,6 +393,29 @@ def drill(
         Index = polygon ID
         Columns = output bands
     """
+
+    # partial and overedge interact.
+    # we have two loading options (dc.load and scene-based),
+    # two polygon screening options (cautious and centroid),
+    # and two reporting options (report or not).
+
+    # loading:
+    #              | partial | not partial
+    # overedge     | dc.load | warn; scene
+    # not overedge | scene   | scene
+
+    # screening:
+    #              | partial  | not partial
+    # overedge     | cautious | centroid
+    # not overedge | cautious | centroid
+    
+    # reporting:
+    #              | partial | not partial
+    # overedge     | not     | not
+    # not overedge | report  | not
+
+    if overedge and not partial:
+        warnings.warn('overedge=True expects partial=True')
 
     if not partial:
         raise NotImplementedError()
@@ -370,34 +434,71 @@ def drill(
         shapefile[attr_col] = range(1, len(shapefile.index) + 1)
     one_index_to_id = {v: k for k, v in shapefile[attr_col].to_dict().items()}
 
-    # Get required datasets.
-    datasets = find_datasets(dc, plugin, uuid)
-
-    # Load the image of the input scene so we can build the raster.
-    # TODO(MatthewJA): If this is also a dataset required for drilling,
-    # we will load it twice - and even worse, we'll load it with
-    # more bands than we need the first time! Ignore for MVP.
+    # Get the dataset we asked for.
     reference_dataset = dc.index.datasets.get(uuid)
-    reference_scene = dc.load(datasets=[reference_dataset],
-                              output_crs=crs,
-                              resolution=resolution)
 
     # Filter out polygons that aren't anywhere near this scene.
-    shapefile = filter_shapefile(shapefile, reference_scene)
+    shapefile = filter_shapefile_quick(shapefile, reference_dataset,
+    # ...and limit it to centroids in this scene if partial.  # noqa: E128
+                                       buffer=partial)
+
+    # If overedge, remove anything which intersects with a 3-scene
+    # width box.
+    if overedge:
+        shapefile = filter_shapefile_intersections(
+            shapefile, reference_dataset)
 
     if len(shapefile) == 0:
         logger.warning(f'No polygons found in scene {uuid}')
         return pd.DataFrame({})
 
+    # Load the image of the input scene so we can build the raster.
+    # TODO(MatthewJA): If this is also a dataset required for drilling,
+    # we will load it twice - and even worse, we'll load it with
+    # more bands than we need the first time! Ignore for MVP.
+    if not overedge:
+        # just load the scene we asked for
+        reference_scene = dc.load(datasets=[reference_dataset],
+                                  output_crs=crs,
+                                  resolution=resolution)
+        # and grab the datasets we want too
+        datasets = find_datasets(dc, plugin, uuid)
+    else:
+        # search for all the datasets we need to cover the area
+        # of the polygons.
+        reference_product = reference_dataset.type.name
+        geopolygon = datacube.utils.geometry.Geometry(
+            shapely.geometry.box(*shapefile.total_bounds),
+            crs=shapefile.crs)
+        time_span = (
+            reference_dataset.metadata.center_time - time_buffer,
+            reference_dataset.metadata.center_time + time_buffer)
+        req_datasets = dc.find_datasets(
+            product=reference_product,
+            geopolygon=geopolygon,
+            time=time_span)
+        # There really shouldn't be more than nine of these.
+        assert len(req_datasets) <= 9
+        reference_scene = dc.load(
+            product=reference_product,
+            geopolygon=geopolygon,
+            time=time_span,
+            output_crs=crs,
+            resolution=resolution)
+
     # Detect intersections.
-    intersection_features = get_intersections(
-        shapefile, reference_scene.extent.geom)
-    intersection_features.rename(inplace=True, columns={
-        'North': 'conflux_n',
-        'South': 'conflux_s',
-        'East': 'conflux_e',
-        'West': 'conflux_w',
-    })
+    # We only have to do this if partial and not overedge.
+    # If not partial, then there can't be any intersections.
+    # If overedge, then there are no partly observed polygons.
+    if partial and not overedge:
+        intersection_features = get_intersections(
+            shapefile, reference_scene.extent.geom)
+        intersection_features.rename(inplace=True, columns={
+            'North': 'conflux_n',
+            'South': 'conflux_s',
+            'East': 'conflux_e',
+            'West': 'conflux_w',
+        })
 
     # Build the enumerated polygon raster.
     polygon_raster = xr_rasterise(shapefile, reference_scene, attr_col)
@@ -413,10 +514,18 @@ def drill(
             assert band not in bands, "Duplicate band: {}{}".format(
                 product, band
             )
-        da = dc.load(datasets=[datasets[product]],
-                     measurements=measurements,
-                     output_crs=crs, resampling=resampling,
-                     resolution=getattr(plugin, 'resolution', None))
+        query = dict(
+            measurements=measurements,
+            output_crs=crs,
+            resolution=getattr(plugin, 'resolution', None),
+            resampling=resampling,
+        )
+        if not overedge:
+            query['datasets'] = [datasets[product]]
+        else:
+            query['product'] = product
+            query['geopolygon'] = geopolygon
+        da = dc.load(**query)
         for band in measurements:
             bands[band] = da[band]
     ds = xr.Dataset(bands).isel(time=0)
@@ -453,9 +562,10 @@ def drill(
     summary_df.index = summary_df.index.map(one_index_to_id)
 
     # Merge in the edge information.
-    summary_df = summary_df.join(
-        # left join only includes objects with some
-        # representation in the scene
-        intersection_features, how='left')
+    if partial and not overedge:
+        summary_df = summary_df.join(
+            # left join only includes objects with some
+            # representation in the scene
+            intersection_features, how='left')
 
     return summary_df
