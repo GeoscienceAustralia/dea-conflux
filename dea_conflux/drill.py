@@ -302,15 +302,22 @@ def filter_shapefile_quick(
     -------
     gpd.GeoDataFrame
     """
+    # reproject the ds extent into gdf crs
+    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs
+                          ).to_crs(gdf.crs).geometry[0]
+    # e.g. (1494917.6079637874, -4008086.2291621473,
+    #       1749149.241417757, -3774896.017328557)
+    bbox = ext.bounds
+    left, bottom, right, top = bbox
     centroids = gdf.centroid
     width = height = 0
     if buffer:
-        width = ds.extent.boundingbox.right - ds.extent.boundingbox.left
-        height = ds.extent.boundingbox.top - ds.extent.boundingbox.bottom
-    included = ((centroids.x > (ds.extent.boundingbox.left - width)) &
-                (centroids.x < (ds.extent.boundingbox.right + width)) &
-                (centroids.y < (ds.extent.boundingbox.top + height)) &
-                (centroids.y > (ds.extent.boundingbox.bottom - height)))
+        width = right - left
+        height = top - bottom
+    included = ((centroids.x > (left - width)) &
+                (centroids.x < (right + width)) &
+                (centroids.y < (top + height)) &
+                (centroids.y > (bottom - height)))
 
     gdf = gdf[included]
     return gdf
@@ -330,16 +337,24 @@ def filter_shapefile_intersections(
     -------
     gpd.GeoDataFrame
     """
-    width = ds.extent.boundingbox.right - ds.extent.boundingbox.left
-    height = ds.extent.boundingbox.top - ds.extent.boundingbox.bottom
-    bb = ds.extent.boundingbox
+    # reproject the ds extent into gdf crs
+    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs
+                          ).to_crs(gdf.crs).geometry[0]
+    # e.g. (1494917.6079637874, -4008086.2291621473,
+    #       1749149.241417757, -3774896.017328557)
+    bbox = ext.bounds
+    left, bottom, right, top = bbox
+
+    width = right - left
+    height = top - bottom
+    
     testbox = shapely.geometry.Polygon([
-        (bb.left - width, bb.bottom - height),
-        (bb.left - width, bb.top + height),
-        (bb.right + width, bb.top + height),
-        (bb.right + width, bb.bottom - height),
+        (left - width, bottom - height),
+        (left - width, top + height),
+        (right + width, top + height),
+        (right + width, bottom - height),
     ])
-    return gdf[gdf.geometry.intersects(testbox.boundary)]
+    return gdf[~gdf.geometry.intersects(testbox.boundary)]
 
 
 def drill(
@@ -438,20 +453,26 @@ def drill(
     reference_dataset = dc.index.datasets.get(uuid)
 
     # Filter out polygons that aren't anywhere near this scene.
+    _n_initial = len(shapefile)
     shapefile = filter_shapefile_quick(shapefile, reference_dataset,
-    # ...and limit it to centroids in this scene if partial.  # noqa: E128
+    # ...and limit it to centroids in this scene if not partial.  # noqa: E128
                                        buffer=partial)
+    _n_filtered_quick = len(shapefile)
+    logger.debug('Quick filter removed {} polygons'.format(
+        _n_initial - _n_filtered_quick))
 
     # If overedge, remove anything which intersects with a 3-scene
     # width box.
     if overedge:
         shapefile = filter_shapefile_intersections(
             shapefile, reference_dataset)
+        logger.debug('Overedge filter removed {} polygons'.format(
+            _n_filtered_quick - len(shapefile)))
 
     if len(shapefile) == 0:
         logger.warning(f'No polygons found in scene {uuid}')
         return pd.DataFrame({})
-
+    
     # Load the image of the input scene so we can build the raster.
     # TODO(MatthewJA): If this is also a dataset required for drilling,
     # we will load it twice - and even worse, we'll load it with
@@ -471,12 +492,14 @@ def drill(
             shapely.geometry.box(*shapefile.total_bounds),
             crs=shapefile.crs)
         time_span = (
-            reference_dataset.metadata.center_time - time_buffer,
-            reference_dataset.metadata.center_time + time_buffer)
+            reference_dataset.center_time - time_buffer,
+            reference_dataset.center_time + time_buffer)
         req_datasets = dc.find_datasets(
             product=reference_product,
             geopolygon=geopolygon,
             time=time_span)
+        
+        logger.debug(f'Going to load {len(req_datasets)} datasets')
         # There really shouldn't be more than nine of these.
         assert len(req_datasets) <= 9
         reference_scene = dc.load(
@@ -485,6 +508,8 @@ def drill(
             time=time_span,
             output_crs=crs,
             resolution=resolution)
+    
+    logger.info(f'Reference scene is {reference_scene.sizes}')
 
     # Detect intersections.
     # We only have to do this if partial and not overedge.
@@ -525,6 +550,9 @@ def drill(
         else:
             query['product'] = product
             query['geopolygon'] = geopolygon
+            query['time'] = time_span
+            query['group_by'] = 'solar_day'
+        logger.debug(f'Query: {repr(query)}')
         da = dc.load(**query)
         for band in measurements:
             bands[band] = da[band]
