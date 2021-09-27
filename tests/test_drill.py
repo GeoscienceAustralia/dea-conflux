@@ -101,3 +101,21 @@ def test_south_overedge(dc):
         dc=dc)
     assert len(drill_result) == 1
     assert drill_result.water[0] == 41
+
+def test_north_overedge(dc):
+    test_sth_polygon_id = 'r39zjddbt'   
+    plugin = run_plugin(TEST_PLUGIN_OK_C3)
+    shp = load_and_reproject_shapefile(
+        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')
+    shp = shp.loc[[test_sth_polygon_id]]
+    drill_result = drill(
+        plugin,
+        shp,
+        TEST_C3_WO_ID,
+        'EPSG:3577',
+        (-30, 30),
+        partial=True,
+        overedge=True,
+        dc=dc)
+    assert len(drill_result) == 1
+    assert drill_result.water[0] == 41
