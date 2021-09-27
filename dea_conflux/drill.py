@@ -388,12 +388,19 @@ def drill(
         Raster resolution in (-metres, metres).
 
     partial : bool
-        Optional (True). Whether to include polygons that partially
-        overlap with the scene.
+        Optional (defaults to True). Whether to include polygons that partially
+        overlap with the scene. If partial is True, polygons that partially 
+        overlap with the scene are included. If partial is False, polygons that
+        partially overlap with the scene are excluded from the drill, and going
+        off the edge of the scene will exclude the entire polygon. Describes 
+        what happens to the polygon, not what happens to the data. Interacts with
+        overedge, which describes what happens to the overedge data. 
 
     overedge : bool
-        Optional (False). Whether to include data from other scenes
-        in partially overedge polygons.
+        Optional (defaults to False). Whether to include data from other scenes
+        in partially overedge polygons. If overedge is False, data from other
+        scenes is not included in results. If overedge is True, data from other
+        scenes is included in results. Interacts with partial. 
 
     dc : datacube.Datacube
         Optional existing Datacube.
