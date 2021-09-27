@@ -400,8 +400,8 @@ def drill(
         Optional (defaults to False). Whether to include data from other scenes
         in partially overedge polygons. If overedge is False, data from other
         scenes is not included in results. If overedge is True, data from other
-        scenes is included in results. Interacts with partial. 
-
+        scenes is included in results. Interacts with partial.
+    
     dc : datacube.Datacube
         Optional existing Datacube.
     
