@@ -210,8 +210,10 @@ def main():
               help='REQUIRED. Path to the output directory.')
 @click.option('--partial/--no-partial', default=True,
               help='Include polygons that only partially intersect the scene.')
+@click.option('--overedge/--no-overedge', default=True,
+              help='Include data from over the scene boundary.')
 @click.option('-v', '--verbose', count=True)
-def run_one(plugin, uuid, shapefile, output, partial, verbose):
+def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
     """
     Run dea-conflux on one scene.
     """
@@ -249,7 +251,7 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
     dc = datacube.Datacube(app='dea-conflux-drill')
     table = dea_conflux.drill.drill(
         plugin, shapefile, uuid, crs, resolution,
-        partial=partial, dc=dc)
+        partial=partial, overedge=overedge, dc=dc)
     centre_date = dc.index.datasets.get(uuid).center_time
     dea_conflux.io.write_table(
         plugin.product_name, uuid,
@@ -273,11 +275,13 @@ def run_one(plugin, uuid, shapefile, output, partial, verbose):
               help='REQUIRED. Path to the output directory.')
 @click.option('--partial/--no-partial', default=True,
               help='Include polygons that only partially intersect the scene.')
+@click.option('--overedge/--no-overedge', default=True,
+              help='Include data from over the scene boundary.')
 @click.option('--overwrite/--no-overwrite', default=False,
               help='Rerun scenes that have already been processed.')
 @click.option('-v', '--verbose', count=True)
 def run_from_queue(plugin, queue, shapefile, output, partial,
-                   overwrite, verbose):
+                   overwrite, overedge, verbose):
     """
     Run dea-conflux on a scene from a queue.
     """
@@ -354,7 +358,7 @@ def run_from_queue(plugin, queue, shapefile, output, partial,
                 len(ids)))
             table = dea_conflux.drill.drill(
                 plugin, shapefile, id_, crs, resolution,
-                partial=partial, dc=dc)
+                partial=partial, overedge=overedge, dc=dc)
             centre_date = dc.index.datasets.get(id_).center_time
 
             exists = dea_conflux.io.table_exists(
