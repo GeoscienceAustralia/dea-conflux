@@ -15,7 +15,8 @@ logging.basicConfig(level=logging.INFO)
 HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
-TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
+TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp' #may want to remove this entirely
+WATERBODIES_SHP = HERE / 'data' / 'AusWaterBodiesFINALStateLink.shp'
 TEST_ID_FIELD = 'uid'
 # Path to a polygon overlapping the test WOfL.
 TEST_OVERLAP_GEOJSON = HERE / 'data' / 'edge_overlap.geojson'
@@ -102,12 +103,13 @@ def test_south_overedge(dc):
     assert len(drill_result) == 1
     assert drill_result.water[0] == 41
 
+
 def test_north_overedge(dc):
-    test_sth_polygon_id = 'r39zjddbt'   
-    plugin = run_plugin(TEST_PLUGIN_OK_C3)
+    test_nth_polygon_id = 'r3cbj7d6s'
+        plugin = run_plugin(TEST_PLUGIN_OK_C3)
     shp = load_and_reproject_shapefile(
         TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')
-    shp = shp.loc[[test_sth_polygon_id]]
+    shp = shp.loc[[test_nth_polygon_id]]
     drill_result = drill(
         plugin,
         shp,
@@ -118,4 +120,4 @@ def test_north_overedge(dc):
         overedge=True,
         dc=dc)
     assert len(drill_result) == 1
-    assert drill_result.water[0] == 41
+    assert drill_result.water[0] == 41 #haven't changed this yet
