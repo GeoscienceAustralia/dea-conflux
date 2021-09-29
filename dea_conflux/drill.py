@@ -507,6 +507,9 @@ def drill(
             product=reference_product,
             geopolygon=geopolygon,
             time=time_span)
+        logger.debug(f'Loading datasets:')
+        for ds_ in req_datasets:
+            logger.debug(f'\t{ds_.id}')
         
         logger.debug(f'Going to load {len(req_datasets)} datasets')
         # There really shouldn't be more than nine of these.
