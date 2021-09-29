@@ -507,7 +507,7 @@ def drill(
             product=reference_product,
             geopolygon=geopolygon,
             time=time_span)
-        logger.debug(f'Loading datasets:')
+        logger.debug('Loading datasets:')
         for ds_ in req_datasets:
             logger.debug(f'\t{ds_.id}')
         
