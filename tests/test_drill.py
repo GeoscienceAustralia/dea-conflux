@@ -85,7 +85,7 @@ def test_get_directions(dc):
 
 
 def test_south_overedge(dc):
-    test_sth_polygon_id = 'r39zjddbt'   
+    test_sth_polygon_id = 'r39zjddbt'
     plugin = run_plugin(TEST_PLUGIN_OK_C3)
     shp = load_and_reproject_shapefile(
         TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')

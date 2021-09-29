@@ -303,8 +303,9 @@ def filter_shapefile_quick(
     gpd.GeoDataFrame
     """
     # reproject the ds extent into gdf crs
-    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs
-                          ).to_crs(gdf.crs).geometry[0]
+    ext = gpd.GeoDataFrame(
+        geometry=[ds.extent], crs=ds.crs
+    ).to_crs(gdf.crs).geometry[0]
     # e.g. (1494917.6079637874, -4008086.2291621473,
     #       1749149.241417757, -3774896.017328557)
     bbox = ext.bounds
@@ -338,8 +339,9 @@ def filter_shapefile_intersections(
     gpd.GeoDataFrame
     """
     # reproject the ds extent into gdf crs
-    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs
-                          ).to_crs(gdf.crs).geometry[0]
+    ext = gpd.GeoDataFrame(
+        geometry=[ds.extent], crs=ds.crs
+    ).to_crs(gdf.crs).geometry[0]
     # e.g. (1494917.6079637874, -4008086.2291621473,
     #       1749149.241417757, -3774896.017328557)
     bbox = ext.bounds
