@@ -282,6 +282,28 @@ def dataset_to_dict(ds: xr.Dataset) -> dict:
             for key, val in ds.to_dict()['data_vars'].items()}
 
 
+def filter_shapefile_full(
+        gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset) -> gpd.GeoDataFrame:
+    """Filter a shapefile to only include objects that are in a scene.
+
+    Arguments
+    ---------
+    gdf : gpd.GeoDataFrame
+    ds : datacube.model.Dataset
+    
+    Returns
+    -------
+    gpd.GeoDataFrame
+    """
+    # reproject the ds extent into gdf crs
+    ext = gpd.GeoDataFrame(
+        geometry=[ds.extent], crs=ds.crs
+    ).to_crs(gdf.crs).geometry[0]
+    
+    return gdf[gdf.geometry.intersects(ext)]
+
+
 def filter_shapefile_quick(
         gdf: gpd.GeoDataFrame,
         ds: datacube.model.Dataset,
@@ -461,13 +483,20 @@ def drill(
     logger.debug('Quick filter removed {} polygons'.format(
         _n_initial - _n_filtered_quick))
 
+    # Remove things outside the box.
+    # We do this after the quick filter so the intersection is way faster.
+    shapefile = filter_shapefile_full(shapefile, reference_dataset)
+    _n_filtered_full = len(shapefile)
+    logger.debug('Full filter removed {} polygons'.format(
+        _n_filtered_quick - _n_filtered_full))
+
     # If overedge, remove anything which intersects with a 3-scene
     # width box.
     if overedge:
         shapefile = filter_shapefile_intersections(
             shapefile, reference_dataset)
         logger.debug('Overedge filter removed {} polygons'.format(
-            _n_filtered_quick - len(shapefile)))
+            _n_filtered_full - len(shapefile)))
 
     if len(shapefile) == 0:
         logger.warning(f'No polygons found in scene {uuid}')
