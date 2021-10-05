@@ -542,7 +542,9 @@ def drill(
         
         logger.debug(f'Going to load {len(req_datasets)} datasets')
         # There really shouldn't be more than nine of these.
-        assert len(req_datasets) <= 9
+        # But, they sometimes split into two scenes per tile in
+        # collection 2. So we'll insist there's <= 18.
+        assert len(req_datasets) <= 18
         reference_scene = dc.load(
             product=reference_product,
             geopolygon=geopolygon,
@@ -614,7 +616,7 @@ def drill(
         if oid == 0:
             continue
 
-        mask = polygon_raster == oid
+        mask = (polygon_raster == oid).values
         values = {band: ds_transformed[band].values[mask]
                   for band in transformed_bands}
         values = xr.Dataset(
