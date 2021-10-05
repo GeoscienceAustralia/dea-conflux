@@ -616,7 +616,7 @@ def drill(
         if oid == 0:
             continue
 
-        mask = polygon_raster == oid
+        mask = (polygon_raster == oid).values
         values = {band: ds_transformed[band].values[mask]
                   for band in transformed_bands}
         values = xr.Dataset(
