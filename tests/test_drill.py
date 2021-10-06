@@ -14,12 +14,15 @@ logging.basicConfig(level=logging.INFO)
 # Test directory.
 HERE = Path(__file__).parent.resolve()
 
-# Path to Canberra test shapefile.
-TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp' #may want to remove this entirely
+# Path to Canberra test shapefile
+TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp' 
 WATERBODIES_SHP = HERE / 'data' / 'AusWaterBodiesFINALStateLink.shp'
 TEST_ID_FIELD = 'uid'
-# Path to a polygon overlapping the test WOfL.
+
+
+# Path to a polygon overlapping the test C3 WOfL north boundary
 TEST_OVERLAP_GEOJSON = HERE / 'data' / 'edge_overlap.geojson'
+
 
 TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
 TEST_PLUGIN_OK_C3 = HERE / 'data' / 'sum_wet_c3.conflux.py'
