@@ -31,7 +31,8 @@ TEST_PLUGIN_MISSING_TRANSFORM = (
 
 TEST_WOFL_ID = '234fec8f-1de7-488a-a115-818ebd4bfec4'
 TEST_FC_ID = '4d243358-152e-404c-bb65-7ea64b21ca38'
-TEST_C3_WO_ID = '4c116812-58e5-52fb-ac71-4cdf12bf6943'
+TEST_C3_WO_STH_ID = '4c116812-58e5-52fb-ac71-4cdf12bf6943'
+TEST_C3_WO_NTH_ID = 'e043bffd-05c5-55c3-8740-a973842f7a05'
 
 
 def setup_module(module):
@@ -96,7 +97,7 @@ def test_south_overedge(dc):
     drill_result = drill(
         plugin,
         shp,
-        TEST_C3_WO_ID, #test this shapefile is actually on the bottom of the scene?
+        TEST_C3_WO_STH_ID,
         'EPSG:3577',
         (-30, 30),
         partial=True,
@@ -110,12 +111,12 @@ def test_north_overedge(dc):
     test_nth_polygon_id = 'r3cbj7d6s'
     plugin = run_plugin(TEST_PLUGIN_OK_C3)
     shp = load_and_reproject_shapefile(
-        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577') #add shape to waterbodies canberra or this will fail
+        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')
     shp = shp.loc[[test_nth_polygon_id]]
     drill_result = drill(
         plugin,
         shp,
-        TEST_C3_WO_ID,
+        TEST_C3_WO_NTH_ID,
         'EPSG:3577',
         (-30, 30),
         partial=True,
