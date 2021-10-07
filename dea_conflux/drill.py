@@ -475,9 +475,8 @@ def drill(
     # Assign a one-indexed numeric column for the polygons.
     # This will allow us to build a polygon enumerated raster.
     attr_col = '_conflux_one_index'
-    if attr_col not in shapefile.columns:
-        # This mutates the (in-memory) shapefile, but that's OK.
-        shapefile[attr_col] = range(1, len(shapefile.index) + 1)
+    # This mutates the (in-memory) shapefile, but that's OK.
+    shapefile[attr_col] = range(1, len(shapefile.index) + 1)
     one_index_to_id = {v: k for k, v in shapefile[attr_col].to_dict().items()}
 
     # Get the dataset we asked for.
@@ -612,6 +611,7 @@ def drill(
     # For each polygon, perform the summary.
     summaries = {}  # ID -> summary
     ids_in_range = np.unique(polygon_raster)
+    assert (ids_in_range >= 0).all()
     for oid in ids_in_range:
         if oid == 0:
             continue
@@ -628,9 +628,15 @@ def drill(
         # Convert that summary (a 0d dataset) into a dict.
         summary = dataset_to_dict(summary)
         summaries[oid] = summary
+    
+    def map_with_err(k):
+        # KeyError if the index is missing
+        return one_index_to_id[k]
 
-    summary_df = pd.DataFrame(summaries).T
-    summary_df.index = summary_df.index.map(one_index_to_id)
+    logger.warning('keys are ' + repr(summaries.keys()))
+    logger.warning('transforming into dataframe')
+    summary_df = pd.DataFrame({one_index_to_id[int(k)]: summaries[k] for k in summaries}).T
+    logger.warning('dataframe is ' + repr(summary_df))
 
     # Merge in the edge information.
     if partial and not overedge:
