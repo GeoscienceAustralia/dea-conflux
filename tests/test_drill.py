@@ -81,7 +81,7 @@ def test_drill_integration(dc):
 
 
 def test_get_directions(dc):
-    gdf = gpd.read_file(TEST_OVERLAP_GEOJSON)
+    gdf = gpd.read_file(TEST_NORTH_OVERLAP)
     extent = dc.index.datasets.get(TEST_WOFL_ID).extent.geom
     intersection = gdf.geometry.intersection(extent)
     dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
