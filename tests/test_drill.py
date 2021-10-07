@@ -15,8 +15,7 @@ logging.basicConfig(level=logging.INFO)
 HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile
-TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp' 
-WATERBODIES_SHP = HERE / 'data' / 'AusWaterBodiesFINALStateLink.shp'
+TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
 TEST_ID_FIELD = 'uid'
 
 
