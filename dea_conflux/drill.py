@@ -635,9 +635,8 @@ def drill(
 
     logger.warning('keys are ' + repr(summaries.keys()))
     logger.warning('transforming into dataframe')
-    summary_df = pd.DataFrame(summaries).T
+    summary_df = pd.DataFrame({one_index_to_id[int(k)]: summaries[k] for k in summary_keys).T
     logger.warning('dataframe is ' + repr(summary_df))
-    summary_df.index = summary_df.index.map(map_with_err)
 
     # Merge in the edge information.
     if partial and not overedge:
