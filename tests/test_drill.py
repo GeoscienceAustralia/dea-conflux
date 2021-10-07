@@ -21,7 +21,7 @@ TEST_ID_FIELD = 'uid'
 
 
 # Path to a polygon overlapping the test C3 WOfL north boundary
-TEST_OVERLAP_GEOJSON = HERE / 'data' / 'edge_overlap.geojson'
+TEST_OVERLAP_GEOJSON = HERE / 'data' / 'north_overlap.shp'
 
 
 TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
@@ -111,7 +111,7 @@ def test_north_overedge(dc):
     test_nth_polygon_id = 'r3cbj7d6s'
         plugin = run_plugin(TEST_PLUGIN_OK_C3)
     shp = load_and_reproject_shapefile(
-        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577')
+        TEST_SHP, TEST_ID_FIELD, 'EPSG:3577') #add shape to waterbodies canberra or this will fail
     shp = shp.loc[[test_nth_polygon_id]]
     drill_result = drill(
         plugin,
