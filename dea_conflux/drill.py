@@ -611,6 +611,7 @@ def drill(
     # For each polygon, perform the summary.
     summaries = {}  # ID -> summary
     ids_in_range = np.unique(polygon_raster)
+    assert (ids_in_range >= 0).all()
     for oid in ids_in_range:
         if oid == 0:
             continue
