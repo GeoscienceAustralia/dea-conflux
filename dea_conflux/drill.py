@@ -633,7 +633,10 @@ def drill(
         # KeyError if the index is missing
         return one_index_to_id[k]
 
+    logger.warning('keys are ' + repr(summaries.keys()))
+    logger.warning('transforming into dataframe')
     summary_df = pd.DataFrame(summaries).T
+    logger.warning('dataframe is ' + repr(summary_df))
     summary_df.index = summary_df.index.map(map_with_err)
 
     # Merge in the edge information.
