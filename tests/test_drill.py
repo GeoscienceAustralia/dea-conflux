@@ -104,7 +104,7 @@ def test_south_overedge(dc):
         overedge=True,
         dc=dc)
     assert len(drill_result) == 1
-    assert drill_result.water[0] == 41 #check this
+    assert drill_result.water[0] == 41    # check this
 
 
 def test_north_overedge(dc):
@@ -123,4 +123,4 @@ def test_north_overedge(dc):
         overedge=True,
         dc=dc)
     assert len(drill_result) == 1
-    assert drill_result.water[0] == 41 #haven't changed this yet
+    assert drill_result.water[0] == 41    # haven't changed this yet
