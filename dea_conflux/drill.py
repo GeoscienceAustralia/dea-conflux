@@ -635,7 +635,7 @@ def drill(
 
     logger.warning('keys are ' + repr(summaries.keys()))
     logger.warning('transforming into dataframe')
-    summary_df = pd.DataFrame({one_index_to_id[int(k)]: summaries[k] for k in summary_keys}).T
+    summary_df = pd.DataFrame({one_index_to_id[int(k)]: summaries[k] for k in summaries}).T
     logger.warning('dataframe is ' + repr(summary_df))
 
     # Merge in the edge information.
