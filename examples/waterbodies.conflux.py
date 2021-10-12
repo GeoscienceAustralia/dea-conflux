@@ -12,8 +12,12 @@ input_products = {
 
 
 def transform(inputs: xr.Dataset) -> xr.Dataset:
-    is_wet = inputs.water == 128
-    is_ok = is_wet | (inputs.water == 0)
+    # ignore sea, terrain/low solar angle
+    # by disabling those flags
+    wofl = inputs.water & 0b11110011
+    # then check for wet, dry
+    is_wet = wofl == 128
+    is_ok = is_wet | (wofl == 0)
     masked_wet = is_wet.where(is_ok)
     return xr.Dataset({'water': masked_wet})
 
