@@ -5,6 +5,7 @@ Geoscience Australia
 2021
 """
 
+import collections
 import datetime
 from types import ModuleType
 from typing import Union
@@ -610,17 +611,25 @@ def drill(
 
     # For each polygon, perform the summary.
     summaries = {}  # ID -> summary
-    ids_in_range = np.unique(polygon_raster)
-    assert (ids_in_range >= 0).all()
-    for oid in ids_in_range:
+
+    # Instead of masking for each polygon,
+    # find _all_ polygon indices at once.
+    flat_bands = xr.Dataset(
+            data_vars={
+                band: xr.DataArray(ds_transformed[band].values.ravel(), dims=['idx'])
+                for band in transformed_bands})
+    flat_ids = polygon_raster.ravel()
+    max_i = len(flat_ids)
+    id_to_indexes = collections.defaultdict(list)  # id -> [idx]
+    for i, v in enumerate(flat_ids):
+        if v > 0:
+            id_to_indexes.append(i)
+
+    for oid in id_to_indexes:
         if oid == 0:
             continue
 
-        mask = (polygon_raster == oid).values
-        values = {band: ds_transformed[band].values[mask]
-                  for band in transformed_bands}
-        values = xr.Dataset(
-            data_vars={k: xr.DataArray(v) for k, v in values.items()})
+        values = flat_bands.isel(i=id_to_indexes[oid])
         # Force warnings to raise exceptions.
         with warnings.catch_warnings():
             warnings.filterwarnings('error')
