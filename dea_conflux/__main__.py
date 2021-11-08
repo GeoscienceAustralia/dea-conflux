@@ -359,16 +359,21 @@ def run_from_queue(plugin, queue, shapefile, output, partial,
                 id_,
                 i + 1,
                 len(ids)))
-            table = dea_conflux.drill.drill(
-                plugin, shapefile, id_, crs, resolution,
-                partial=partial, overedge=overedge, dc=dc)
+
             centre_date = dc.index.datasets.get(id_).center_time
 
-            exists = dea_conflux.io.table_exists(
-                plugin.product_name, id_,
-                centre_date, output)
-            
+            if not overwrite:
+                logger.info(f'Checking existence of {id_}')
+                exists = dea_conflux.io.table_exists(
+                    plugin.product_name, id_,
+                    centre_date, output)
+
+            # NameError should be impossible thanks to short-circuiting
             if overwrite or not exists:
+                table = dea_conflux.drill.drill(
+                    plugin, shapefile, id_, crs, resolution,
+                    partial=partial, overedge=overedge, dc=dc)
+                
                 dea_conflux.io.write_table(
                     plugin.product_name, id_,
                     centre_date, table, output)
