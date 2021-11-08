@@ -23,3 +23,4 @@ def verify_name(name):
     if not name.startswith('waterbodies_'):
         raise click.ClickException(
             'Waterbodies queues must start with waterbodies_')
+
