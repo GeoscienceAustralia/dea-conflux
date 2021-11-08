@@ -281,7 +281,7 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
               help='Rerun scenes that have already been processed.')
 @click.option('-v', '--verbose', count=True)
 @click.option('--timeout', default=18 * 60,
-              help='The duration (in seconds) that the received SQS messages are hidden.')
+              help='The seconds of a received SQS msg is invisible.')
 def run_from_queue(plugin, queue, shapefile, output, partial,
                    overwrite, overedge, verbose, timeout):
     """
@@ -426,7 +426,7 @@ def get_ids(product, expressions, verbose, s3):
     help='Name of deadletter queue')
 @click.option(
     '--retentionperiod', type=int,
-    help='The length of time, in seconds, for which Amazon SQS retains a message.',
+    help='The length of time, in seconds before retains a message.',
     default=7 * 24 * 3600)
 @click.option(
     '--retries', type=int,
@@ -444,8 +444,7 @@ def make(name, timeout, deadletter, retries, retentionperiod):
             'max_attempts': retries,
         }))
 
-    attributes = dict(
-            VisibilityTimeout=str(timeout))
+    attributes = dict(VisibilityTimeout=str(timeout))
     if deadletter:
         # Get ARN from queue name.
         deadletter_queue = sqs.get_queue_by_name(
@@ -468,7 +467,7 @@ def make(name, timeout, deadletter, retries, retentionperiod):
 @main.command()
 @click.argument('name')
 def delete(name):
-    """Only delete the queue, not touch its deadletter queue. 
+    """Only delete the queue, not touch its deadletter queue.
     It's a feature, not a bug."""
     import boto3
 
