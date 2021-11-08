@@ -280,8 +280,8 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
 @click.option('--overwrite/--no-overwrite', default=False,
               help='Rerun scenes that have already been processed.')
 @click.option('-v', '--verbose', count=True)
-@click.option('--timeout', default=15 * 60,
-              help='The duration (in seconds) that the received SQS messages are hidden.')
+@click.option('--timeout', default=18 * 60,
+              help='The seconds of a received SQS msg is invisible.')
 def run_from_queue(plugin, queue, shapefile, output, partial,
                    overwrite, overedge, verbose, timeout):
     """
@@ -418,6 +418,70 @@ def get_ids(product, expressions, verbose, s3):
         print(json.dumps({'ids_path': out_path}), end='')
 
     return 0
+
+
+@main.command()
+@click.argument('name')
+@click.option(
+    '--timeout', type=int,
+    help='Visibility timeout in seconds',
+    default=18 * 60)
+@click.option(
+    '--deadletter', default=None,
+    help='Name of deadletter queue')
+@click.option(
+    '--retentionperiod', type=int,
+    help='The length of time, in seconds before retains a message.',
+    default=7 * 24 * 3600)
+@click.option(
+    '--retries', type=int,
+    help='Number of retries',
+    default=5)
+def make(name, timeout, deadletter, retries, retentionperiod):
+    """Make a queue."""
+    import boto3
+    from botocore.config import Config
+
+    dea_conflux.queues.verify_name(name)
+
+    sqs = boto3.client('sqs', config=Config(
+        retries={
+            'max_attempts': retries,
+        }))
+
+    attributes = dict(VisibilityTimeout=str(timeout))
+    if deadletter:
+        # Get ARN from queue name.
+        deadletter_queue = sqs.get_queue_by_name(
+            QueueName=deadletter,
+        )
+        deadletter_arn = deadletter_queue.attributes['QueueArn']
+        attributes['RedrivePolicy'] = json.dumps(
+            {'deadLetterTargetArn': deadletter_arn})
+
+    attributes['MessageRetentionPeriod'] = retentionperiod
+
+    queue = sqs.create_queue(
+        QueueName=name,
+        Attributes=attributes)
+
+    assert queue
+    return 0
+
+
+@main.command()
+@click.argument('name')
+def delete(name):
+    """Only delete the queue, not touch its deadletter queue.
+    It's a feature, not a bug."""
+    import boto3
+
+    dea_conflux.queues.verify_name(name)
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName=name)
+    arn = queue.attributes['QueueArn']
+    queue.delete()
+    return arn
 
 
 @main.command()
