@@ -618,18 +618,18 @@ def drill(
             data_vars={
                 band: xr.DataArray(ds_transformed[band].values.ravel(), dims=['idx'])
                 for band in transformed_bands})
-    flat_ids = polygon_raster.ravel()
+    flat_ids = polygon_raster.values.ravel()
     max_i = len(flat_ids)
     id_to_indexes = collections.defaultdict(list)  # id -> [idx]
     for i, v in enumerate(flat_ids):
         if v > 0:
-            id_to_indexes.append(i)
+            id_to_indexes[v].append(i)
 
     for oid in id_to_indexes:
         if oid == 0:
             continue
 
-        values = flat_bands.isel(i=id_to_indexes[oid])
+        values = flat_bands.isel(idx=id_to_indexes[oid])
         # Force warnings to raise exceptions.
         with warnings.catch_warnings():
             warnings.filterwarnings('error')
