@@ -56,3 +56,10 @@ Plugins must provide:
 - a summarise function.
 
 The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation. The summarise function aggregates a dataset into a number of measurements that summarise a polygon, i.e. the outputs of the drill.
+
+## Pre-commit setup
+
+	❯ pip install pre-commit
+	❯ pre-commit install
+
+Your code will now be formatted and validated before each commit by running `pre-commit run -a`

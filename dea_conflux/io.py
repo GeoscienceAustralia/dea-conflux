@@ -11,23 +11,23 @@ import logging
 import os
 from pathlib import Path
 
-import s3fs
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
+import s3fs
 
 logger = logging.getLogger(__name__)
 
 
 # File extensions to recognise as Parquet files.
-PARQUET_EXTENSIONS = {'.pq', '.parquet'}
+PARQUET_EXTENSIONS = {".pq", ".parquet"}
 
 # Metadata key for Parquet files.
-PARQUET_META_KEY = 'conflux.metadata'.encode('ascii')
+PARQUET_META_KEY = b"conflux.metadata"
 
 # Format of string date metadata.
-DATE_FORMAT = '%Y%m%d-%H%M%S-%f'
-DATE_FORMAT_DAY = '%Y%m%d'
+DATE_FORMAT = "%Y%m%d-%H%M%S-%f"
+DATE_FORMAT_DAY = "%Y%m%d"
 
 
 def date_to_string(date: datetime.datetime) -> str:
@@ -36,7 +36,7 @@ def date_to_string(date: datetime.datetime) -> str:
     Arguments
     ---------
     date : datetime
-    
+
     Returns
     -------
     str
@@ -50,7 +50,7 @@ def date_to_string_day(date: datetime.datetime) -> str:
     Arguments
     ---------
     date : datetime
-    
+
     Returns
     -------
     str
@@ -64,7 +64,7 @@ def string_to_date(date: str) -> datetime.datetime:
     Arguments
     ---------
     date : str
-    
+
     Returns
     -------
     datetime
@@ -72,12 +72,9 @@ def string_to_date(date: str) -> datetime.datetime:
     return datetime.datetime.strptime(date, DATE_FORMAT)
 
 
-def make_name(
-        drill_name: str,
-        uuid: str,
-        centre_date: datetime.datetime) -> str:
+def make_name(drill_name: str, uuid: str, centre_date: datetime.datetime) -> str:
     """Make filename for Parquet.
-    
+
     Arguments
     ---------
     drill_name : str
@@ -85,23 +82,22 @@ def make_name(
 
     uuid : str
         UUID of reference dataset.
-    
+
     centre_date : datetime
         Centre date of reference dataset.
-    
+
     Returns
     -------
     str
         Parquet filename.
     """
     datestring = date_to_string(centre_date)
-    return f'{drill_name}_{uuid}_{datestring}.pq'
+    return f"{drill_name}_{uuid}_{datestring}.pq"
 
 
 def table_exists(
-        drill_name: str, uuid: str,
-        centre_date: datetime.datetime,
-        output: str) -> bool:
+    drill_name: str, uuid: str, centre_date: datetime.datetime, output: str
+) -> bool:
     """Check whether a table already exists.
 
     Arguments
@@ -111,16 +107,16 @@ def table_exists(
 
     uuid : str
         UUID of reference dataset.
-    
+
     centre_date : datetime
         Centre date of reference dataset.
-    
+
     table : pd.DataFrame
         Dataframe with index polygons and columns bands.
-    
+
     output : str
         Path to output directory.
-    
+
     Returns
     -------
     bool
@@ -128,26 +124,29 @@ def table_exists(
     name = make_name(drill_name, uuid, centre_date)
     foldername = date_to_string_day(centre_date)
 
-    if not output.endswith('/'):
-        output = output + '/'
-    if not foldername.endswith('/'):
-        foldername = foldername + '/'
+    if not output.endswith("/"):
+        output = output + "/"
+    if not foldername.endswith("/"):
+        foldername = foldername + "/"
 
     path = output + foldername + name
 
-    if not output.startswith('s3://'):
+    if not output.startswith("s3://"):
         # local
         return os.path.exists(path)
-    
+
     return s3fs.S3FileSystem().exists(path)
 
 
 def write_table(
-        drill_name: str, uuid: str,
-        centre_date: datetime.datetime,
-        table: pd.DataFrame, output: str):
+    drill_name: str,
+    uuid: str,
+    centre_date: datetime.datetime,
+    table: pd.DataFrame,
+    output: str,
+):
     """Write a table to Parquet.
-    
+
     Arguments
     ---------
     drill_name : str
@@ -155,36 +154,38 @@ def write_table(
 
     uuid : str
         UUID of reference dataset.
-    
+
     centre_date : datetime
         Centre date of reference dataset.
-    
+
     table : pd.DataFrame
         Dataframe with index polygons and columns bands.
-    
+
     output : str
         Path to output directory.
     """
     output = str(output)
 
-    is_s3 = output.startswith('s3://')
+    is_s3 = output.startswith("s3://")
 
     foldername = date_to_string_day(centre_date)
 
     if not is_s3:
         path = Path(output)
         os.makedirs(path / foldername, exist_ok=True)
-    
+
     filename = make_name(drill_name, uuid, centre_date)
 
     # Convert the table to pyarrow.
     table_pa = pyarrow.Table.from_pandas(table)
 
     # Dump new metadata to JSON.
-    meta_json = json.dumps({
-        'drill': drill_name,
-        'date': date_to_string(centre_date),
-    })
+    meta_json = json.dumps(
+        {
+            "drill": drill_name,
+            "date": date_to_string(centre_date),
+        }
+    )
 
     # Dump existing (Pandas) metadata.
     # https://towardsdatascience.com/
@@ -198,26 +199,25 @@ def write_table(
     table_pa = table_pa.replace_schema_metadata(combined_meta)
 
     # Write the table.
-    if not output.endswith('/'):
-        output = output + '/'
-    
-    if not foldername.endswith('/'):
-        foldername = foldername + '/'
+    if not output.endswith("/"):
+        output = output + "/"
+
+    if not foldername.endswith("/"):
+        foldername = foldername + "/"
 
     pyarrow.parquet.write_table(
-        table_pa,
-        output + foldername + filename,
-        compression='GZIP')
+        table_pa, output + foldername + filename, compression="GZIP"
+    )
 
 
 def read_table(path: str) -> pd.DataFrame:
     """Read a Parquet file with Conflux metadata.
-    
+
     Arguments
     ---------
     path : str
         Path to Parquet file.
-    
+
     Returns
     -------
     pd.DataFrame
