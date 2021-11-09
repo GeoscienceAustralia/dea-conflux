@@ -427,14 +427,14 @@ def get_ids(product, expressions, verbose, s3):
     help='Visibility timeout in seconds',
     default=18 * 60)
 @click.option(
-    '--retentionperiod', type=str,
+    '--retention-period', type=str,
     help='The length of time, in seconds before retains a message.',
     default=7 * 24 * 3600)
 @click.option(
     '--retries', type=int,
     help='Number of retries',
     default=5)
-def make(name, timeout, retries, retentionperiod):
+def make(name, timeout, retries, retention_period):
     """Make a queue."""
     import boto3
     from botocore.config import Config
@@ -464,7 +464,7 @@ def make(name, timeout, retries, retentionperiod):
         {'deadLetterTargetArn': dl_attrs['Attributes']['QueueArn'],
          'maxReceiveCount': 10})
 
-    attributes['MessageRetentionPeriod'] = retentionperiod
+    attributes['MessageRetentionPeriod'] = retention_period
 
     queue = sqs_client.create_queue(
         QueueName=name,
