@@ -427,41 +427,46 @@ def get_ids(product, expressions, verbose, s3):
     help='Visibility timeout in seconds',
     default=18 * 60)
 @click.option(
-    '--deadletter', default=None,
-    help='Name of deadletter queue')
-@click.option(
-    '--retentionperiod', type=int,
+    '--retentionperiod', type=str,
     help='The length of time, in seconds before retains a message.',
     default=7 * 24 * 3600)
 @click.option(
     '--retries', type=int,
     help='Number of retries',
     default=5)
-def make(name, timeout, deadletter, retries, retentionperiod):
+def make(name, timeout, retries, retentionperiod):
     """Make a queue."""
     import boto3
     from botocore.config import Config
 
     dea_conflux.queues.verify_name(name)
 
-    sqs = boto3.client('sqs', config=Config(
+    deadletter = name + "_deadletter"
+
+    sqs_client = boto3.client('sqs', config=Config(
         retries={
             'max_attempts': retries,
         }))
 
+    # create deadletter queue
+    dl_queue_response = sqs_client.create_queue(QueueName=deadletter)
+
+    # Get ARN from deadletter queue name.
+    dl_attrs = sqs_client.get_queue_attributes(
+        QueueUrl=dl_queue_response['QueueUrl'],
+        AttributeNames=["All"]
+    )
+
+    # create the queue attributes form
     attributes = dict(VisibilityTimeout=str(timeout))
-    if deadletter:
-        # Get ARN from queue name.
-        deadletter_queue = sqs.get_queue_by_name(
-            QueueName=deadletter,
-        )
-        deadletter_arn = deadletter_queue.attributes['QueueArn']
-        attributes['RedrivePolicy'] = json.dumps(
-            {'deadLetterTargetArn': deadletter_arn})
+    
+    attributes['RedrivePolicy'] = json.dumps(
+        {'deadLetterTargetArn': dl_attrs['Attributes']['QueueArn'],
+         'maxReceiveCount': 10})
 
     attributes['MessageRetentionPeriod'] = retentionperiod
 
-    queue = sqs.create_queue(
+    queue = sqs_client.create_queue(
         QueueName=name,
         Attributes=attributes)
 
@@ -472,15 +477,30 @@ def make(name, timeout, deadletter, retries, retentionperiod):
 @main.command()
 @click.argument('name')
 def delete(name):
-    """Only delete the queue, not touch its deadletter queue.
-    It's a feature, not a bug."""
     import boto3
 
     dea_conflux.queues.verify_name(name)
+
     sqs = boto3.resource('sqs')
     queue = sqs.get_queue_by_name(QueueName=name)
     arn = queue.attributes['QueueArn']
     queue.delete()
+
+    deadletter = name + "_deadletter"
+    dl_queue = sqs.get_queue_by_name(QueueName=deadletter)
+    dl_arn = dl_queue.attributes['QueueArn']
+
+    # check deadletter is empty or not
+    # if empty, delete it
+    response = dl_queue.receive_messages(
+        AttributeNames=['All'],
+        MaxNumberOfMessages=1,
+    )
+
+    if len(response) == 0:
+        dl_queue.delete()
+        arn = ','.join([arn, dl_arn])
+
     return arn
 
 
