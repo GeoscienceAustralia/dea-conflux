@@ -21,7 +21,5 @@ def get_queue(queue_name: str):
 
 
 def verify_name(name):
-    if not name.startswith('waterbodies_'):
-        raise click.ClickException(
-            'Waterbodies queues must start with waterbodies_')
-
+    if not name.startswith("waterbodies_"):
+        raise click.ClickException("Waterbodies queues must start with waterbodies_")
