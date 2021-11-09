@@ -10,12 +10,12 @@ import datetime
 import enum
 import logging
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 import fsspec
-import s3fs
 import pandas as pd
+import s3fs
 from tqdm.auto import tqdm
 
 import dea_conflux.io
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class StackMode(enum.Enum):
-    WATERBODIES = 'waterbodies'
+    WATERBODIES = "waterbodies"
 
 
 def waterbodies_format_date(date: datetime.datetime) -> str:
@@ -40,20 +40,20 @@ def waterbodies_format_date(date: datetime.datetime) -> str:
     str
     """
     # e.g. 1987-05-24T01:30:18Z
-    return date.strftime('%Y-%m-%dT%H:%M:%SZ')
+    return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
+def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     """Find Parquet files matching a pattern.
 
     Arguments
     ---------
     path : str
         Path (s3 or local) to search for Parquet files.
-    
+
     pattern : str
         Regex to match filenames against.
-    
+
     Returns
     -------
     [str]
@@ -68,7 +68,7 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     except AttributeError:
         path = str(path)
 
-    if path.startswith('s3://'):
+    if path.startswith("s3://"):
         # Find Parquet files on S3.
         fs = s3fs.S3FileSystem(anon=True)
         files = fs.find(path)
@@ -81,7 +81,7 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
             if not pattern.match(filename):
                 continue
 
-            all_paths.append(f's3://{file}')
+            all_paths.append(f"s3://{file}")
     else:
         # Find Parquet files locally.
         for root, dir_, files in os.walk(path):
@@ -98,17 +98,14 @@ def find_parquet_files(path: str, pattern: str = '.*') -> [str]:
     return all_paths
 
 
-def stack_waterbodies(
-        paths: [str],
-        output_dir: str,
-        verbose: bool = False):
+def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
     """Stack Parquet files into CSVs like DEA Waterbodies does.
-    
+
     Arguments
     ---------
     paths : [str]
         List of paths to Parquet files to stack.
-    
+
     output_dir : str
         Path to output directory.
 
@@ -116,12 +113,12 @@ def stack_waterbodies(
     """
     # id -> [series of date x bands]
     id_to_series = collections.defaultdict(list)
-    logger.info('Reading...')
+    logger.info("Reading...")
     if verbose:
         paths = tqdm(paths)
     for path in paths:
         df = dea_conflux.io.read_table(path)
-        date = dea_conflux.io.string_to_date(df.attrs['date'])
+        date = dea_conflux.io.string_to_date(df.attrs["date"])
         date = waterbodies_format_date(date)
         # df is ids x bands
         # for each ID...
@@ -130,24 +127,25 @@ def stack_waterbodies(
             id_to_series[uid].append(series)
     outpath = output_dir
     outpath = str(outpath)  # handle Path type
-    logger.info('Writing...')
+    logger.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
         df.sort_index(inplace=True)
-        filename = f'{outpath}/{uid[:4]}/{uid}.csv'
-        logger.info(f'Writing {filename}')
-        if not outpath.startswith('s3://'):
+        filename = f"{outpath}/{uid[:4]}/{uid}.csv"
+        logger.info(f"Writing {filename}")
+        if not outpath.startswith("s3://"):
             os.makedirs(Path(filename).parent, exist_ok=True)
-        with fsspec.open(filename, 'w') as f:
-            df.to_csv(f, index_label='date')
+        with fsspec.open(filename, "w") as f:
+            df.to_csv(f, index_label="date")
 
 
 def stack(
-        path: str,
-        output_dir: str,
-        pattern: str = '.*',
-        mode: StackMode = StackMode.WATERBODIES,
-        verbose: bool = False):
+    path: str,
+    output_dir: str,
+    pattern: str = ".*",
+    mode: StackMode = StackMode.WATERBODIES,
+    verbose: bool = False,
+):
     """Stack Parquet files.
 
     Arguments
@@ -157,10 +155,10 @@ def stack(
 
     output_dir : str
         Path to write to.
-    
+
     pattern : str
         Regex to match filenames against.
-    
+
     mode : StackMode
         Method of stacking. Default is like DEA Waterbodies v1,
         a collection of polygon CSVs.
@@ -168,10 +166,10 @@ def stack(
     verbose : bool
     """
     path = str(path)
-    
+
     paths = find_parquet_files(path, pattern)
 
     if mode != StackMode.WATERBODIES:
-        raise NotImplementedError('Only waterbodies stacking is implemented')
+        raise NotImplementedError("Only waterbodies stacking is implemented")
 
     return stack_waterbodies(paths, output_dir, verbose=verbose)

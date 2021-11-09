@@ -1,27 +1,26 @@
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
-from click.testing import CliRunner
 import pytest
+from click.testing import CliRunner
 
-from dea_conflux.__main__ import main
 import dea_conflux.__main__ as main_module
+from dea_conflux.__main__ import main
 
 # Test directory.
 HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
-TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
-TEST_ID_FIELD = 'uid'
+TEST_SHP = HERE / "data" / "waterbodies_canberra.shp"
+TEST_ID_FIELD = "uid"
 
-TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
-TEST_PLUGIN_COMBINED = HERE / 'data' / 'sum_pv_wet.conflux.py'
-TEST_PLUGIN_MISSING_TRANSFORM = (
-    HERE / 'data' / 'sum_wet_missing_transform.conflux.py')
+TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
+TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
+TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
 
-TEST_WOFL_ID = '234fec8f-1de7-488a-a115-818ebd4bfec4'
-TEST_FC_ID = '4d243358-152e-404c-bb65-7ea64b21ca38'
+TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
+TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
 
 
 def setup_module(module):
@@ -43,10 +42,10 @@ def run_main():
 
         runner = CliRunner()
         result = runner.invoke(
-            cli_method, exe_opts,
-            catch_exceptions=catch_exceptions, input=input)
+            cli_method, exe_opts, catch_exceptions=catch_exceptions, input=input
+        )
         if expect_success:
-            assert 0 == result.exit_code, "Error for %r. output: %r" % (
+            assert 0 == result.exit_code, "Error for {!r}. output: {!r}".format(
                 opts,
                 result.output,
             )
@@ -74,7 +73,6 @@ def test_guess_id_field():
 def test_validate_plugin():
     plugin = main_module.run_plugin(TEST_PLUGIN_OK)
     main_module.validate_plugin(plugin)
-    assert True  # haven't thrown an exception
 
 
 def test_validate_plugin_no_transform():
