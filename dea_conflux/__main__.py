@@ -76,6 +76,7 @@ def guess_id_field(shapefile_path: str) -> str:
         "ID",
         "OBJECTID",
         "ORIG_FID",
+        "FeatureID",
     ]
     for guess in possible_guesses:
         if guess in keys:
