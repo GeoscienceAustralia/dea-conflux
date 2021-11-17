@@ -1,6 +1,6 @@
 import xarray as xr
 
-product_name = "wit_ls5"
+product_name = "wit_ls8"
 version = "0.0.1"
 resampling = {"water": "nearest", "*": "bilinear"}
 output_crs = "EPSG:3577"
@@ -8,7 +8,7 @@ resolution = (-30, 30)
 
 input_products = {
     "ga_ls_wo_3": ["water"],
-    "ga_ls5t_ard_3": [
+    "ga_ls8c_ard_3": [
         "nbart_blue",
         "nbart_green",
         "nbart_red",
