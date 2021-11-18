@@ -30,4 +30,6 @@ def move_to_deadletter_queue(dl_queue_name, message_body):
 
     dl_queue = get_queue(dl_queue_name)
 
-    dl_queue.send_messages(Entries=[{"MessageBody": str(message_body)}])
+    # only send one message, so 1 is OK as the identifier for a message in this
+    # batch used to communicate the result.
+    dl_queue.send_messages(Entries=[{"Id": "1", "MessageBody": str(message_body)}])
