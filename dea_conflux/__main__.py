@@ -275,22 +275,33 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
         crs,
     )
 
-    # Do the drill!
-    dc = datacube.Datacube(app="dea-conflux-drill")
-    table = dea_conflux.drill.drill(
-        plugin,
-        shapefile,
-        uuid,
-        crs,
-        resolution,
-        partial=partial,
-        overedge=overedge,
-        dc=dc,
-    )
-    centre_date = dc.index.datasets.get(uuid).center_time
-    dea_conflux.io.write_table(plugin.product_name, uuid, centre_date, table, output)
+    # add try catch to catpure exception:
+    # KeyError: missing water key in WIT, should be gone after filter by gqa_mean_x in [-1, 1]
+    # TypeError: ufunc 'bitwise_and' not supported for the input types in WIT, no idea on root reason
 
-    return 0
+    try:
+        # Do the drill!
+        dc = datacube.Datacube(app="dea-conflux-drill")
+        table = dea_conflux.drill.drill(
+            plugin,
+            shapefile,
+            uuid,
+            crs,
+            resolution,
+            partial=partial,
+            overedge=overedge,
+            dc=dc,
+        )
+        centre_date = dc.index.datasets.get(uuid).center_time
+        dea_conflux.io.write_table(
+            plugin.product_name, uuid, centre_date, table, output
+        )
+    except KeyError as keyerr:
+        logger.error(f"Found {uuid} has KeyError: {str(keyerr)}")
+    except TypeError as typeerr:
+        logger.error(f"Found {uuid} has TypeError: {str(typeerr)}")
+    finally:
+        return 0
 
 
 @main.command()
@@ -381,6 +392,8 @@ def run_from_queue(
     queue = sqs.get_queue_by_name(QueueName=queue)
     queue_url = queue.url
 
+    dl_queue_name = queue + "_deadletter"
+
     dc = datacube.Datacube(app="dea-conflux-drill")
     message_retries = 10
     while message_retries > 0:
@@ -410,6 +423,9 @@ def run_from_queue(
 
         # Loop through the scenes to produce parquet files.
         for i, (entry, id_) in enumerate(zip(entries, ids)):
+
+            success_flag = True
+
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
 
             centre_date = dc.index.datasets.get(id_).center_time
@@ -422,25 +438,38 @@ def run_from_queue(
 
             # NameError should be impossible thanks to short-circuiting
             if overwrite or not exists:
-                table = dea_conflux.drill.drill(
-                    plugin,
-                    shapefile,
-                    id_,
-                    crs,
-                    resolution,
-                    partial=partial,
-                    overedge=overedge,
-                    dc=dc,
-                )
+                try:
+                    table = dea_conflux.drill.drill(
+                        plugin,
+                        shapefile,
+                        id_,
+                        crs,
+                        resolution,
+                        partial=partial,
+                        overedge=overedge,
+                        dc=dc,
+                    )
 
-                dea_conflux.io.write_table(
-                    plugin.product_name, id_, centre_date, table, output
-                )
+                    dea_conflux.io.write_table(
+                        plugin.product_name, id_, centre_date, table, output
+                    )
+                except KeyError as keyerr:
+                    logger.error(f"Found {id_} has KeyError: {str(keyerr)}")
+                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    success_flag = False
+                except TypeError as typeerr:
+                    logger.error(f"Found {id_} has TypeError: {str(typeerr)}")
+                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    success_flag = False
             else:
                 logger.info(f"{id_} already exists, skipping")
 
             # Delete from queue.
-            logger.info(f"Successful, deleting {id_}")
+            if success_flag:
+                logger.info(f"Successful, deleting {id_}")
+            else:
+                logger.info(f"Not successful, moved {id_} to DLQ")
+
             resp = queue.delete_messages(
                 QueueUrl=queue_url,
                 Entries=[entry],

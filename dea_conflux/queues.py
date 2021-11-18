@@ -23,3 +23,11 @@ def get_queue(queue_name: str):
 def verify_name(name):
     if not name.startswith("waterbodies_"):
         raise click.ClickException("Waterbodies queues must start with waterbodies_")
+
+
+def move_to_deadletter_queue(dl_queue_name, message_body):
+    verify_name(dl_queue_name)
+
+    dl_queue = get_queue(dl_queue_name)
+
+    dl_queue.send_messages(MessageBody=str(message_body))
