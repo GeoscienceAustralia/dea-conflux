@@ -385,14 +385,14 @@ def run_from_queue(
         crs,
     )
 
+    dl_queue_name = queue + "_deadletter"
+
     # Read ID/s from the queue.
     import boto3
 
     sqs = boto3.resource("sqs")
     queue = sqs.get_queue_by_name(QueueName=queue)
     queue_url = queue.url
-
-    dl_queue_name = queue + "_deadletter"
 
     dc = datacube.Datacube(app="dea-conflux-drill")
     message_retries = 10
