@@ -30,4 +30,4 @@ def move_to_deadletter_queue(dl_queue_name, message_body):
 
     dl_queue = get_queue(dl_queue_name)
 
-    dl_queue.send_messages(MessageBody=str(message_body))
+    dl_queue.send_messages(Entries=[{"MessageBody": str(message_body)}])
