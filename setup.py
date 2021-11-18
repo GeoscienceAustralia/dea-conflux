@@ -21,6 +21,7 @@ if __name__ == "__main__":
             "s3fs",
             "moto[s3]",
             "tqdm",
+            "SQLAlchemy",
         ],
         entry_points={
             "console_scripts": ["dea-conflux=dea_conflux.__main__:main"],

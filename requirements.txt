@@ -1,2 +1,3 @@
 datacube
 psycopg2-binary
+SQLAlchemy>=1.4.27
