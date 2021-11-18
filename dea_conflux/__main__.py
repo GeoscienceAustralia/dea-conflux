@@ -84,8 +84,6 @@ def guess_id_field(shapefile_path: str) -> str:
         guess = guess.lower()
         if guess in keys:
             return guess
-        if guess in row:
-            return guess
     raise ValueError(f"Couldn't find an ID field in {keys}")
 
 
