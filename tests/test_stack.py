@@ -65,7 +65,8 @@ def mock_aws_response() -> None:
 
 def test_waterbodies_stacking(tmp_path):
     dea_conflux.stack.stack(
-        TEST_PQ_DATA, tmp_path / "testout", mode=dea_conflux.stack.StackMode.WATERBODIES
+        TEST_PQ_DATA, mode=dea_conflux.stack.StackMode.WATERBODIES,
+        output_dir=tmp_path / "testout",
     )
     uid = LAKE_GINNINDERRA_ID
     outpath = tmp_path / "testout" / uid[:4] / f"{uid}.csv"

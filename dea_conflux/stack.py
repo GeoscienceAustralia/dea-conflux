@@ -243,10 +243,10 @@ def stack_waterbodies_db(
 
 def stack(
     path: str,
-    output_dir: str,
     pattern: str = ".*",
     mode: StackMode = StackMode.WATERBODIES,
     verbose: bool = False,
+    **kwargs,
 ):
     """Stack Parquet files.
 
@@ -254,9 +254,6 @@ def stack(
     ---------
     path : str
         Path to search for Parquet files.
-
-    output_dir : str
-        Path to write to.
 
     pattern : str
         Regex to match filenames against.
@@ -266,9 +263,15 @@ def stack(
         a collection of polygon CSVs.
 
     verbose : bool
+    
+    **kwargs
+        Passed to underlying stack method.
     """
     path = str(path)
 
     paths = find_parquet_files(path, pattern)
 
-    return stack_waterbodies(paths, output_dir, verbose=verbose)
+    if mode == StackMode.WATERBODIES:
+        return stack_waterbodies(paths, verbose=verbose, **kwargs)
+    if mode == StackMode.WATERBODIES_DB:
+        return stack_waterbodies_db(paths, verbose=verbose, **kwargs)
