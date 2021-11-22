@@ -22,7 +22,7 @@ if __name__ == "__main__":
             "moto[s3]",
             "tqdm",
             "SQLAlchemy",
-            "python-geohash",
+            # "python-geohash",
         ],
         entry_points={
             "console_scripts": ["dea-conflux=dea_conflux.__main__:main"],
