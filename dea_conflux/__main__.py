@@ -647,7 +647,9 @@ def push_to_queue(txt, queue, verbose):
     # Don't mandate existence since this might be s3://.
     help="REQUIRED. Path to the Parquet directory.",
 )
-@click.option("--output", type=click.Path())
+@click.option("--output", type=click.Path(),
+              required=False,
+              help='Output directory for waterbodies-style stack')
 @click.option(
     "--pattern",
     required=False,
@@ -655,7 +657,8 @@ def push_to_queue(txt, queue, verbose):
     help="Regular expression for filename matching.",
 )
 @click.option(
-    "--mode", type=click.Choice(["waterbodies"]), default="waterbodies", required=False
+    "--mode", type=click.Choice(
+        ["waterbodies", "waterbodies_db"]), default="waterbodies", required=False
 )
 @click.option("-v", "--verbose", count=True)
 def stack(parquet_path, output, pattern, mode, verbose):
@@ -667,10 +670,16 @@ def stack(parquet_path, output, pattern, mode, verbose):
     # Convert mode to StackMode
     mode_map = {
         "waterbodies": dea_conflux.stack.StackMode.WATERBODIES,
+        "waterbodies_db": dea_conflux.stack.StackMode.WATERBODIES_DB,
     }
 
+    kwargs = {}
+    if mode == 'waterbodies':
+        kwargs['output_dir'] = output
+
     dea_conflux.stack.stack(
-        parquet_path, output, pattern, mode_map[mode], verbose=verbose
+        parquet_path, pattern, mode_map[mode], verbose=verbose,
+        **kwargs,
     )
 
     return 0
