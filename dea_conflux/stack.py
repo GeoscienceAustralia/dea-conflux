@@ -1,5 +1,7 @@
 """Stack Parquet scene outputs into other formats.
 
+Lots of this code is domain-specific and not intended to be fully general.
+
 Matthew Alger
 Geoscience Australia
 2021
@@ -14,18 +16,22 @@ import re
 from pathlib import Path
 
 import fsspec
+import geohash
 import pandas as pd
 import s3fs
 from tqdm.auto import tqdm
 
+import dea_conflux.db
 import dea_conflux.io
 from dea_conflux.io import PARQUET_EXTENSIONS
+from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
 
 class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
+    WATERBODIES_DB = "waterbodies_db"
 
 
 def waterbodies_format_date(date: datetime.datetime) -> str:
@@ -139,6 +145,102 @@ def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
             df.to_csv(f, index_label="date")
 
 
+def get_waterbody_key(uid, session):
+    """Create or get a unique key from the database."""
+    # decode into a coordinate
+    # uid format is gh_version
+    gh = uid.split('_')[0]
+    lat, lon = geohash.decode(gh)
+    defaults = {
+        'geofabric_name': '',
+        'centroid_lat': lat,
+        'centroid_lon': lon,
+    }
+    inst, _ = dea_conflux.db.get_or_create(
+        session,
+        dea_conflux.db.Waterbody,
+        wb_name=uid,
+        defaults=defaults)
+    return inst.wb_id
+
+            
+            
+def stack_waterbodies_db(
+        paths: [str],
+        verbose: bool = False,
+        engine=None,
+        uids: {str}=None):
+    """Stack Parquet files into the waterbodies interstitial DB.
+
+    Arguments
+    ---------
+    paths : [str]
+        List of paths to Parquet files to stack.
+
+    verbose : bool
+
+    engine: sqlalchemy.engine.Engine
+        Database engine. Default postgres, which is
+        connected to if engine=None.
+    
+    uids : {uids}
+        Set of waterbody IDs. If not specified, guessed from
+        parquet files, but that's slower.
+    """
+    if verbose:
+        paths = tqdm(paths)
+    
+    # connect to the db
+    if not engine:
+        engine = dea_conflux.db.get_engine_waterbodies()
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # ensure tables exist
+    dea_conflux.db.create_waterbody_tables(engine)
+    
+    if not uids:
+        uids = set()
+
+    # confirm all the UIDs exist in the db
+    uid_to_key = {}
+    uids_ = uids
+    if verbose:
+        uids_ = tqdm(uids)
+    for uid in uids_:
+        key = get_waterbody_key(uid, session)
+        uid_to_key[uid] = key
+
+    for path in paths:
+        # read the table in...
+        df = dea_conflux.io.read_table(path)
+        # parse the date...
+        date = dea_conflux.io.string_to_date(df.attrs["date"])
+        # df is ids x bands
+        # for each ID...
+        obss = []
+        for uid, series in df.iterrows():
+            if uid not in uid_to_key:
+                # add this uid
+                key = get_waterbody_key(uid, session)
+                uid_to_key[uid] = key
+
+            key = uid_to_key[uid]
+            obs = dea_conflux.db.WaterbodyObservation(
+                wb_id=key,
+                px_wet=series.px_wet,
+                pc_wet=series.pc_wet,
+                pc_missing=series.pc_missing,
+                platform='UNK',
+                date=date)
+            obss.append(obs)
+        # basically just hoping that these don't exist already
+        # TODO: Insert or update
+        session.bulk_save_objects(obss)
+        session.commit()
+
+
 def stack(
     path: str,
     output_dir: str,
@@ -168,8 +270,5 @@ def stack(
     path = str(path)
 
     paths = find_parquet_files(path, pattern)
-
-    if mode != StackMode.WATERBODIES:
-        raise NotImplementedError("Only waterbodies stacking is implemented")
 
     return stack_waterbodies(paths, output_dir, verbose=verbose)
