@@ -28,7 +28,7 @@ def get_engine_sqlite(path) -> Engine:
 def get_engine_inmem() -> Engine:
     """Get a SQLite in-memory database engine."""
     return create_engine(
-        f'sqlite+pysqlite:///:memory:',
+        'sqlite+pysqlite:///:memory:',
         echo=True, future=True)
 
 
@@ -74,7 +74,7 @@ class WaterbodyObservation(WaterbodyBase):
     
     def __repr__(self):
         return f'<WaterbodyObservation obs_id={self.obs_id}, wb_id={self.wb_id}, ' +\
-                f'date={self.date}, ...>'
+               f'date={self.date}, ...>'
 
 
 def create_waterbody_tables(engine: Engine):

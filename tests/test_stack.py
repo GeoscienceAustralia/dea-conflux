@@ -119,7 +119,7 @@ def test_waterbodies_db_stacking():
         engine=engine,
         uids=None)
     all_obs = list(session.query(
-            dea_conflux.db.WaterbodyObservation).all())
+        dea_conflux.db.WaterbodyObservation).all())
     # Check all observations exist
     assert len(all_obs) == 445
     # Check time is correct

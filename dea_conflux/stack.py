@@ -164,12 +164,11 @@ def get_waterbody_key(uid, session):
     return inst.wb_id
 
             
-            
 def stack_waterbodies_db(
         paths: [str],
         verbose: bool = False,
-        engine=None,
-        uids: {str}=None):
+        engine = None,
+        uids: {str} = None):
     """Stack Parquet files into the waterbodies interstitial DB.
 
     Arguments
