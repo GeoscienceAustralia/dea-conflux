@@ -66,7 +66,7 @@ class WaterbodyObservation(WaterbodyBase):
     __tablename__ = 'waterbody_observations'
     obs_id = Column(Integer, primary_key=True)
     wb_id = Column(Integer, ForeignKey("waterbodies.wb_id"))
-    px_wet = Column(Integer)
+    px_wet = Column(Float)  # allows nan
     pc_wet = Column(Float)
     pc_missing = Column(Float)
     platform = Column(String(3))
@@ -80,6 +80,14 @@ class WaterbodyObservation(WaterbodyBase):
 def create_waterbody_tables(engine: Engine):
     """Create all waterbody tables."""
     return WaterbodyBase.metadata.create_all(engine)
+
+
+def drop_waterbody_tables(engine: Engine):
+    """Drop all waterbody tables."""
+    return WaterbodyBase.metadata.drop_all(
+        bind=engine, tables=[
+            Waterbody.__table__,
+            WaterbodyObservation.__table__])
 
 
 def get_or_create(session, model, defaults=None, **kwargs):

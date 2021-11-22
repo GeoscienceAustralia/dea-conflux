@@ -661,7 +661,9 @@ def push_to_queue(txt, queue, verbose):
         ["waterbodies", "waterbodies_db"]), default="waterbodies", required=False
 )
 @click.option("-v", "--verbose", count=True)
-def stack(parquet_path, output, pattern, mode, verbose):
+@click.option("--drop/--no-drop", default=False,
+              help='Drop database if applicable. Default False')
+def stack(parquet_path, output, pattern, mode, verbose, drop):
     """
     Stack outputs of dea-conflux into other formats.
     """
@@ -676,6 +678,8 @@ def stack(parquet_path, output, pattern, mode, verbose):
     kwargs = {}
     if mode == 'waterbodies':
         kwargs['output_dir'] = output
+    elif mode == 'waterbodies_db':
+        kwargs['drop'] = drop
 
     dea_conflux.stack.stack(
         parquet_path, pattern, mode_map[mode], verbose=verbose,

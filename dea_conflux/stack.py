@@ -168,7 +168,8 @@ def stack_waterbodies_db(
         paths: [str],
         verbose: bool = False,
         engine = None,
-        uids: {str} = None):
+        uids: {str} = None,
+        drop: bool = False):
     """Stack Parquet files into the waterbodies interstitial DB.
 
     Arguments
@@ -185,6 +186,9 @@ def stack_waterbodies_db(
     uids : {uids}
         Set of waterbody IDs. If not specified, guessed from
         parquet files, but that's slower.
+    
+    drop : bool
+        Whether to drop the database. Default False.
     """
     if verbose:
         paths = tqdm(paths)
@@ -195,6 +199,10 @@ def stack_waterbodies_db(
 
     Session = sessionmaker(bind=engine)
     session = Session()
+
+    # drop tables if requested
+    if drop:
+        dea_conflux.db.drop_waterbody_tables(engine)
 
     # ensure tables exist
     dea_conflux.db.create_waterbody_tables(engine)
