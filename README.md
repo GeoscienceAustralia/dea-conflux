@@ -55,7 +55,13 @@ Plugins must provide:
 - a transform function, and
 - a summarise function.
 
-The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation. The summarise function aggregates a dataset into a number of measurements that summarise a polygon, i.e. the outputs of the drill.
+#### Transform function
+The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation. 
+Transform will be applied to the whole scene, not to a polygon if you are using a polygon.
+
+#### Summarise function
+The summarise function aggregates a dataset into a number of measurements that summarise a polygon, i.e. the outputs of the drill.
+Summarise is applied to just the pixels in the polygon.
 
 ## Pre-commit setup
 
