@@ -1,4 +1,3 @@
-import itertools
 import warnings
 
 import numpy as np
@@ -40,19 +39,24 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     wo_ds = xr.merge([inputs[e] for e in input_products["ga_ls_wo_3"]])
     fc_ds = xr.merge([inputs[e] for e in input_products["ga_ls_fc_3"]])
 
-    #missing = set()
-    #for t1, t2 in itertools.product(
+    # missing = set()
+    # for t1, t2 in itertools.product(
     #    [fc_ds.time.values, wo_ds.time.values, ard_ds.time.values], repeat=2
-    #):
+    # ):
     #    missing_ = set(t1) - set(t2)
     #    missing |= missing_
 
-    #fc_ds = fc_ds.sel(time=[t for t in fc_ds.time.values if t not in missing])
-    #ard_ds = ard_ds.sel(time=[t for t in ard_ds.time.values if t not in missing])
-    #wo_ds = wo_ds.sel(time=[t for t in wo_ds.time.values if t not in missing])
+    # fc_ds = fc_ds.sel(time=[t for t in fc_ds.time.values if t not in missing])
+    # ard_ds = ard_ds.sel(time=[t for t in ard_ds.time.values if t not in missing])
+    # wo_ds = wo_ds.sel(time=[t for t in wo_ds.time.values if t not in missing])
 
     tcw = calculate_indices(
-        ard_ds, index="TCW", collection="ga_ls_3", normalise=False, drop=False, inplace=False
+        ard_ds,
+        index="TCW",
+        collection="ga_ls_3",
+        normalise=False,
+        drop=False,
+        inplace=False,
     )
 
     mask = (wo_ds.water & 0b0110011) == 0
@@ -64,33 +68,42 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     pv = fc_ds.pv / 100
     npv = fc_ds.npv / 100
 
-    rast_names = ['pv', 'npv', 'bs', 'wet', 'water']
+    rast_names = ["pv", "npv", "bs", "wet", "water"]
     output_rast = {n: xr.zeros_like(ard_ds) for n in rast_names}
 
-    output_rast['bs']= bs
-    output_rast['pv'] = pv
-    output_rast['npv'] = npv
+    output_rast["bs"] = bs
+    output_rast["pv"] = pv
+    output_rast["npv"] = npv
 
     # TCW
-    output_rast['wet'] = wet.astype(float)
+    output_rast["wet"] = wet.astype(float)
     for name in rast_names[:3]:
         output_rast[name].values[wet.values] = 0
 
-
-    output_rast['water'] = open_water.astype(float)
+    output_rast["water"] = open_water.astype(float)
 
     for name in rast_names[0:4]:
         output_rast[name].values[open_water.values] = 0
 
-
     ds_wit = xr.Dataset(output_rast).where(mask)
 
-    pc_missing = (~mask).mean(dim=['x', 'y'])
+    output = {}  # band -> value
+    output["water"] = ds_wit.water.mean(dim=["x", "y"])
+    # TCW comes in where there is no water
+    output["wet"] = ds_wit.wet.mean(dim=["x", "y"])
+    output["bs"] = ds_wit.bs.mean(dim=["x", "y"])
+    output["pv"] = ds_wit.pv.mean(dim=["x", "y"])
+    output["npv"] = ds_wit.npv.mean(dim=["x", "y"])
 
-    ds_wit = ds_wit.where(pc_missing < 0.1)
+    print(xr.Dataset(output))
 
-    return ds_wit
-    
+    #pc_missing = (~mask).mean(dim=["x", "y"])
+
+    #ds_wit = ds_wit.where(pc_missing < 0.1)
+
+    #ys = ds_wit[["water", "wet", "bs", "pv", "npv"]].to_array().mean(dim=["x", "y"])
+
+    return xr.Dataset(output)
 
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
