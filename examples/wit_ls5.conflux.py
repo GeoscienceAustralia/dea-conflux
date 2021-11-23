@@ -2,7 +2,14 @@ import xarray as xr
 
 product_name = "wit_ls5"
 version = "0.0.1"
-resampling = {"water": "nearest", "*": "bilinear"}
+resampling = {
+    "water": "nearest",
+    "bs": "nearest",
+    "pv": "nearest",
+    "npv": "nearest",
+    "fmask": "nearest",
+    "*": "bilinear",
+}
 output_crs = "EPSG:3577"
 resolution = (-30, 30)
 
