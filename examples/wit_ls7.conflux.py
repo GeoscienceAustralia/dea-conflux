@@ -78,12 +78,17 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     for name in rast_names[0:4]:
         output_rast[name].values[open_water.values] = 0
 
+    # save this unmask then can do 90% check in summarise
+    output_rast["unmask"] = ~mask
+
     ds_wit = xr.Dataset(output_rast).where(mask)
 
     return ds_wit
 
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
+
+    inputs = inputs.where(inputs.unmask.mean() < 0.1)
 
     output = {}  # band -> value
     output["water"] = inputs.water.mean()
