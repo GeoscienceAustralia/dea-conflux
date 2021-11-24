@@ -2,7 +2,14 @@ import xarray as xr
 
 product_name = "wit_ls8"
 version = "0.0.1"
-resampling = {"water": "nearest", "*": "bilinear"}
+resampling = {
+    "water": "nearest",
+    "bs": "nearest",
+    "pv": "nearest",
+    "npv": "nearest",
+    "fmask": "nearest",
+    "*": "bilinear",
+}
 output_crs = "EPSG:3577"
 resolution = (-30, 30)
 
@@ -34,45 +41,55 @@ def _tcw(ds: xr.Dataset) -> xr.DataArray:
 
 
 def transform(inputs: xr.Dataset) -> xr.Dataset:
-    # Masking
-    cloud = (inputs.water & (1 << 6)) > 0
-    shadow = (inputs.water & (1 << 5)) > 0
-    mask = ~cloud & ~shadow
+    # organize the datas structure
+    # to apply WIT Notebook processing
+    # approach
+
+    ard_ds = xr.merge([inputs[e] for e in input_products["ga_ls8c_ard_3"]])
+    wo_ds = xr.merge([inputs[e] for e in input_products["ga_ls_wo_3"]])
+    fc_ds = xr.merge([inputs[e] for e in input_products["ga_ls_fc_3"]])
+
+    tcw = _tcw(ard_ds)
+
+    bs = fc_ds.bs / 100
+    pv = fc_ds.pv / 100
+    npv = fc_ds.npv / 100
+
+    rast_names = ["pv", "npv", "bs", "wet", "water"]
+    output_rast = {n: xr.zeros_like(ard_ds) for n in rast_names}
+
+    output_rast["bs"] = bs
+    output_rast["pv"] = pv
+    output_rast["npv"] = npv
+
+    mask = (wo_ds.water & 0b0110011) == 0
+    # not apply poly_raster cause we did it before
+
+    open_water = wo_ds.water & (1 << 7) > 0
+    wet = tcw.where(~mask) > -350
+
     # TCW
-    tcw = (_tcw(inputs) > -350).where(mask)
-    # WO
-    is_wet = inputs.water == 128
-    is_ok = is_wet | (inputs.water == 0)
-    masked_wet = is_wet.where(is_ok)
-    # FC
-    bs = inputs.bs.clip(0, 100) / 100
-    pv = inputs.pv.clip(0, 100) / 100
-    npv = inputs.npv.clip(0, 100) / 100
-    sum_fc = bs + pv + npv
-    masked_bs = (bs / sum_fc).where(mask)
-    masked_pv = (pv / sum_fc).where(mask)
-    masked_npv = (npv / sum_fc).where(mask)
-    return xr.Dataset(
-        {
-            "water": masked_wet,
-            "tcw": tcw,
-            "bs": masked_bs,
-            "pv": masked_pv,
-            "npv": masked_npv,
-        }
-    )
+    output_rast["wet"] = wet.astype(float)
+    for name in rast_names[:3]:
+        output_rast[name].values[wet.values] = 0
+
+    output_rast["water"] = open_water.astype(float)
+
+    for name in rast_names[0:4]:
+        output_rast[name].values[open_water.values] = 0
+
+    ds_wit = xr.Dataset(output_rast).where(mask)
+
+    return ds_wit
 
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
+
     output = {}  # band -> value
-    # water takes priority
-    output["water"] = inputs.water.sum()
-    # TCW comes in where there is no water
-    output["wet"] = inputs.tcw.where(~inputs.water.astype(bool)).sum()
-    # FC everywhere else
-    fc_mask = ~inputs.water.astype(bool) & ~inputs.tcw.astype(bool)
-    output["pv"] = inputs.pv.where(fc_mask).sum()
-    output["npv"] = inputs.npv.where(fc_mask).sum()
-    output["bs"] = inputs.bs.where(fc_mask).sum()
-    output["px_missing"] = inputs.bs.isnull().sum()
+    output["water"] = inputs.water.mean()
+    output["wet"] = inputs.wet.mean()
+    output["bs"] = inputs.bs.mean()
+    output["pv"] = inputs.pv.mean()
+    output["npv"] = inputs.npv.mean()
+
     return xr.Dataset(output)
