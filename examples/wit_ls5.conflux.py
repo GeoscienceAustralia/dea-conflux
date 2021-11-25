@@ -88,7 +88,7 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
 
-    inputs = inputs.where(inputs.unmask.mean() < 0.1)
+    inputs = inputs.where(inputs.unmask.values.mean() < 0.1)
 
     output = {}  # band -> value
     output["water"] = inputs.water.mean()
