@@ -1,3 +1,4 @@
+import numpy as np
 import xarray as xr
 
 product_name = "wit_ls5"
@@ -78,8 +79,8 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     for name in rast_names[0:4]:
         output_rast[name].values[open_water.values] = 0
 
-    # save this unmask then can do 90% check in summarise
-    output_rast["unmask"] = ~mask
+    # save this mask then can do 90% check in summarise
+    output_rast["mask"] = (mask).astype(int)
 
     ds_wit = xr.Dataset(output_rast).where(mask)
 
@@ -88,7 +89,8 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
 
-    inputs = inputs.where(inputs.unmask.values.mean() < 0.1)
+    pc_missing = 1 - np.nansum(inputs.mask.values) / len(inputs.mask.values)
+    inputs = inputs.where(pc_missing < 0.1)
 
     output = {}  # band -> value
     output["water"] = inputs.water.mean()
@@ -96,5 +98,6 @@ def summarise(inputs: xr.Dataset) -> xr.Dataset:
     output["bs"] = inputs.bs.mean()
     output["pv"] = inputs.pv.mean()
     output["npv"] = inputs.npv.mean()
+    output["pc_missing"] = pc_missing
 
     return xr.Dataset(output)
