@@ -17,6 +17,7 @@ import datacube
 import fsspec
 import geopandas as gpd
 from datacube.ui import click as ui
+from rasterio.errors import RasterioIOError
 
 import dea_conflux.__version__
 import dea_conflux.drill
@@ -279,6 +280,7 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
     # add try catch to catpure exception:
     # KeyError: missing water key in WIT, should be gone after filter by gqa_mean_x in [-1, 1]
     # TypeError: ufunc 'bitwise_and' not supported for the input types in WIT, no idea on root reason
+    # rasterio.errors.RasterioIOError: cannot load tif file from S3
 
     try:
         # Do the drill!
@@ -301,6 +303,8 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
         logger.error(f"Found {uuid} has KeyError: {str(keyerr)}")
     except TypeError as typeerr:
         logger.error(f"Found {uuid} has TypeError: {str(typeerr)}")
+    except RasterioIOError as ioerror:
+        logger.error(f"Found {uuid} has RasterioIOError: {str(ioerror)}")
     finally:
         return 0
 
@@ -460,6 +464,10 @@ def run_from_queue(
                     success_flag = False
                 except TypeError as typeerr:
                     logger.error(f"Found {id_} has TypeError: {str(typeerr)}")
+                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    success_flag = False
+                except RasterioIOError as ioerror:
+                    logger.error(f"Found {id_} has RasterioIOError: {str(ioerror)}")
                     dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
                     success_flag = False
             else:
@@ -647,9 +655,12 @@ def push_to_queue(txt, queue, verbose):
     # Don't mandate existence since this might be s3://.
     help="REQUIRED. Path to the Parquet directory.",
 )
-@click.option("--output", type=click.Path(),
-              required=False,
-              help='Output directory for waterbodies-style stack')
+@click.option(
+    "--output",
+    type=click.Path(),
+    required=False,
+    help="Output directory for waterbodies-style stack",
+)
 @click.option(
     "--pattern",
     required=False,
@@ -657,12 +668,15 @@ def push_to_queue(txt, queue, verbose):
     help="Regular expression for filename matching.",
 )
 @click.option(
-    "--mode", type=click.Choice(
-        ["waterbodies", "waterbodies_db"]), default="waterbodies", required=False
+    "--mode",
+    type=click.Choice(["waterbodies", "waterbodies_db"]),
+    default="waterbodies",
+    required=False,
 )
 @click.option("-v", "--verbose", count=True)
-@click.option("--drop/--no-drop", default=False,
-              help='Drop database if applicable. Default False')
+@click.option(
+    "--drop/--no-drop", default=False, help="Drop database if applicable. Default False"
+)
 def stack(parquet_path, output, pattern, mode, verbose, drop):
     """
     Stack outputs of dea-conflux into other formats.
@@ -676,13 +690,16 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
     }
 
     kwargs = {}
-    if mode == 'waterbodies':
-        kwargs['output_dir'] = output
-    elif mode == 'waterbodies_db':
-        kwargs['drop'] = drop
+    if mode == "waterbodies":
+        kwargs["output_dir"] = output
+    elif mode == "waterbodies_db":
+        kwargs["drop"] = drop
 
     dea_conflux.stack.stack(
-        parquet_path, pattern, mode_map[mode], verbose=verbose,
+        parquet_path,
+        pattern,
+        mode_map[mode],
+        verbose=verbose,
         **kwargs,
     )
 
