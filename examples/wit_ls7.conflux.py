@@ -63,11 +63,11 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     output_rast["pv"] = pv
     output_rast["npv"] = npv
 
-    mask = (wo_ds.water & 0b0110011) == 0
-    # not apply poly_raster cause we did it before
+    mask = (wo_ds.water & 0b01100011) == 0
+    # not apply poly_raster cause we will do it before summarise
 
     open_water = wo_ds.water & (1 << 7) > 0
-    wet = tcw.where(~mask) > -350
+    wet = tcw.where(mask) > -350
 
     # TCW
     output_rast["wet"] = wet.astype(float)
