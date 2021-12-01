@@ -706,5 +706,18 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
     return 0
 
 
+@main.command()
+@click.option(
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Output directory for Waterbodies-style CSVs",
+)
+def db_to_csv(output):
+    """Output Waterbodies-style CSVs from a database."""
+    stack_waterbodies_db_to_csv(
+        out_path=output)
+
+
 if __name__ == "__main__":
     main()

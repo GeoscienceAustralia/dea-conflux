@@ -248,6 +248,61 @@ def stack_waterbodies_db(
         session.commit()
 
 
+def stack_waterbodies_db_to_csv(
+        out_path: str,
+        verbose: bool = False,
+        uids: {str} = None,
+        engine=None):
+    """Write waterbodies CSVs out from the interstitial DB.
+
+    Arguments
+    ---------
+    out_path : str
+        Path to write CSVs to.
+
+    verbose : bool
+
+    engine: sqlalchemy.engine.Engine
+        Database engine. Default postgres, which is
+        connected to if engine=None.
+    
+    uids : {uids}
+        Set of waterbody IDs. If not specified, use all.
+    """
+    # connect to the db
+    if not engine:
+        engine = dea_conflux.db.get_engine_waterbodies()
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    if not uids:
+        # query all
+        waterbodies = session.query(dea_conflux.db.Waterbody).all()
+    else:
+        # query some
+        waterbodies = session.query(dea_conflux.db.Waterbody).filter(
+            dea_conflux.db.Waterbody.wb_name.in_(uids)).all()
+    
+    for wb in waterbodies:
+        # get all observations
+        if verbose:
+            logger.info(f'Processing {wb.wb_name}')
+        obs = session.query(dea_conflux.db.WaterbodyObservation).filter(
+            dea_conflux.db.WaterbodyObservation.wb_id == wb.wb_id
+        ).order_by(dea_conflux.db.WaterbodyObservation.date.desc()).all()
+
+        rows = [{
+            'date': ob.date,
+            'px_wet': ob.px_wet,
+            'pc_wet': ob.pc_wet,
+        } for ob in obs]
+
+        df = pd.DataFrame(rows, columns=['date', 'px_wet', 'pc_wet'])
+        df.to_csv(out_path + '/' + wb.wb_name[:4] + '/' + wb.wb_name + '.csv',
+                  header=True, index=False)
+
+
 def stack(
     path: str,
     pattern: str = ".*",
