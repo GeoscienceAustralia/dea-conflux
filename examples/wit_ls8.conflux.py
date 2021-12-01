@@ -89,8 +89,8 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
 
-    pc_missing = 1 - np.nansum(inputs.mask.values) / len(inputs.mask.values)
-    inputs = inputs.where(pc_missing < 0.1)
+    pc_missing = 1 - (np.nansum(inputs.mask.values) / len(inputs.mask.values))
+    # inputs = inputs.where(pc_missing < 0.1)
 
     output = {}  # band -> value
     output["water"] = inputs.water.mean()
