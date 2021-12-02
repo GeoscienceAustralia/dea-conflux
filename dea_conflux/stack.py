@@ -297,7 +297,7 @@ def stack_waterbodies_db_to_csv(
         rows = [{
             'date': waterbodies_format_date(ob.date),
             'px_wet': ob.px_wet,
-            'pc_wet': ob.pc_wet,
+            'pc_wet': ob.pc_wet * 100,
         } for ob in obs]
 
         df = pd.DataFrame(rows, columns=['date', 'px_wet', 'pc_wet'])
