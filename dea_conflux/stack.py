@@ -22,9 +22,10 @@ import s3fs
 from tqdm.auto import tqdm
 
 import dea_conflux.db
+from dea_conflux.db import Engine
 import dea_conflux.io
 from dea_conflux.io import PARQUET_EXTENSIONS
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,7 @@ def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
             df.to_csv(f, index_label="date")
 
 
-def get_waterbody_key(uid, session):
+def get_waterbody_key(uid: str, session: Session):
     """Create or get a unique key from the database."""
     # decode into a coordinate
     # uid format is gh_version
@@ -167,7 +168,7 @@ def get_waterbody_key(uid, session):
 def stack_waterbodies_db(
         paths: [str],
         verbose: bool = False,
-        engine = None,
+        engine: Engine = None,
         uids: {str} = None,
         drop: bool = False):
     """Stack Parquet files into the waterbodies interstitial DB.
