@@ -284,6 +284,8 @@ def stack_waterbodies_db_to_csv(
         waterbodies = session.query(dea_conflux.db.Waterbody).filter(
             dea_conflux.db.Waterbody.wb_name.in_(uids)).all()
     
+    if verbose:
+        waterbodies = tqdm(waterbodies)
     for wb in waterbodies:
         # get all observations
         if verbose:
@@ -293,7 +295,7 @@ def stack_waterbodies_db_to_csv(
         ).order_by(dea_conflux.db.WaterbodyObservation.date.desc()).all()
 
         rows = [{
-            'date': ob.date,
+            'date': waterbodies_format_date(ob.date),
             'px_wet': ob.px_wet,
             'pc_wet': ob.pc_wet,
         } for ob in obs]
