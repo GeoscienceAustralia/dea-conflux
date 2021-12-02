@@ -715,7 +715,7 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
 )
 def db_to_csv(output):
     """Output Waterbodies-style CSVs from a database."""
-    stack_waterbodies_db_to_csv(
+    dea_conflux.stack.stack_waterbodies_db_to_csv(
         out_path=output)
 
 
