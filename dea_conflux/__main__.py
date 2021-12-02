@@ -713,10 +713,11 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
     required=True,
     help="Output directory for Waterbodies-style CSVs",
 )
-def db_to_csv(output):
+@click.option("-v", "--verbose", count=True)
+def db_to_csv(output, verbose):
     """Output Waterbodies-style CSVs from a database."""
     dea_conflux.stack.stack_waterbodies_db_to_csv(
-        out_path=output)
+        out_path=output, verbose=verbose > 0)
 
 
 if __name__ == "__main__":
