@@ -1,14 +1,16 @@
+import datetime
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import boto3
 import botocore
 import moto
-from moto import mock_s3
 import pandas as pd
 import pytest
+from moto import mock_s3
 
+import dea_conflux.db
 import dea_conflux.stack
 
 logging.basicConfig(level=logging.INFO)
@@ -17,19 +19,19 @@ logging.basicConfig(level=logging.INFO)
 HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
-TEST_SHP = HERE / 'data' / 'waterbodies_canberra.shp'
+TEST_SHP = HERE / "data" / "waterbodies_canberra.shp"
 # UID of Lake Ginninderra.
-LAKE_GINNINDERRA_ID = 'r3dp84s8n'
+LAKE_GINNINDERRA_ID = "r3dp84s8n"
 
-TEST_PLUGIN_OK = HERE / 'data' / 'sum_wet.conflux.py'
-TEST_PLUGIN_COMBINED = HERE / 'data' / 'sum_pv_wet.conflux.py'
-TEST_PLUGIN_MISSING_TRANSFORM = (
-    HERE / 'data' / 'sum_wet_missing_transform.conflux.py')
+TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
+TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
+TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
 
-TEST_PQ_DATA = HERE / 'data' / 'canberra_waterbodies_pq'
+TEST_PQ_DATA = HERE / "data" / "canberra_waterbodies_pq"
+TEST_PQ_DATA_FILE = TEST_PQ_DATA / 'waterbodies_234fec8f-1de7-488a-a115-818ebd4bfec4_20000202-234328-500000.pq'
 
-TEST_WOFL_ID = '234fec8f-1de7-488a-a115-818ebd4bfec4'
-TEST_FC_ID = '4d243358-152e-404c-bb65-7ea64b21ca38'
+TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
+TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
 
 
 def setup_module(module):
@@ -39,15 +41,18 @@ def setup_module(module):
 
 @pytest.fixture()
 def conflux_table():
-    return pd.DataFrame({
-        'band1': [0, 1, 2],
-        'band2': [5, 4, 3],
-    }, index=['uid1', 'uid2', 'uid3'])
+    return pd.DataFrame(
+        {
+            "band1": [0, 1, 2],
+            "band2": [5, 4, 3],
+        },
+        index=["uid1", "uid2", "uid3"],
+    )
 
 
 # https://github.com/aio-libs/aiobotocore/issues/755
 @pytest.fixture()
-def mock_AWSResponse() -> None:
+def mock_aws_response() -> None:
     class MockedAWSResponse(botocore.awsrequest.AWSResponse):
         raw_headers = {}  # type: ignore
 
@@ -60,10 +65,11 @@ def mock_AWSResponse() -> None:
 
 def test_waterbodies_stacking(tmp_path):
     dea_conflux.stack.stack(
-        TEST_PQ_DATA, tmp_path / 'testout',
-        mode=dea_conflux.stack.StackMode.WATERBODIES)
+        TEST_PQ_DATA, mode=dea_conflux.stack.StackMode.WATERBODIES,
+        output_dir=tmp_path / "testout",
+    )
     uid = LAKE_GINNINDERRA_ID
-    outpath = tmp_path / 'testout' / uid[:4] / f'{uid}.csv'
+    outpath = tmp_path / "testout" / uid[:4] / f"{uid}.csv"
     assert outpath.exists()
     csv = pd.read_csv(outpath)
     assert len(csv) == 2
@@ -71,36 +77,53 @@ def test_waterbodies_stacking(tmp_path):
 
 
 @mock_s3
-def test_find_parquet_files_s3(mock_AWSResponse):
+def test_find_parquet_files_s3(mock_aws_response):
     # Set up some Parquet files to find.
-    s3 = boto3.resource('s3', region_name='ap-southeast-2')
-    bucket_name = 'testbucket'
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={
-        'LocationConstraint': 'ap-southeast-2',
-    })
-    parquet_keys = [
-        'hello.pq',
-        'hello/world.pq',
-        'hello/world/this/is.parquet']
-    not_parquet_keys = [
-        'not_parquet',
-        'hello/alsonotparquet']
+    s3 = boto3.resource("s3", region_name="ap-southeast-2")
+    bucket_name = "testbucket"
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={
+            "LocationConstraint": "ap-southeast-2",
+        },
+    )
+    parquet_keys = ["hello.pq", "hello/world.pq", "hello/world/this/is.parquet"]
+    not_parquet_keys = ["not_parquet", "hello/alsonotparquet"]
     parquet_keys_constrained = [
-        'hello/world/missme.pq',
+        "hello/world/missme.pq",
     ]
     for key in parquet_keys + not_parquet_keys + parquet_keys_constrained:
-        s3.Object(bucket_name, key).put(Body=b'')
-    
-    res = dea_conflux.stack.find_parquet_files(f's3://{bucket_name}')
+        s3.Object(bucket_name, key).put(Body=b"")
+
+    res = dea_conflux.stack.find_parquet_files(f"s3://{bucket_name}")
     for key in parquet_keys + parquet_keys_constrained:
-        assert f's3://{bucket_name}/{key}' in res
+        assert f"s3://{bucket_name}/{key}" in res
     for key in not_parquet_keys:
-        assert f's3://{bucket_name}/{key}' not in res
+        assert f"s3://{bucket_name}/{key}" not in res
 
     # Repeat that test with a constraint.
-    res = dea_conflux.stack.find_parquet_files(
-        f's3://{bucket_name}', pattern='[^m]*$')
+    res = dea_conflux.stack.find_parquet_files(f"s3://{bucket_name}", pattern="[^m]*$")
     for key in parquet_keys:
-        assert f's3://{bucket_name}/{key}' in res
+        assert f"s3://{bucket_name}/{key}" in res
     for key in not_parquet_keys + parquet_keys_constrained:
-        assert f's3://{bucket_name}/{key}' not in res
+        assert f"s3://{bucket_name}/{key}" not in res
+
+        
+def test_waterbodies_db_stacking():
+    engine = dea_conflux.db.get_engine_inmem()
+    Session = dea_conflux.stack.sessionmaker(bind=engine)
+    session = Session()
+    dea_conflux.stack.stack_waterbodies_db(
+        paths=[TEST_PQ_DATA_FILE],
+        verbose=True,
+        engine=engine,
+        uids=None)
+    all_obs = list(session.query(
+        dea_conflux.db.WaterbodyObservation).all())
+    # Check all observations exist
+    assert len(all_obs) == 445
+    # Check time is correct
+    correct_time = datetime.datetime(2000, 2, 2, 23, 43, 28, 500000)
+    assert all(
+        obs.date == correct_time
+        for obs in all_obs)

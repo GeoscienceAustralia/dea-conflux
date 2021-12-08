@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-product_name = "wit_ls5"
+product_name = "wit_ls8"
 version = "0.0.1"
 resampling = {
     "water": "nearest",
@@ -16,7 +16,7 @@ resolution = (-30, 30)
 
 input_products = {
     "ga_ls_wo_3": ["water"],
-    "ga_ls5t_ard_3": [
+    "ga_ls8c_ard_3": [
         "nbart_blue",
         "nbart_green",
         "nbart_red",
@@ -46,7 +46,7 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     # to apply WIT Notebook processing
     # approach
 
-    ard_ds = xr.merge([inputs[e] for e in input_products["ga_ls5t_ard_3"]])
+    ard_ds = xr.merge([inputs[e] for e in input_products["ga_ls8c_ard_3"]])
     wo_ds = xr.merge([inputs[e] for e in input_products["ga_ls_wo_3"]])
     fc_ds = xr.merge([inputs[e] for e in input_products["ga_ls_fc_3"]])
 

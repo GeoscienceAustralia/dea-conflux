@@ -11,14 +11,14 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Pre-pull layers
       run: docker-compose pull
-      
+
     - name: Activate Docker cache
       uses: satackey/action-docker-layer-caching@v0.0.8
       # Ignore the failure of a step and avoid terminating the job.
@@ -27,12 +27,10 @@ jobs:
     - name: Build dea-conflux image
       run: |
         docker-compose build
-    
+
     - name: Test dea-conflux image
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
           docker-compose exec -T conflux bash -c "pytest ."
           docker-compose down
-      
-    

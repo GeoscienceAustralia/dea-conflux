@@ -6,7 +6,7 @@ Geoscience Australia
 """
 
 import logging
-from typing import Iterable, Dict
+from typing import Dict, Iterable
 
 from datacube import Datacube
 from datacube.model import Dataset
@@ -15,10 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 def find_datasets(
-        query: Dict[str, str],
-        products: [str],
-        limit: int = None,
-        dc: Datacube = None) -> Iterable[Dataset]:
+    query: Dict[str, str], products: [str], limit: int = None, dc: Datacube = None
+) -> Iterable[Dataset]:
     """Find datasets with a Datacube query.
 
     Heavily based on datacube_alchemist.worker._find_datsets.
@@ -29,13 +27,13 @@ def find_datasets(
 
     products : [str]
         List of products to search.
-    
+
     limit : int
         Maximum number of datasets to return (default unlimited).
-    
+
     dc : Datacube
         Datacube or None.
-    
+
     Returns
     -------
     Generator of datasets
@@ -48,7 +46,8 @@ def find_datasets(
 
     for product in products:
         datasets = dc.index.datasets.search(
-            product=product, **query,
+            product=product,
+            **query,
         )
 
         try:
@@ -60,7 +59,7 @@ def find_datasets(
         except ValueError as e:
             logger.warning(
                 f"Error searching for datasets. "
-                f'Maybe none were returned? '
-                f'Error was {e}'
+                f"Maybe none were returned? "
+                f"Error was {e}"
             )
             continue

@@ -1,7 +1,7 @@
 # DEA Conflux
 
 ![GitHub](https://img.shields.io/github/license/GeoscienceAustralia/dea-conflux)
-[![Test](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/test.yml/badge.svg)](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/test.yml) [![Lint](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/lint.yml/badge.svg)](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/lint.yml)
+[![Test](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/test.yml/badge.svg)](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/test.yml) [![Lint](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/lint.yml/badge.svg)](https://github.com/GeoscienceAustralia/dea-conflux/actions/workflows/lint.yml) [![Version](https://img.shields.io/docker/v/geoscienceaustralia/dea-conflux?label=version)](https://hub.docker.com/r/geoscienceaustralia/dea-conflux)
 
 This is a prototype tool for processing bulk polygon drills.
 
@@ -55,4 +55,17 @@ Plugins must provide:
 - a transform function, and
 - a summarise function.
 
-The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation. The summarise function aggregates a dataset into a number of measurements that summarise a polygon, i.e. the outputs of the drill.
+#### Transform function
+The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation. 
+Transform will be applied to the whole scene, not to a polygon if you are using a polygon.
+
+#### Summarise function
+The summarise function aggregates a dataset into a number of measurements that summarise a polygon, i.e. the outputs of the drill.
+Summarise is applied to just the pixels in the polygon.
+
+## Pre-commit setup
+
+	❯ pip install pre-commit
+	❯ pre-commit install
+
+Your code will now be formatted and validated before each commit by running `pre-commit run -a`
