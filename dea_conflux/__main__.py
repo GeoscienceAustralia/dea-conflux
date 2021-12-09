@@ -695,9 +695,6 @@ def push_to_queue(txt, queue, verbose):
 @click.option(
     "--drop/--no-drop", default=False, help="Drop database if applicable. Default False"
 )
-@click.option(
-    "--jobs", "-j", default=8, help="Number of workers",
-)
 def stack(parquet_path, output, pattern, mode, verbose, drop, jobs):
     """
     Stack outputs of dea-conflux into other formats.
@@ -715,7 +712,6 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, jobs):
         kwargs["output_dir"] = output
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
-        kwargs["n_workers"] = jobs
 
     dea_conflux.stack.stack(
         parquet_path,
@@ -736,10 +732,14 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, jobs):
     help="Output directory for Waterbodies-style CSVs",
 )
 @click.option("-v", "--verbose", count=True)
-def db_to_csv(output, verbose):
+@click.option(
+    "--jobs", "-j", default=8, help="Number of workers",
+)
+def db_to_csv(output, verbose, jobs):
     """Output Waterbodies-style CSVs from a database."""
     dea_conflux.stack.stack_waterbodies_db_to_csv(
-        out_path=output, verbose=verbose > 0)
+        out_path=output, verbose=verbose > 0,
+        n_workers=jobs)
 
 
 if __name__ == "__main__":
