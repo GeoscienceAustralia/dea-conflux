@@ -144,7 +144,7 @@ def write_table(
     centre_date: datetime.datetime,
     table: pd.DataFrame,
     output: str,
-):
+) -> str:
     """Write a table to Parquet.
 
     Arguments
@@ -163,6 +163,10 @@ def write_table(
 
     output : str
         Path to output directory.
+
+    Returns
+    -------
+    Path written to.
     """
     output = str(output)
 
@@ -205,9 +209,11 @@ def write_table(
     if not foldername.endswith("/"):
         foldername = foldername + "/"
 
+    output_path = output + foldername + filename
     pyarrow.parquet.write_table(
-        table_pa, output + foldername + filename, compression="GZIP"
+        table_pa, output_path, compression="GZIP"
     )
+    return output_path
 
 
 def read_table(path: str) -> pd.DataFrame:
