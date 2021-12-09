@@ -695,7 +695,10 @@ def push_to_queue(txt, queue, verbose):
 @click.option(
     "--drop/--no-drop", default=False, help="Drop database if applicable. Default False"
 )
-def stack(parquet_path, output, pattern, mode, verbose, drop):
+@click.option(
+    "--jobs", "-j", default=8, help="Number of workers",
+)
+def stack(parquet_path, output, pattern, mode, verbose, drop, jobs):
     """
     Stack outputs of dea-conflux into other formats.
     """
@@ -712,6 +715,7 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
         kwargs["output_dir"] = output
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
+        kwargs["n_workers"] = jobs
 
     dea_conflux.stack.stack(
         parquet_path,

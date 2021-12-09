@@ -8,12 +8,13 @@ Geoscience Australia
 """
 
 import collections
+import concurrent.futures
 import datetime
 import enum
 import logging
 import os
-import re
 from pathlib import Path
+import re
 
 import fsspec
 import geohash
@@ -25,7 +26,7 @@ import dea_conflux.db
 from dea_conflux.db import Engine
 import dea_conflux.io
 from dea_conflux.io import PARQUET_EXTENSIONS
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +254,8 @@ def stack_waterbodies_db_to_csv(
         out_path: str,
         verbose: bool = False,
         uids: {str} = None,
-        engine=None):
+        engine=None,
+        n_workers: int = 8):
     """Write waterbodies CSVs out from the interstitial DB.
 
     Arguments
@@ -269,14 +271,45 @@ def stack_waterbodies_db_to_csv(
     
     uids : {uids}
         Set of waterbody IDs. If not specified, use all.
+
+    engine : Engine
+        Database engine. If not specified, use the
+        Waterbodies engine.
+    
+    n_workers : int
+        Number of threads to connect to the database with.
     """
     # connect to the db
     if not engine:
         engine = dea_conflux.db.get_engine_waterbodies()
 
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_factory = sessionmaker(bind=engine)
+    Session = scoped_session(session_factory)
 
+    # Iterate over waterbodies.
+
+    def thread_run(wb: dea_conflux.db.Waterbody):
+        session = Session()
+
+        # get all observations
+        logger.debug(f'Processing {wb.wb_name}')
+        obs = session.query(dea_conflux.db.WaterbodyObservation).filter(
+            dea_conflux.db.WaterbodyObservation.wb_id == wb.wb_id
+        ).order_by(dea_conflux.db.WaterbodyObservation.date.desc()).all()
+
+        rows = [{
+            'date': waterbodies_format_date(ob.date),
+            'pc_wet': ob.pc_wet * 100,
+            'px_wet': ob.px_wet,
+        } for ob in obs]
+
+        df = pd.DataFrame(rows, columns=['date', 'pc_wet', 'px_wet'])
+        df.to_csv(out_path + '/' + wb.wb_name[:4] + '/' + wb.wb_name + '.csv',
+                  header=True, index=False)
+
+        Session.remove()
+
+    session = Session()
     if not uids:
         # query all
         waterbodies = session.query(dea_conflux.db.Waterbody).all()
@@ -284,26 +317,19 @@ def stack_waterbodies_db_to_csv(
         # query some
         waterbodies = session.query(dea_conflux.db.Waterbody).filter(
             dea_conflux.db.Waterbody.wb_name.in_(uids)).all()
+
+    # Write all CSVs with a thread pool.
+    with tqdm(total=len(waterbodies)) as bar:
+        # https://stackoverflow.com/a/63834834/1105803
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=n_workers) as executor:
+            futures = {executor.submit(thread_run, wb): wb
+                       for wb in waterbodies}
+            for future in concurrent.futures.as_completed(futures):
+                # _ = futures[future]
+                bar.update(1)
     
-    if verbose:
-        waterbodies = tqdm(waterbodies)
-    for wb in waterbodies:
-        # get all observations
-        if verbose:
-            logger.info(f'Processing {wb.wb_name}')
-        obs = session.query(dea_conflux.db.WaterbodyObservation).filter(
-            dea_conflux.db.WaterbodyObservation.wb_id == wb.wb_id
-        ).order_by(dea_conflux.db.WaterbodyObservation.date.desc()).all()
-
-        rows = [{
-            'date': waterbodies_format_date(ob.date),
-            'px_wet': ob.px_wet,
-            'pc_wet': ob.pc_wet * 100,
-        } for ob in obs]
-
-        df = pd.DataFrame(rows, columns=['date', 'px_wet', 'pc_wet'])
-        df.to_csv(out_path + '/' + wb.wb_name[:4] + '/' + wb.wb_name + '.csv',
-                  header=True, index=False)
+    Session.remove()
 
 
 def stack(
