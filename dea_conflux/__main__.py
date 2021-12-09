@@ -20,6 +20,7 @@ from datacube.ui import click as ui
 from rasterio.errors import RasterioIOError
 
 import dea_conflux.__version__
+import dea_conflux.db
 import dea_conflux.drill
 import dea_conflux.hopper
 import dea_conflux.io
@@ -351,14 +352,20 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
 @click.option(
     "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
 )
+@click.option(
+    "--db/--no-db", default=True, help="Write to the Waterbodies database."
+)
 def run_from_queue(
-    plugin, queue, shapefile, output, partial, overwrite, overedge, verbose, timeout
+    plugin, queue, shapefile, output, partial, overwrite, overedge, verbose, timeout, db
 ):
     """
     Run dea-conflux on a scene from a queue.
     """
     logging_setup(verbose)
     # TODO(MatthewJA): Refactor this to combine with run-one.
+    # TODO(MatthewJA): Generalise the database to not just Waterbodies.
+    # Maybe this is really easy? It's all done by env vars,
+    # so perhaps a documentation/naming change is all we need.
 
     # Read the plugin as a Python module.
     plugin = run_plugin(plugin)
@@ -398,6 +405,9 @@ def run_from_queue(
     sqs = boto3.resource("sqs")
     queue = sqs.get_queue_by_name(QueueName=queue)
     queue_url = queue.url
+
+    if db:
+        engine = dea_conflux.db.get_engine_waterbodies()
 
     dc = datacube.Datacube(app="dea-conflux-drill")
     message_retries = 10
@@ -455,9 +465,17 @@ def run_from_queue(
                         dc=dc,
                     )
 
-                    dea_conflux.io.write_table(
+                    pq_filename = dea_conflux.io.write_table(
                         plugin.product_name, id_, centre_date, table, output
                     )
+                    if db:
+                        logger.debug(f'Writing {pq_filename} to DB')
+                        dea_conflux.stack.stack_waterbodies_db(
+                            paths=[pq_filename],
+                            verbose=verbose,
+                            engine=engine,
+                            drop=False,
+                        )
                 except KeyError as keyerr:
                     logger.error(f"Found {id_} has KeyError: {str(keyerr)}")
                     dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
