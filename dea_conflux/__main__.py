@@ -737,6 +737,7 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, jobs):
 )
 def db_to_csv(output, verbose, jobs):
     """Output Waterbodies-style CSVs from a database."""
+    logging_setup(verbose)
     dea_conflux.stack.stack_waterbodies_db_to_csv(
         out_path=output, verbose=verbose > 0,
         n_workers=jobs)
