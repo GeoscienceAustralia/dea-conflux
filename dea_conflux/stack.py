@@ -299,7 +299,7 @@ def stack_waterbodies_db_to_csv(
 
         rows = [{
             'date': waterbodies_format_date(ob.date),
-            'pc_wet': ob.pc_wet * 100,
+            'pc_wet': round(ob.pc_wet * 100, 2),
             'px_wet': ob.px_wet,
         } for ob in obs]
 
