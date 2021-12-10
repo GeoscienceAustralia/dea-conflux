@@ -65,7 +65,7 @@ class Waterbody(WaterbodyBase):
 class WaterbodyObservation(WaterbodyBase):
     __tablename__ = 'waterbody_observations'
     obs_id = Column(Integer, primary_key=True)
-    wb_id = Column(Integer, ForeignKey("waterbodies.wb_id"))
+    wb_id = Column(Integer, ForeignKey("waterbodies.wb_id"), index=True)
     px_wet = Column(Float)  # allows nan
     pc_wet = Column(Float)
     pc_missing = Column(Float)
