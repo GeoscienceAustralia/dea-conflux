@@ -2,4 +2,5 @@ datacube
 psycopg2-binary
 SQLAlchemy>=1.4.27
 python-geohash
-s3fs==2021.11.0
+aiobotocore==1.4.1
+s3fs==2021.09.0 
