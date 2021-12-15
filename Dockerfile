@@ -6,6 +6,7 @@ ENV LC_ALL=C.UTF-8
 
 # Install our Python requirements
 COPY requirements.txt /conf/
+COPY constraints.txt /conf/
 ARG py_env_path
 RUN echo "" > /conf/constraints.txt
 RUN cat /conf/requirements.txt \
