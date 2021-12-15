@@ -695,7 +695,7 @@ def push_to_queue(txt, queue, verbose):
 @click.option(
     "--drop/--no-drop", default=False, help="Drop database if applicable. Default False"
 )
-def stack(parquet_path, output, pattern, mode, verbose, drop, jobs):
+def stack(parquet_path, output, pattern, mode, verbose, drop):
     """
     Stack outputs of dea-conflux into other formats.
     """
