@@ -352,9 +352,7 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
 @click.option(
     "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
 )
-@click.option(
-    "--db/--no-db", default=True, help="Write to the Waterbodies database."
-)
+@click.option("--db/--no-db", default=True, help="Write to the Waterbodies database.")
 def run_from_queue(
     plugin, queue, shapefile, output, partial, overwrite, overedge, verbose, timeout, db
 ):
@@ -469,7 +467,7 @@ def run_from_queue(
                         plugin.product_name, id_, centre_date, table, output
                     )
                     if db:
-                        logger.debug(f'Writing {pq_filename} to DB')
+                        logger.debug(f"Writing {pq_filename} to DB")
                         dea_conflux.stack.stack_waterbodies_db(
                             paths=[pq_filename],
                             verbose=verbose,
@@ -687,7 +685,7 @@ def push_to_queue(txt, queue, verbose):
 )
 @click.option(
     "--mode",
-    type=click.Choice(["waterbodies", "waterbodies_db"]),
+    type=click.Choice(["waterbodies", "waterbodies_db", "wit_tooling"]),
     default="waterbodies",
     required=False,
 )
@@ -705,10 +703,11 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
     mode_map = {
         "waterbodies": dea_conflux.stack.StackMode.WATERBODIES,
         "waterbodies_db": dea_conflux.stack.StackMode.WATERBODIES_DB,
+        "wit_tooling": dea_conflux.stack.StackMode.WITTOOLING,
     }
 
     kwargs = {}
-    if mode == "waterbodies":
+    if mode == "waterbodies" or mode == "wit_tooling":
         kwargs["output_dir"] = output
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
@@ -733,14 +732,17 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
 )
 @click.option("-v", "--verbose", count=True)
 @click.option(
-    "--jobs", "-j", default=8, help="Number of workers",
+    "--jobs",
+    "-j",
+    default=8,
+    help="Number of workers",
 )
 def db_to_csv(output, verbose, jobs):
     """Output Waterbodies-style CSVs from a database."""
     logging_setup(verbose)
     dea_conflux.stack.stack_waterbodies_db_to_csv(
-        out_path=output, verbose=verbose > 0,
-        n_workers=jobs)
+        out_path=output, verbose=verbose > 0, n_workers=jobs
+    )
 
 
 if __name__ == "__main__":

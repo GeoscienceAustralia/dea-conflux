@@ -1,5 +1,5 @@
 datacube==1.8.6
 psycopg2-binary==2.9.2
-SQLAlchemy>=1.4.27
 python-geohash==0.8.5
 s3fs==0.4.2
+SQLAlchemy>=1.4.27

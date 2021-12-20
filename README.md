@@ -56,7 +56,7 @@ Plugins must provide:
 - a summarise function.
 
 #### Transform function
-The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation. 
+The transform is run to produce rasters to summarise and should contain operations like masking and band index calculation.
 Transform will be applied to the whole scene, not to a polygon if you are using a polygon.
 
 #### Summarise function
