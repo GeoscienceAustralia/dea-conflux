@@ -28,7 +28,10 @@ TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
 TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
 
 TEST_PQ_DATA = HERE / "data" / "canberra_waterbodies_pq"
-TEST_PQ_DATA_FILE = TEST_PQ_DATA / 'waterbodies_234fec8f-1de7-488a-a115-818ebd4bfec4_20000202-234328-500000.pq'
+TEST_PQ_DATA_FILE = (
+    TEST_PQ_DATA
+    / "waterbodies_234fec8f-1de7-488a-a115-818ebd4bfec4_20000202-234328-500000.pq"
+)
 
 TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
 TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
@@ -65,7 +68,8 @@ def mock_aws_response() -> None:
 
 def test_waterbodies_stacking(tmp_path):
     dea_conflux.stack.stack(
-        TEST_PQ_DATA, mode=dea_conflux.stack.StackMode.WATERBODIES,
+        TEST_PQ_DATA,
+        mode=dea_conflux.stack.StackMode.WATERBODIES,
         output_dir=tmp_path / "testout",
     )
     uid = LAKE_GINNINDERRA_ID
@@ -108,22 +112,17 @@ def test_find_parquet_files_s3(mock_aws_response):
     for key in not_parquet_keys + parquet_keys_constrained:
         assert f"s3://{bucket_name}/{key}" not in res
 
-        
+
 def test_waterbodies_db_stacking():
     engine = dea_conflux.db.get_engine_inmem()
     Session = dea_conflux.stack.sessionmaker(bind=engine)
     session = Session()
     dea_conflux.stack.stack_waterbodies_db(
-        paths=[TEST_PQ_DATA_FILE],
-        verbose=True,
-        engine=engine,
-        uids=None)
-    all_obs = list(session.query(
-        dea_conflux.db.WaterbodyObservation).all())
+        paths=[TEST_PQ_DATA_FILE], verbose=True, engine=engine, uids=None
+    )
+    all_obs = list(session.query(dea_conflux.db.WaterbodyObservation).all())
     # Check all observations exist
     assert len(all_obs) == 445
     # Check time is correct
     correct_time = datetime.datetime(2000, 2, 2, 23, 43, 28, 500000)
-    assert all(
-        obs.date == correct_time
-        for obs in all_obs)
+    assert all(obs.date == correct_time for obs in all_obs)

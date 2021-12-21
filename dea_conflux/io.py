@@ -210,9 +210,7 @@ def write_table(
         foldername = foldername + "/"
 
     output_path = output + foldername + filename
-    pyarrow.parquet.write_table(
-        table_pa, output_path, compression="GZIP"
-    )
+    pyarrow.parquet.write_table(table_pa, output_path, compression="GZIP")
     return output_path
 
 
