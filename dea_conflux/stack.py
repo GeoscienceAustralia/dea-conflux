@@ -37,23 +37,8 @@ class StackMode(enum.Enum):
     WITTOOLING = "wit_tooling"
 
 
-def wit_tooling_format_date(date: datetime.datetime) -> str:
-    """Format a date to match DEA wit tooling.
-
-    Arguments
-    ---------
-    date : datetime
-
-    Returns
-    -------
-    str
-    """
-    # e.g. 1987-05-24T01:30:18Z
-    return date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def waterbodies_format_date(date: datetime.datetime) -> str:
-    """Format a date to match DEA Waterbodies.
+def stack_format_date(date: datetime.datetime) -> str:
+    """Format a date to match DEA conflux products datetime.
 
     Arguments
     ---------
@@ -146,7 +131,7 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
         # the pq file will be empty if no polygon belongs to that scene
         if df.empty is not True:
             date = dea_conflux.io.string_to_date(df.attrs["date"])
-            date = wit_tooling_format_date(date)
+            date = stack_format_date(date)
             df.loc[:, "date"] = date
             wit_df_list.append(df)
 
@@ -193,7 +178,7 @@ def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
     for path in paths:
         df = dea_conflux.io.read_table(path)
         date = dea_conflux.io.string_to_date(df.attrs["date"])
-        date = waterbodies_format_date(date)
+        date = stack_format_date(date)
         # df is ids x bands
         # for each ID...
         for uid, series in df.iterrows():
@@ -369,7 +354,7 @@ def stack_waterbodies_db_to_csv(
 
         rows = [
             {
-                "date": waterbodies_format_date(ob.date),
+                "date": stack_format_date(ob.date),
                 "pc_wet": round(ob.pc_wet * 100, 2),
                 "px_wet": ob.px_wet,
             }
