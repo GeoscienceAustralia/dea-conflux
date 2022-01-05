@@ -7,11 +7,12 @@ export PRODUCT_CATALOG=https://raw.githubusercontent.com/GeoscienceAustralia/dea
 docker-compose exec -T index datacube system init --no-default-types --no-init-users
 # Setup metadata types
 docker-compose exec -T index datacube metadata add "$METADATA_CATALOG"
-# Index products we care about for dea-waterbodies
+# Download the product catalog
 docker-compose exec -T index wget "$PRODUCT_CATALOG" -O product_list.csv
+# Add products for testing from the product list
 docker-compose exec -T index bash -c "tail -n+2 product_list.csv | grep 'wofs_albers\|ls7_fc_albers\|ga_ls_wo_3' | awk -F , '{print \$2}' | xargs datacube -v product add"
 
-# Index WOfS and Coastline
+# Index test data
 cat > index_tiles.sh <<EOF
 # Index one WOfS and FC tile (Belconnen)
 # WOfLs

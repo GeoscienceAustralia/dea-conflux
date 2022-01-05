@@ -39,4 +39,15 @@ jovyan@jupyter:dea-conflux$ pytest tests
 Tests are automatically triggered in GitHub for any pushes to any branch. This behaviour is controlled by /.github/workflows/test.yml.
 
 ## Adding new test data
-- that datacube needs to have certain things in it
+- the docker test datacube needs to have datasets in it to run tests on
+- to add a new test dataset, first make sure the product is indexed in the test datacube in `setup_test_datacube.sh`
+- this is done with a line like the following:
+
+```bash
+docker-compose exec -T index bash -c "tail -n+2 product_list.csv | grep 'ga_ls_wo_3' | awk -F , '{print \$2}' | xargs datacube -v product add"
+```
+- add the individual dataset with `s3-to-dc` inside the heredoc (with the others):
+
+```bash
+s3-to-dc 's3://dea-public-data/derivative/ga_ls_wo_3/1-6-0/090/084/2000/02/02/*.json' --stac --no-sign-request --skip-lineage 'ga_ls_wo_3'
+```
