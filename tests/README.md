@@ -22,16 +22,18 @@ root@fe004etc:/code# pytest tests
 ```
 
 ## Running tests in sandbox
-To run tests, use `pytest` from the dea-conflux repository root, in the terminal:
-
-```bash
-jovyan@jupyter:dea-conflux$ pytest tests
-```
-
 The tests assume that `dea-conflux` is installed. To install, follow the instructions in the [main README](../README.md). You can install `dea-conflux` locally for testing using `pip`:
 
 ```bash
 jovyan@jupyter:dea-conflux$ pip install -e .
+```
+
+Remember the dot (.)! 
+
+To run tests, use `pytest` from the dea-conflux repository root, in the terminal:
+
+```bash
+jovyan@jupyter:dea-conflux$ pytest tests
 ```
 
 Tests are automatically triggered in GitHub for any pushes to any branch. This behaviour is controlled by /.github/workflows/test.yml.
