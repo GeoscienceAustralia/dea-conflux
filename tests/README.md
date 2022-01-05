@@ -1,19 +1,15 @@
 # DEA Conflux testing readme
 
-To run tests, use the package `pytest`
+To run tests, use `pytest` from the root:
 
+```bash
+/dea-conflux:~ pytest tests
+```
 
-You need to have dea-conflux installed
+The tests assume that `dea-conflux` is installed. To install, follow the instructions in the [main README](../README.md). You can install `dea-conflux` locally for testing using `pip`:
 
+```bash
+/dea-conflux:~ pip -e .
+```
 
-You can install dea-conflux by following the instructions in the README.md in the 
-root of the dea-conflux repo.
-
-
-You can install dea-conflux locally using pip: `pip -e dea-conflux`
-
-
-To run tests,  run `pytest .` from the root in the dea-conflux repo on the command line
-
-Tests are automatically triggered in github for all pushes to any branch.
-This behaviour can be changed in github workflows test.yml
+Tests are automatically triggered in GitHub for any pushes to any branch. This behaviour is controlled by /.github/workflows/test.yml.
