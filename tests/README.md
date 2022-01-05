@@ -36,7 +36,7 @@ To run tests, use `pytest` from the dea-conflux repository root, in the terminal
 jovyan@jupyter:dea-conflux$ pytest tests
 ```
 
-Tests are automatically triggered in GitHub for any pushes to any branch. This behaviour is controlled by /.github/workflows/test.yml.
+Tests are automatically triggered in GitHub for any pushes to any branch. This behaviour is controlled by `/.github/workflows/test.yml`.
 
 ## Adding new test data
 - the docker test datacube needs to have datasets in it to run tests on
