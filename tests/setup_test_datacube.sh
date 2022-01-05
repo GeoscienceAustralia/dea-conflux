@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -ex
+export METADATA_CATALOG=https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/a4f39b485b33608a016032d9987251881fec4b6f/workspaces/sandbox-metadata.yaml
+export PRODUCT_CATALOG=https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/87ca056fa62900596cbf05612da9033fc763009c/workspaces/sandbox-products.csv
 
 # Setup datacube
 docker-compose exec -T index datacube system init --no-default-types --no-init-users
