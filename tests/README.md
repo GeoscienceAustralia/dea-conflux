@@ -6,18 +6,20 @@
 - to launch, `docker-compose up -d` starts the docker
 - you should have three containers running. You can check   this by running `docker-compose ps`
 - from outside docker, run the shell script `tests/setup_test_datacube.sh` to set up the test datacube. This initialises the docker container datacube, downloads datasets required for testing and indexes them into this datacube. 
-- Execute bash within the docker container conflux `docker-compose exec conflux bash`
 - this process sets up a datacube and an environment to run conflux.
 - now you can run tests in docker <img src="https://emojis.slackmojis.com/emojis/images/1507772920/3024/penguin_dance.gif?1507772920" alt="dancing penguin" width="16"/>
+- If the docker container needs rebuilding run `docker-compose build` 
+- Once you are done with testing, you can shut down the containers with `docker-compose down`
 
 
 ## Running tests in Docker
+- Once containers are up, you can run testing with the command `docker-compose exec conflux pytest` 
+- If you want to run the tests interactively and have access to the interactive debugger, 
+  Execute bash within the docker container conflux `docker-compose exec conflux bash` and then run `pytest` from the code directory:
 
-- You need to have conflux installed
-- You need to have a datacube
-- that datacube needs to have certain things in it
-- There is a script that does the initialisation
-- The environment can all be configured with docker
+```bash
+root@fe004etc:/code# pytest tests
+```
 
 ## Running tests in sandbox
 To run tests, use `pytest` from the root (on the command line):
@@ -33,3 +35,6 @@ The tests assume that `dea-conflux` is installed. To install, follow the instruc
 ```
 
 Tests are automatically triggered in GitHub for any pushes to any branch. This behaviour is controlled by /.github/workflows/test.yml.
+
+## Adding new test data
+- that datacube needs to have certain things in it
