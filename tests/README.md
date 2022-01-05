@@ -8,7 +8,7 @@
 - from outside docker, run the shell script `tests/setup_test_datacube.sh` to set up the test datacube. This initialises the docker container datacube, downloads datasets required for testing and indexes them into this datacube. 
 - Execute bash within the docker container conflux `docker-compose exec conflux bash`
 - this process sets up a datacube and an environment to run conflux.
-- now you can run tests in docker ![dancing-penguin](https://emojis.slackmojis.com/emojis/images/1507772920/3024/penguin_dance.gif?1507772920)
+- now you can run tests in docker <img src="https://emojis.slackmojis.com/emojis/images/1507772920/3024/penguin_dance.gif?1507772920" alt="dancing penguin" width="16"/>
 
 
 ## Running tests in Docker
