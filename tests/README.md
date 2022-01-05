@@ -1,6 +1,6 @@
 # DEA Conflux testing readme
 
-To run tests, use `pytest` from the root:
+To run tests, use `pytest` from the root (on the command line):
 
 ```bash
 :dea-conflux$ pytest tests
