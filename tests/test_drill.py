@@ -60,16 +60,16 @@ def test_find_datasets_gives_other(dc):
     assert str(datasets["ga_ls_fc_3"].id) == TEST_C3_FC_ID
 
 
-#def test_drill_integration(dc):
-#    plugin = run_plugin(TEST_PLUGIN_OK)
-#    shp = load_and_reproject_shapefile(TEST_SHP, TEST_ID_FIELD, "EPSG:3577")
-#    drill_result = drill(
-#        plugin, shp, TEST_C3_WO_ID, "EPSG:3577", (-30, 30), partial=True, dc=dc
-#    )
-#    assert len(drill_result) == pytest.approx(86, 1)
-#    # 5 columns, one output and 4 directions
-#    assert len(drill_result.columns) == 5
-#    assert "conflux_n" in drill_result.columns
+def test_drill_integration(dc):
+    plugin = run_plugin(TEST_PLUGIN_OK)
+    shp = load_and_reproject_shapefile(TEST_SHP, TEST_ID_FIELD, "EPSG:3577")
+    drill_result = drill(
+        plugin, shp, TEST_C3_WO_ID, "EPSG:3577", (-30, 30), partial=True, dc=dc
+    )
+    assert len(drill_result) == pytest.approx(86, 1)
+    # 5 columns, one output and 4 directions
+    assert len(drill_result.columns) == 5
+    assert "conflux_n" in drill_result.columns
 
 
 #def test_get_directions(dc):
