@@ -20,7 +20,9 @@ TEST_ID_FIELD = "uid"
 
 
 # Path to a polygon overlapping the test C3 WOfL north boundary
-TEST_NORTH_OVERLAP = HERE / "data" / "north_overlap.shp"
+TEST_SOUTH_OVERLAP = "/code/tests/data/test_south.shp"
+TEST_SOUTH_OVERLAP = HERE / "data" / "test_south.shp"
+
 
 TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
 TEST_PLUGIN_OK_C3 = HERE / "data" / "sum_wet_c3.conflux.py"
@@ -29,6 +31,7 @@ TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.confl
 
 TEST_C3_WO_ID = "4c116812-58e5-52fb-ac71-4cdf12bf6943"
 TEST_C3_FC_ID = "e842fd8a-0cc1-5b74-986c-6cafb1c9862a"
+TEST_OVERLAY_ID = "ce5fee76-f699-5dc8-b869-ff17b3d6da42"
 TEST_C3_WO_STH_ID = "4c116812-58e5-52fb-ac71-4cdf12bf6943"
 TEST_C3_WO_NTH_ID = "e043bffd-05c5-55c3-8740-a973842f7a05"
 
@@ -72,12 +75,12 @@ def test_drill_integration(dc):
     assert "conflux_n" in drill_result.columns
 
 
-#def test_get_directions(dc):
-#    gdf = gpd.read_file(TEST_NORTH_OVERLAP)
-#    extent = dc.index.datasets.get(TEST_C3_WO_NTH_ID).extent.geom
-#    intersection = gdf.geometry.intersection(extent)
-#    dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
-#    assert dirs == {"North"}
+def test_get_directions(dc):
+    gdf = gpd.read_file(TEST_SOUTH_OVERLAP)
+    extent = dc.index.datasets.get(TEST_OVERLAY_ID).extent.geom
+    intersection = gdf.geometry.intersection(extent)
+    dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
+    assert dirs == {"South"}
 
 
 def test_south_overedge(dc):
