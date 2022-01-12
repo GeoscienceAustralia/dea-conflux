@@ -4,8 +4,8 @@ product_name = 'sum_pv_wet'
 version = '0.0.1'
 
 input_products = {
-    'wofs_albers': ['water'],
-    'ls7_fc_albers': ['PV'],
+    'ga_ls_wo_3': ['water'],
+    'ga_ls_fc_3': ['PV'],
 }
 
 
