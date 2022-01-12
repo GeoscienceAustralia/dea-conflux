@@ -20,7 +20,7 @@ TEST_ID_FIELD = "uid"
 
 
 # Path to a polygon overlapping the test C3 WOfL north boundary
-TEST_SOUTH_OVERLAP = HERE / "data" / "test_south_overlay.shp"
+TEST_SOUTH_OVERLAP = HERE / "data" / "small_south_overlay.shp"
 
 
 TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
