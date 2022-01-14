@@ -348,7 +348,7 @@ def stack_waterbodies_db_to_csv(
         obs = (
             session.query(dea_conflux.db.WaterbodyObservation)
             .filter(dea_conflux.db.WaterbodyObservation.wb_id == wb.wb_id)
-            .order_by(dea_conflux.db.WaterbodyObservation.date.desc())
+            .order_by(dea_conflux.db.WaterbodyObservation.date.asc())
             .all()
         )
 
