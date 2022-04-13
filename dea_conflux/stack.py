@@ -12,6 +12,7 @@ import concurrent.futures
 import datetime
 import enum
 import logging
+import multiprocessing
 import os
 import re
 from pathlib import Path
@@ -107,6 +108,27 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     return all_paths
 
 
+def load_pq_file(path):
+    """Load Parquet file from given path.
+
+    Arguments
+    ---------
+    path : str
+        Path (s3 or local) to search for Parquet files.
+    Returns
+    -------
+    [pandas.DataFrame]
+        pandas.DataFrame
+    """
+    df = dea_conflux.io.read_table(path)
+    # the pq file will be empty if no polygon belongs to that scene
+    if df.empty is not True:
+        date = dea_conflux.io.string_to_date(df.attrs["date"])
+        date = stack_format_date(date)
+        df.loc[:, "date"] = date
+    return df
+
+
 def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     """Stack wit tooling parquet result files into CSVs.
 
@@ -125,15 +147,15 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     if verbose:
         paths = tqdm(paths)
 
-    for path in paths:
-        print(path)
-        df = dea_conflux.io.read_table(path)
-        # the pq file will be empty if no polygon belongs to that scene
-        if df.empty is not True:
-            date = dea_conflux.io.string_to_date(df.attrs["date"])
-            date = stack_format_date(date)
-            df.loc[:, "date"] = date
-            wit_df_list.append(df)
+    with tqdm(total=len(paths)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count()
+        ) as executor:
+            wit_df_list = []
+            futures = {executor.submit(load_pq_file, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                wit_df_list.append(future.result())
+                bar.update(1)
 
     if len(wit_df_list) == 0:
         logger.warning("Cannot find any available WIT result.")
