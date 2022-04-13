@@ -241,8 +241,13 @@ def main():
     default=True,
     help="Include data from over the scene boundary.",
 )
+@click.option(
+    "--dump-empty-dataframe/--not-dump-empty-dataframe", 
+    default=True,
+    help="Not matter DataFrame is empty or not, always as it as Parquet file.",
+)
 @click.option("-v", "--verbose", count=True)
-def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
+def run_one(plugin, uuid, shapefile, output, partial, overedge, dump_empty_dataframe, verbose):
     """
     Run dea-conflux on one scene.
     """
@@ -296,10 +301,14 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
             overedge=overedge,
             dc=dc,
         )
-        centre_date = dc.index.datasets.get(uuid).center_time
-        dea_conflux.io.write_table(
-            plugin.product_name, uuid, centre_date, table, output
-        )
+
+        # if always dump drill result, or drill result is not empty,
+        # dump that dataframe as PQ file
+        if (dump_empty_dataframe) or (not table.empty):
+            centre_date = dc.index.datasets.get(uuid).center_time
+            dea_conflux.io.write_table(
+                plugin.product_name, uuid, centre_date, table, output
+            )
     except KeyError as keyerr:
         logger.error(f"Found {uuid} has KeyError: {str(keyerr)}")
     except TypeError as typeerr:
