@@ -44,7 +44,6 @@ py==1.11.0
 pyarrow==6.0.1
 pycparser==2.21
 pyparsing==3.0.6
-pyproj==3.2.1
 pyrsistent==0.18.0
 pytest==6.2.5
 python-dateutil==2.8.2

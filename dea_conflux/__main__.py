@@ -241,8 +241,15 @@ def main():
     default=True,
     help="Include data from over the scene boundary.",
 )
+@click.option(
+    "--dump-empty-dataframe/--not-dump-empty-dataframe",
+    default=True,
+    help="Not matter DataFrame is empty or not, always as it as Parquet file.",
+)
 @click.option("-v", "--verbose", count=True)
-def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
+def run_one(
+    plugin, uuid, shapefile, output, partial, overedge, dump_empty_dataframe, verbose
+):
     """
     Run dea-conflux on one scene.
     """
@@ -296,10 +303,14 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
             overedge=overedge,
             dc=dc,
         )
-        centre_date = dc.index.datasets.get(uuid).center_time
-        dea_conflux.io.write_table(
-            plugin.product_name, uuid, centre_date, table, output
-        )
+
+        # if always dump drill result, or drill result is not empty,
+        # dump that dataframe as PQ file
+        if (dump_empty_dataframe) or (not table.empty):
+            centre_date = dc.index.datasets.get(uuid).center_time
+            dea_conflux.io.write_table(
+                plugin.product_name, uuid, centre_date, table, output
+            )
     except KeyError as keyerr:
         logger.error(f"Found {uuid} has KeyError: {str(keyerr)}")
     except TypeError as typeerr:
@@ -353,8 +364,23 @@ def run_one(plugin, uuid, shapefile, output, partial, overedge, verbose):
     "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
 )
 @click.option("--db/--no-db", default=True, help="Write to the Waterbodies database.")
+@click.option(
+    "--dump-empty-dataframe/--not-dump-empty-dataframe",
+    default=True,
+    help="Not matter DataFrame is empty or not, always as it as Parquet file.",
+)
 def run_from_queue(
-    plugin, queue, shapefile, output, partial, overwrite, overedge, verbose, timeout, db
+    plugin,
+    queue,
+    shapefile,
+    output,
+    partial,
+    overwrite,
+    overedge,
+    verbose,
+    timeout,
+    db,
+    dump_empty_dataframe,
 ):
     """
     Run dea-conflux on a scene from a queue.
@@ -463,17 +489,20 @@ def run_from_queue(
                         dc=dc,
                     )
 
-                    pq_filename = dea_conflux.io.write_table(
-                        plugin.product_name, id_, centre_date, table, output
-                    )
-                    if db:
-                        logger.debug(f"Writing {pq_filename} to DB")
-                        dea_conflux.stack.stack_waterbodies_db(
-                            paths=[pq_filename],
-                            verbose=verbose,
-                            engine=engine,
-                            drop=False,
+                    # if always dump drill result, or drill result is not empty,
+                    # dump that dataframe as PQ file
+                    if (dump_empty_dataframe) or (not table.empty):
+                        pq_filename = dea_conflux.io.write_table(
+                            plugin.product_name, id_, centre_date, table, output
                         )
+                        if db:
+                            logger.debug(f"Writing {pq_filename} to DB")
+                            dea_conflux.stack.stack_waterbodies_db(
+                                paths=[pq_filename],
+                                verbose=verbose,
+                                engine=engine,
+                                drop=False,
+                            )
                 except KeyError as keyerr:
                     logger.error(f"Found {id_} has KeyError: {str(keyerr)}")
                     dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)

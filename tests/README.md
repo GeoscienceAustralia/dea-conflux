@@ -5,16 +5,16 @@
 - use `docker-compose build` from the root directory
 - to launch, `docker-compose up -d` starts the docker
 - you should have three containers running. You can check   this by running `docker-compose ps`
-- from outside docker, run the shell script `tests/setup_test_datacube.sh` to set up the test datacube. This initialises the docker container datacube, downloads datasets required for testing and indexes them into this datacube. 
+- from outside docker, run the shell script `tests/setup_test_datacube.sh` to set up the test datacube. This initialises the docker container datacube, downloads datasets required for testing and indexes them into this datacube.
 - this process sets up a datacube and an environment to run conflux.
 - now you can run tests in docker <img src="https://emojis.slackmojis.com/emojis/images/1507772920/3024/penguin_dance.gif?1507772920" alt="dancing penguin" width="16"/>
-- If the docker container needs rebuilding run `docker-compose build` 
+- If the docker container needs rebuilding run `docker-compose build`
 - Once you are done with testing, you can shut down the containers with `docker-compose down`
 
 
 ## Running tests in Docker
-- Once containers are up, you can run testing with the command `docker-compose exec conflux pytest` 
-- If you want to run the tests interactively and have access to the interactive debugger, 
+- Once containers are up, you can run testing with the command `docker-compose exec conflux pytest`
+- If you want to run the tests interactively and have access to the interactive debugger,
   Execute bash within the docker container conflux `docker-compose exec conflux bash` and then run `pytest` from the code directory:
 
 ```bash
@@ -28,7 +28,7 @@ The tests assume that `dea-conflux` is installed. To install, follow the instruc
 jovyan@jupyter:dea-conflux$ pip install -e .
 ```
 
-Remember the dot (.)! 
+Remember the dot (.)!
 
 To run tests, use `pytest` from the dea-conflux repository root, in the terminal:
 
