@@ -167,9 +167,9 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     outpath = str(outpath)  # handle Path type
     logger.info("Writing...")
 
-    wit_result.to_csv(f"{outpath}/debug.csv", index_label="date")
+    wit_result.to_csv(f"{outpath}/debug.csv", index_label="feature_id")
 
-    for feature_id in sorted(set(list(wit_result.index))):
+    for feature_id in tqdm(sorted(set(list(wit_result.index)))):
         select_df = wit_result[wit_result.index == feature_id]
         filename = f"{outpath}/{feature_id}.csv"
         logger.info(f"Writing {filename}")
