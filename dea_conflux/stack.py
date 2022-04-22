@@ -167,7 +167,7 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     outpath = str(outpath)  # handle Path type
     logger.info("Writing...")
 
-    wit_result.to_csv(f"{outpath}/debug.csv", index_label="feature_id")
+    wit_result.to_parquet(f"{outpath}/overall.pq", index=True)
 
     for feature_id in tqdm(sorted(set(list(wit_result.index)))):
         select_df = wit_result[wit_result.index == feature_id]
