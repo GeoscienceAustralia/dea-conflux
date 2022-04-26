@@ -129,6 +129,28 @@ def load_pq_file(path):
     return df
 
 
+def save_df_as_csv(single_polygon_df, feature_id, outpath):
+    """Save polygon base pandas.DataFrame as
+    CSV file in output folder.
+
+    Arguments
+    ---------
+    single_polygon_df: pandas.Dataframe
+        The polygon base dea-conflux drill result.
+    feature_id: str
+        Polygon unique ID.
+    outpath : str
+        Path (s3 or local) to save the CSV files.
+    """
+    # feature_id, single_polygon_df = item
+    filename = f"{outpath}/{feature_id}.csv"
+    if not outpath.startswith("s3://"):
+        os.makedirs(Path(filename).parent, exist_ok=True)
+    with fsspec.open(filename, "w") as f:
+        single_polygon_df.to_csv(f, index_label="feature_id")
+    return filename
+
+
 def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     """Stack wit tooling parquet result files into CSVs.
 
@@ -136,7 +158,6 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     ---------
     paths : [str]
         List of paths to Parquet files to stack.
-
     output_dir : str
         Path to output directory.
 
@@ -144,12 +165,10 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     """
     wit_df_list = []
     logger.info("Reading...")
-    if verbose:
-        paths = tqdm(paths)
 
     with tqdm(total=len(paths)) as bar:
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=multiprocessing.cpu_count()
+            max_workers=multiprocessing.cpu_count() * 16
         ) as executor:
             wit_df_list = []
             futures = {executor.submit(load_pq_file, path): path for path in paths}
@@ -163,20 +182,41 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
     else:
         wit_result = pd.concat(wit_df_list)
 
+    # delete the temp result to release RAM
+    del wit_df_list
+
     outpath = output_dir
     outpath = str(outpath)  # handle Path type
-    logger.info("Writing...")
 
-    wit_result.to_parquet(f"{outpath}/overall.pq", index=True)
+    logger.info("Writing overall result...")
+    overall_filename = f"{outpath}/overall.pq"
 
-    for feature_id in tqdm(sorted(set(list(wit_result.index)))):
-        select_df = wit_result[wit_result.index == feature_id]
-        filename = f"{outpath}/{feature_id}.csv"
-        logger.info(f"Writing {filename}")
-        if not outpath.startswith("s3://"):
-            os.makedirs(Path(filename).parent, exist_ok=True)
-        with fsspec.open(filename, "w") as f:
-            select_df.to_csv(f, index_label="feature_id")
+    if not outpath.startswith("s3://"):
+        os.makedirs(Path(overall_filename).parent, exist_ok=True)
+    # wit_result.to_parquet(overall_filename, index=True)
+
+    logger.info("Writing polygon base result...")
+
+    polygon_groups = wit_result.groupby(wit_result.index)
+
+    feature_ids = sorted(set(list(wit_result.index)))
+
+    with tqdm(total=len(feature_ids)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count()
+        ) as executor:
+            futures = {
+                executor.submit(
+                    save_df_as_csv,
+                    polygon_groups.get_group(feature_id),
+                    feature_id,
+                    outpath,
+                ): feature_id
+                for feature_id in feature_ids
+            }
+            for future in concurrent.futures.as_completed(futures):
+                _ = future.result()
+                bar.update(1)
 
 
 def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
