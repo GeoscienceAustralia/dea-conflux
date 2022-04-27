@@ -572,7 +572,7 @@ def get_ids(product, expressions, verbose, shapefile, s3):
         for id_ in ids:
             print(id_)
 
-        print(f"not filer ids {len(ids)}")
+        print(f"dataset size: {len(ids)}")
     else:
         out_path = (
             "s3://dea-public-data-dev/waterbodies/conflux/"
