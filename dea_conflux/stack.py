@@ -180,26 +180,26 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
         logger.warning("Cannot find any available WIT result.")
         return 0
     else:
+        logger.info("Concat WIT result...")
         wit_result = pd.concat(wit_df_list)
 
     # delete the temp result to release RAM
     del wit_df_list
 
-    outpath = output_dir
-    outpath = str(outpath)  # handle Path type
-
     logger.info("Writing overall result...")
-    overall_filename = f"{outpath}/overall.pq"
+    overall_filename = f"{output_dir}/overall.pq"
 
-    if not outpath.startswith("s3://"):
+    if not output_dir.startswith("s3://"):
         os.makedirs(Path(overall_filename).parent, exist_ok=True)
-    # wit_result.to_parquet(overall_filename, index=True)
+    wit_result.to_parquet(overall_filename)
 
     logger.info("Writing polygon base result...")
 
     polygon_groups = wit_result.groupby(wit_result.index)
+    feature_ids = wit_result.index.unique()
 
-    feature_ids = sorted(set(list(wit_result.index)))
+    # delete the temp result to release RAM
+    del wit_result
 
     with tqdm(total=len(feature_ids)) as bar:
         with concurrent.futures.ThreadPoolExecutor(
@@ -210,7 +210,7 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
                     save_df_as_csv,
                     polygon_groups.get_group(feature_id),
                     feature_id,
-                    outpath,
+                    output_dir,
                 ): feature_id
                 for feature_id in feature_ids
             }
@@ -484,6 +484,7 @@ def stack(
     """
     path = str(path)
 
+    logger.info(f"Begin to query {path} with pattern {pattern}")
     paths = find_parquet_files(path, pattern)
 
     if mode == StackMode.WATERBODIES:
