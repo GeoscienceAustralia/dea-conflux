@@ -539,16 +539,40 @@ def run_from_queue(
 @click.argument("product", type=str)
 @ui.parsed_search_expressions
 @click.option("-v", "--verbose", count=True)
+@click.option(
+    "--shapefile",
+    "-s",
+    type=click.Path(),
+)
 @click.option("--s3/--stdout", default=False)
-def get_ids(product, expressions, verbose, s3):
+def get_ids(product, expressions, verbose, shapefile, s3):
     """Get IDs based on an expression."""
     logging_setup(verbose)
     dss = dea_conflux.hopper.find_datasets(expressions, [product])
-    ids = [str(ds.id) for ds in dss]
+
+    if shapefile:
+        crs = get_crs(shapefile)
+
+        # Guess the ID field.
+        id_field = guess_id_field(shapefile)
+        logger.debug(f"Guessed ID field: {id_field}")
+
+        # Load and reproject the shapefile.
+        shapefile = load_and_reproject_shapefile(
+            shapefile,
+            id_field,
+            crs,
+        )
+        ids = dea_conflux.drill.filter_dataset(dss, shapefile)
+    else:
+        ids = [str(ds.id) for ds in dss]
+
     if not s3:
         # stdout
         for id_ in ids:
             print(id_)
+
+        print(f"not filer ids {len(ids)}")
     else:
         out_path = (
             "s3://dea-public-data-dev/waterbodies/conflux/"
