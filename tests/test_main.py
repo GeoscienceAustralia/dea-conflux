@@ -13,6 +13,7 @@ HERE = Path(__file__).parent.resolve()
 
 # Path to Canberra test shapefile.
 TEST_SHP = HERE / "data" / "waterbodies_canberra.shp"
+SAME_ID_SHAPE = HERE / "data" / "same_user_id_value.shp"
 TEST_ID_FIELD = "uid"
 
 TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
@@ -67,6 +68,23 @@ def test_get_crs():
 
 def test_guess_id_field():
     id_field = main_module.guess_id_field(TEST_SHP)
+    assert id_field == TEST_ID_FIELD
+
+
+def test_guess_id_field_with_same_value():
+    with pytest.raises(ValueError) as e_info:
+        main_module.guess_id_field(SAME_ID_SHAPE, "same_id")
+        assertTrue("values are not unique" in str(e_info))
+
+
+def test_guess_id_field_with_not_exist_user_id():
+    with pytest.raises(ValueError) as e_info:
+        main_module.guess_id_field(TEST_SHP, "not_exist_id")
+        assertTrue("Couldn't find any ID field" in str(e_info))
+
+
+def test_guess_id_field_with_user_id():
+    id_field = main_module.guess_id_field(TEST_SHP, TEST_ID_FIELD)
     assert id_field == TEST_ID_FIELD
 
 
