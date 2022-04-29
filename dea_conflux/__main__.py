@@ -52,7 +52,7 @@ def get_crs(shapefile_path: str) -> CRS:
     return crs
 
 
-def check_id_field_values(shapefile_path: str, id_field) -> bool:
+def id_field_values_is_unique(shapefile_path: str, id_field) -> bool:
     """Check values of id_field are unique or not in shapefile.
 
     Arguments
@@ -98,7 +98,7 @@ def guess_id_field(shapefile_path: str, use_id: str = "") -> str:
             raise ValueError(f"Couldn't find any ID field in {keys}")
         else:
             # if use_id values are not unique
-            if check_id_field_values(shapefile_path, use_id):
+            if id_field_values_is_unique(shapefile_path, use_id):
                 return use_id
             else:
                 raise ValueError(
@@ -138,7 +138,12 @@ def guess_id_field(shapefile_path: str, use_id: str = "") -> str:
         else:
             if len(guess_result) > 1:
                 logger.info(f"Possible field ids are {' '.join(guess_result)}.")
-            return guess_result[0]
+            if id_field_values_is_unique(shapefile_path, guess_result[0]):
+                return guess_result[0]
+            else:
+                raise ValueError(
+                    f"The {use_id} values are not unique in {shapefile_path}."
+                )
 
 
 def load_and_reproject_shapefile(
