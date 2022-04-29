@@ -74,14 +74,14 @@ def test_guess_id_field():
 def test_guess_id_field_with_same_value():
     with pytest.raises(ValueError) as e_info:
         main_module.guess_id_field(SAME_ID_SHAPE, "same_id")
-        assert "values are not unique" in str(e_info)
+    assert "values are not unique" in str(e_info)
 
 
 def test_guess_id_field_with_not_exist_user_id():
     with pytest.raises(ValueError) as e_info:
         main_module.guess_id_field(TEST_SHP, "not_exist_id")
         # Ideally, we should put these text to a config file
-        assert "Couldn't find any ID field" in str(e_info)
+    assert "Couldn't find any ID field" in str(e_info)
 
 
 def test_guess_id_field_with_user_id():
