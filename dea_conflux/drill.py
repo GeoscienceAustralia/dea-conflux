@@ -416,6 +416,8 @@ def polygon_in_dataset(ds, shapefile):
     if len(filter_shapefile_quick(shapefile, ds)) > 0:
         if len(filter_shapefile_full(shapefile, ds)) > 0:
             return str(ds.id)
+        else:
+            return ""
     else:
         return ""
 
