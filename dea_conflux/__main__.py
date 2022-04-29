@@ -101,8 +101,10 @@ def guess_id_field(shapefile_path: str, use_id: str = "") -> str:
             if check_id_field_values(shapefile_path, use_id):
                 return use_id
             else:
-                raise ValueError(f"The {use_id} values are not unique in {shapefile_path}.")
-    
+                raise ValueError(
+                    f"The {use_id} values are not unique in {shapefile_path}."
+                )
+
     # if not pass use_id, just guess it
     else:
         possible_guesses = [
@@ -122,11 +124,11 @@ def guess_id_field(shapefile_path: str, use_id: str = "") -> str:
         for guess in possible_guesses:
             if guess in keys:
                 guess_result.append(guess)
-        
+
         # if not any guess id found, let us
         # try the lower case
         if len(guess_result) == 0:
-            for guess in possible_guesses:            
+            for guess in possible_guesses:
                 guess = guess.lower()
                 if guess in keys:
                     guess_result.append(guess)
@@ -274,6 +276,13 @@ def main():
     help="REQUIRED. Path to the polygon " "shapefile to run polygon drill on.",
 )
 @click.option(
+    "--use-id",
+    "-u",
+    type=str,
+    default=None,
+    help="Optional. Unique key id in shapefile.",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(),
@@ -298,7 +307,15 @@ def main():
 )
 @click.option("-v", "--verbose", count=True)
 def run_one(
-    plugin, uuid, shapefile, output, partial, overedge, dump_empty_dataframe, verbose
+    plugin,
+    uuid,
+    shapefile,
+    use_id,
+    output,
+    partial,
+    overedge,
+    dump_empty_dataframe,
+    verbose,
 ):
     """
     Run dea-conflux on one scene.
@@ -325,7 +342,7 @@ def run_one(
     resolution = plugin.resolution
 
     # Guess the ID field.
-    id_field = guess_id_field(shapefile)
+    id_field = guess_id_field(shapefile, use_id)
     logger.debug(f"Guessed ID field: {id_field}")
 
     # Load and reproject the shapefile.
@@ -387,6 +404,13 @@ def run_one(
     help="REQUIRED. Path to the polygon " "shapefile to run polygon drill on.",
 )
 @click.option(
+    "--use-id",
+    "-u",
+    type=str,
+    default=None,
+    help="Optional. Unique key id in shapefile.",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(),
@@ -423,6 +447,7 @@ def run_from_queue(
     plugin,
     queue,
     shapefile,
+    use_id,
     output,
     partial,
     overwrite,
@@ -461,7 +486,7 @@ def run_from_queue(
     resolution = plugin.resolution
 
     # Guess the ID field.
-    id_field = guess_id_field(shapefile)
+    id_field = guess_id_field(shapefile, use_id)
     logger.debug(f"Guessed ID field: {id_field}")
 
     # Load and reproject the shapefile.
@@ -594,8 +619,15 @@ def run_from_queue(
     "-s",
     type=click.Path(),
 )
+@click.option(
+    "--use-id",
+    "-u",
+    type=str,
+    default=None,
+    help="Optional. Unique key id in shapefile.",
+)
 @click.option("--s3/--stdout", default=False)
-def get_ids(product, expressions, verbose, shapefile, s3):
+def get_ids(product, expressions, verbose, shapefile, use_id, s3):
     """Get IDs based on an expression."""
     logging_setup(verbose)
     dss = dea_conflux.hopper.find_datasets(expressions, [product])
@@ -604,7 +636,7 @@ def get_ids(product, expressions, verbose, shapefile, s3):
         crs = get_crs(shapefile)
 
         # Guess the ID field.
-        id_field = guess_id_field(shapefile)
+        id_field = guess_id_field(shapefile, use_id)
         logger.debug(f"Guessed ID field: {id_field}")
 
         # Load and reproject the shapefile.
