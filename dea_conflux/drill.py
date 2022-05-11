@@ -10,7 +10,7 @@ import datetime
 import logging
 import multiprocessing
 import warnings
-from itertools import repeat
+from functools import partial
 from types import ModuleType
 from typing import Union
 
@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import rasterio.features
 import shapely.geometry
+import tqdm
 import xarray as xr
 from datacube.utils.geometry import assign_crs
 
@@ -387,11 +388,12 @@ def filter_dataset(dss, shapefile):
     -------
     filtered_datasets: [str]
     """
-    filtered_datasets = []
-
     with multiprocessing.Pool(processes=8) as pool:
-        results = pool.starmap(polygon_in_dataset, zip(dss, repeat(shapefile)))
-    return [e for e in results if e]
+        filtered_datasets = list(
+            tqdm.tqdm(pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss))
+        )
+
+    return [e for e in filtered_datasets if e]
 
 
 def polygon_in_dataset(ds, shapefile):
