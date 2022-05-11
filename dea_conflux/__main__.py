@@ -628,6 +628,7 @@ def run_from_queue(
     "--shapefile",
     "-s",
     type=click.Path(),
+    help="Path to the polygon " "shapefile to run polygon drill on to filter datasets.",
 )
 @click.option(
     "--use-id",

@@ -6,11 +6,11 @@ Geoscience Australia
 """
 
 import collections
-import concurrent.futures
 import datetime
 import logging
 import multiprocessing
 import warnings
+from itertools import repeat
 from types import ModuleType
 from typing import Union
 
@@ -375,7 +375,7 @@ def filter_shapefile_intersections(
 
 
 def filter_dataset(dss, shapefile):
-    """Use multi-thread approach to run polygon_in_dataset method.
+    """Use multi-process approach to run polygon_in_dataset method.
     Only keep the dataset id which can pass polygon_in_dataset check.
 
     Arguments
@@ -389,15 +389,9 @@ def filter_dataset(dss, shapefile):
     """
     filtered_datasets = []
 
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=multiprocessing.cpu_count()
-    ) as executor:
-        filtered_datasets = []
-        futures = {executor.submit(polygon_in_dataset, ds, shapefile): ds for ds in dss}
-        for future in concurrent.futures.as_completed(futures):
-            filtered_datasets.append(future.result())
-
-    return [e for e in filtered_datasets if e]
+    with multiprocessing.Pool(processes=8) as pool:
+        results = pool.starmap(polygon_in_dataset, zip(dss, repeat(shapefile)))
+    return [e for e in results if e]
 
 
 def polygon_in_dataset(ds, shapefile):
