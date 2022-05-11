@@ -375,7 +375,7 @@ def filter_shapefile_intersections(
     return gdf[~gdf.geometry.intersects(testbox.boundary)]
 
 
-def filter_dataset(dss, shapefile):
+def filter_dataset(dss, shapefile, worker_num=1):
     """Use multi-process approach to run polygon_in_dataset method.
     Only keep the dataset id which can pass polygon_in_dataset check.
 
@@ -388,7 +388,7 @@ def filter_dataset(dss, shapefile):
     -------
     filtered_datasets: [str]
     """
-    with multiprocessing.Pool(processes=8) as pool:
+    with multiprocessing.Pool(processes=worker_num) as pool:
         filtered_datasets = list(
             tqdm.tqdm(pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss))
         )

@@ -68,7 +68,7 @@ def id_field_values_is_unique(shapefile_path: str, id_field) -> bool:
     """
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
-    logger.info(f"Attempting to read {shapefile_path}")
+    logger.info(f"Attempting to read {shapefile_path} to check id field.")
     gdf = gpd.read_file(shapefile_path, driver="ESRI Shapefile")
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
@@ -174,7 +174,7 @@ def load_and_reproject_shapefile(
     # awful little hack to get around a datacube bug...
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
-    logger.info(f"Attempting to read {shapefile}")
+    logger.info(f"Attempting to read {shapefile} to load polgyons.")
     shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
@@ -396,6 +396,105 @@ def run_one(
         logger.error(f"Found {uuid} has RasterioIOError: {str(ioerror)}")
     finally:
         return 0
+
+
+@main.command()
+@click.option("--input-queue", "-iq", help="Queue to read all IDs.")
+@click.option("--output-queue", "-oq", help="Queue to save filered IDs.")
+@click.option(
+    "--shapefile",
+    "-s",
+    type=click.Path(),
+    help="REQUIRED. Path to the polygon " "shapefile to filter datasets.",
+)
+@click.option(
+    "--use-id",
+    "-u",
+    type=str,
+    default=None,
+    help="Optional. Unique key id in shapefile.",
+)
+@click.option(
+    "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
+)
+@click.option("-v", "--verbose", count=True)
+def filter_from_queue(input_queue, output_queue, shapefile, use_id, timeout, verbose):
+    """
+    Run dea-conflux filter dataset based on scene ids from a queue.
+    Then submit the filter result to another queue.
+    """
+
+    dc = datacube.Datacube(app="dea-conflux-drill")
+
+    # Guess the ID field.
+    id_field = guess_id_field(shapefile, use_id)
+    logger.debug(f"Guessed ID field: {id_field}")
+
+    # Load and reproject the shapefile.
+    shapefile = load_and_reproject_shapefile(
+        shapefile,
+        id_field,
+        get_crs(shapefile),
+    )
+
+    import boto3
+
+    sqs = boto3.resource("sqs")
+    input_queue = sqs.get_queue_by_name(QueueName=input_queue)
+    input_queue_url = input_queue.url
+
+    output_queue = sqs.get_queue_by_name(QueueName=output_queue)
+
+    while True:
+        response = input_queue.receive_messages(
+            AttributeNames=["All"],
+            MaxNumberOfMessages=10,
+            VisibilityTimeout=timeout,
+        )
+
+        messages = []
+
+        # maybe too aggressive to not retry?
+        if len(response) == 0:
+            break
+        else:
+            uuids = [e.body for e in response]
+
+            logger.info(f"Before filter {' '.join(uuids)}")
+
+            ids = [dc.index.datasets.get(uuid) for uuid in uuids]
+
+            uuids = dea_conflux.drill.filter_dataset(ids, shapefile, worker_num=8)
+
+            logger.info(f"After filter {' '.join(uuids)}")
+
+            for id in uuids:
+                message = {
+                    "Id": str(id),
+                    "MessageBody": str(id),
+                }
+
+                messages.append(message)
+
+            if len(messages) != 0:
+                output_queue.send_messages(Entries=messages)
+
+            input_entries = [
+                {"Id": msg.message_id, "ReceiptHandle": msg.receipt_handle}
+                for msg in response
+            ]
+
+            resp = input_queue.delete_messages(
+                QueueUrl=input_queue_url,
+                Entries=input_entries,
+            )
+
+            if len(resp["Successful"]) != len(input_entries):
+                raise RuntimeError(f"Failed to delete message from: {input_queue_url}")
+
+            messages = []
+
+    return 0
 
 
 @main.command()
@@ -656,7 +755,9 @@ def get_ids(product, expressions, verbose, shapefile, use_id, s3):
             id_field,
             crs,
         )
-        ids = dea_conflux.drill.filter_dataset(dss, shapefile)
+        logger.info(f"shapefile RAM usage: {sys.getsizeof(shapefile)}.")
+
+        ids = dea_conflux.drill.filter_dataset(dss, shapefile, worker_num=8)
     else:
         ids = [str(ds.id) for ds in dss]
 
@@ -665,7 +766,7 @@ def get_ids(product, expressions, verbose, shapefile, use_id, s3):
         for id_ in ids:
             print(id_)
 
-        print(f"dataset size: {len(ids)}")
+        logger.info(f"dataset size: {len(ids)} messages...")
     else:
         out_path = (
             "s3://dea-public-data-dev/waterbodies/conflux/"
