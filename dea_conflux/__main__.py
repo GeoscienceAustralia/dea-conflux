@@ -417,13 +417,21 @@ def run_one(
 @click.option(
     "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
 )
+@click.option(
+    "--num-worker",
+    type=int,
+    help="The number of processes to filter datasets.",
+    default=4,
+)
 @click.option("-v", "--verbose", count=True)
-def filter_from_queue(input_queue, output_queue, shapefile, use_id, timeout, verbose):
+def filter_from_queue(
+    input_queue, output_queue, shapefile, use_id, timeout, num_worker, verbose
+):
     """
     Run dea-conflux filter dataset based on scene ids from a queue.
     Then submit the filter result to another queue.
     """
-
+    logging_setup(verbose)
     dc = datacube.Datacube(app="dea-conflux-drill")
 
     # Guess the ID field.
@@ -464,7 +472,9 @@ def filter_from_queue(input_queue, output_queue, shapefile, use_id, timeout, ver
 
             ids = [dc.index.datasets.get(uuid) for uuid in uuids]
 
-            uuids = dea_conflux.drill.filter_dataset(ids, shapefile, worker_num=8)
+            uuids = dea_conflux.drill.filter_dataset(
+                ids, shapefile, worker_num=num_worker
+            )
 
             logger.info(f"After filter {' '.join(uuids)}")
 
@@ -737,7 +747,13 @@ def run_from_queue(
     help="Optional. Unique key id in shapefile.",
 )
 @click.option("--s3/--stdout", default=False)
-def get_ids(product, expressions, verbose, shapefile, use_id, s3):
+@click.option(
+    "--num-worker",
+    type=int,
+    help="The number of processes to filter datasets.",
+    default=4,
+)
+def get_ids(product, expressions, verbose, shapefile, use_id, s3, num_worker):
     """Get IDs based on an expression."""
     logging_setup(verbose)
     dss = dea_conflux.hopper.find_datasets(expressions, [product])
@@ -757,7 +773,7 @@ def get_ids(product, expressions, verbose, shapefile, use_id, s3):
         )
         logger.info(f"shapefile RAM usage: {sys.getsizeof(shapefile)}.")
 
-        ids = dea_conflux.drill.filter_dataset(dss, shapefile, worker_num=8)
+        ids = dea_conflux.drill.filter_dataset(dss, shapefile, worker_num=num_worker)
     else:
         ids = [str(ds.id) for ds in dss]
 
