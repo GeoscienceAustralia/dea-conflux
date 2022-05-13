@@ -9,6 +9,7 @@ import importlib.util
 import json
 import logging
 import sys
+import time
 import uuid as pyuuid
 from types import ModuleType
 
@@ -415,7 +416,9 @@ def run_one(
     help="Optional. Unique key id in shapefile.",
 )
 @click.option(
-    "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
+    "--timeout",
+    default=60 * 60,
+    help="The seconds of a received SQS msg is invisible.",
 )
 @click.option(
     "--num-worker",
@@ -448,13 +451,16 @@ def filter_from_queue(
     import boto3
 
     sqs = boto3.resource("sqs")
-    input_queue = sqs.get_queue_by_name(QueueName=input_queue)
-    input_queue_url = input_queue.url
+    input_queue_instance = sqs.get_queue_by_name(QueueName=input_queue)
+    input_queue_url = input_queue_instance.url
 
-    output_queue = sqs.get_queue_by_name(QueueName=output_queue)
+    output_queue_instance = sqs.get_queue_by_name(QueueName=output_queue)
 
-    while True:
-        response = input_queue.receive_messages(
+    # setup 10 retries to make sure no drama from SQS
+    message_retries = 10
+
+    while message_retries > 0:
+        response = input_queue_instance.receive_messages(
             AttributeNames=["All"],
             MaxNumberOfMessages=10,
             VisibilityTimeout=timeout,
@@ -462,10 +468,15 @@ def filter_from_queue(
 
         messages = []
 
-        # maybe too aggressive to not retry?
+        # if nothing back from SQS, minus 1 retry
         if len(response) == 0:
-            break
+            message_retries = message_retries - 1
+            time.sleep(1)
+            logger.info(f"No msg in {input_queue} now")
+            continue
+        # if we get anything back from SQS, reset retry
         else:
+            message_retries = 10
             uuids = [e.body for e in response]
 
             logger.info(f"Before filter {' '.join(uuids)}")
@@ -487,14 +498,14 @@ def filter_from_queue(
                 messages.append(message)
 
             if len(messages) != 0:
-                output_queue.send_messages(Entries=messages)
+                output_queue_instance.send_messages(Entries=messages)
 
             input_entries = [
                 {"Id": msg.message_id, "ReceiptHandle": msg.receipt_handle}
                 for msg in response
             ]
 
-            resp = input_queue.delete_messages(
+            resp = input_queue_instance.delete_messages(
                 QueueUrl=input_queue_url,
                 Entries=input_entries,
             )
