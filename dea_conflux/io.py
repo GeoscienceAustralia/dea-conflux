@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 # File extensions to recognise as Parquet files.
 PARQUET_EXTENSIONS = {".pq", ".parquet"}
 
+# File extensions to recognise as CSV files.
+CSV_EXTENSIONS = {".csv", ".CSV"}
+
 # Metadata key for Parquet files.
 PARQUET_META_KEY = b"conflux.metadata"
 

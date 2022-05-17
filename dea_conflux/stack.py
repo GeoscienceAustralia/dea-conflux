@@ -27,7 +27,7 @@ from tqdm.auto import tqdm
 import dea_conflux.db
 import dea_conflux.io
 from dea_conflux.db import Engine
-from dea_conflux.io import PARQUET_EXTENSIONS
+from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
     WATERBODIES_DB = "waterbodies_db"
     WITTOOLING = "wit_tooling"
+    WITTOOLING_SINGLE_FILE_DELIVERY = "wit_tooling_single_file_delivery"
 
 
 def stack_format_date(date: datetime.datetime) -> str:
@@ -51,6 +52,64 @@ def stack_format_date(date: datetime.datetime) -> str:
     """
     # e.g. 1987-05-24T01:30:18Z
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def find_csv_files(path: str, pattern: str = ".*") -> [str]:
+    """Find CSV files matching a pattern.
+
+    Arguments
+    ---------
+    path : str
+        Path (s3 or local) to search for CSV files.
+
+    pattern : str
+        Regex to match filenames against.
+
+    Returns
+    -------
+    [str]
+        List of paths.
+    """
+    pattern = re.compile(pattern)
+    all_paths = []
+
+    # "Support" pathlib Paths
+    try:
+        path.startswith
+    except AttributeError:
+        path = str(path)
+
+    # Frankly, load CSV and load PQ should be a same method
+    # but no plan to touch the existing waterbodies pipeline code
+    # before I finish the waterbodies run test.
+    if path.startswith("s3://"):
+        # Find CSV files on S3.
+        fs = s3fs.S3FileSystem(anon=True)
+        files = fs.find(path)
+        for file in files:
+            _, ext = os.path.splitext(file)
+            if ext not in CSV_EXTENSIONS:
+                continue
+
+            _, filename = os.path.split(file)
+            if not pattern.match(filename):
+                continue
+
+            all_paths.append(f"s3://{file}")
+    else:
+        # Find CSV files locally.
+        for root, dir_, files in os.walk(path):
+            paths = [Path(root) / file for file in files]
+            for path_ in paths:
+                if path_.suffix not in CSV_EXTENSIONS:
+                    continue
+
+                if not pattern.match(path_.name):
+                    continue
+
+                all_paths.append(path_)
+
+    return all_paths
 
 
 def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
@@ -149,6 +208,62 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath):
     with fsspec.open(filename, "w") as f:
         single_polygon_df.to_csv(f, index_label="feature_id")
     return filename
+
+
+def stack_wit_tooling_to_single_file(
+    paths: [str], output_dir: str, precision: int, verbose: bool = False
+):
+    """This method aims to handle the request from QLD
+    team. It will loading all polygon base result (CSV files),
+    then concat the pandas.DataFrame, and create a single
+    CSV and parquet file.
+
+    Arguments
+    ---------
+    paths : [str]
+        List of paths to Parquet files to stack.
+    output_dir : str
+        Path to output directory.
+
+    verbose : bool
+    """
+    polygon_df_list = []
+    logger.info("Reading...")
+
+    with tqdm(total=len(paths)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count() * 16
+        ) as executor:
+            polygon_df_list = []
+            futures = {executor.submit(pd.read_csv, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                polygon_df_list.append(future.result())
+                bar.update(1)
+
+    if len(polygon_df_list) == 0:
+        logger.warning("Cannot find any available WIT result.")
+        return 0
+    else:
+        logger.info("Concat WIT result...")
+        overall_result = pd.concat(polygon_df_list)
+
+    logger.info("Writing overall result...")
+    overall_pq_filename = f"{output_dir}/overall.pq"
+    overall_csv_filename = f"{output_dir}/overall.csv"
+    if not output_dir.startswith("s3://"):
+        os.makedirs(Path(overall_pq_filename).parent, exist_ok=True)
+
+    column_names = ["bs", "npv", "pc_missing", "pv", "water", "wet"]
+
+    logger.info(f"Begin to reduce the precision of the data to {str(precision)}")
+
+    for column_name in column_names:
+        overall_result[column_name] = overall_result[column_name].round(
+            decimals=precision
+        )
+
+    overall_result.to_parquet(overall_pq_filename, index=False)
+    overall_result.to_csv(overall_csv_filename, index=False)
 
 
 def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
@@ -485,7 +600,11 @@ def stack(
     path = str(path)
 
     logger.info(f"Begin to query {path} with pattern {pattern}")
-    paths = find_parquet_files(path, pattern)
+
+    if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
+        paths = find_csv_files(path, pattern)
+    else:
+        paths = find_parquet_files(path, pattern)
 
     if mode == StackMode.WATERBODIES:
         return stack_waterbodies(paths, verbose=verbose, **kwargs)
@@ -493,3 +612,5 @@ def stack(
         return stack_waterbodies_db(paths, verbose=verbose, **kwargs)
     if mode == StackMode.WITTOOLING:
         return stack_wit_tooling(paths, verbose=verbose, **kwargs)
+    if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
+        return stack_wit_tooling_to_single_file(paths, verbose=verbose, **kwargs)
