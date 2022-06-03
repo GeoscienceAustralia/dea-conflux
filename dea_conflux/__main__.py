@@ -1052,11 +1052,39 @@ def package_delivery(csv_path, output, precision, verbose):
     default=8,
     help="Number of workers",
 )
-def db_to_csv(output, verbose, jobs):
+@click.option(
+    "--shapefile",
+    "-s",
+    type=click.Path(),
+    help="REQUIRED. Path to the polygon " "shapefile to filter datasets.",
+)
+@click.option(
+    "--begin-index",
+    "-b",
+    type=click.INT,
+    default=0,
+    help="Waterbodies UID list begin index.",
+)
+@click.option(
+    "--end-index",
+    "-e",
+    type=click.INT,
+    default=-1,
+    help="Waterbodies UID list end index.",
+)
+def db_to_csv(output, verbose, jobs, shapefile, begin_index, end_index):
     """Output Waterbodies-style CSVs from a database."""
     logging_setup(verbose)
+
+    has_s3 = "s3" in gpd.io.file._VALID_URLS
+    gpd.io.file._VALID_URLS.discard("s3")
+    logger.info(f"Attempting to read {shapefile} to load polgyons.")
+    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+
+    uids = set(shapefile[shapefile.index.isin(shapefile.index[begin_index:end_index])]["uid"])
+
     dea_conflux.stack.stack_waterbodies_db_to_csv(
-        out_path=output, verbose=verbose > 0, n_workers=jobs
+        out_path=output, verbose=verbose > 0, n_workers=jobs, uids=uids
     )
 
 
