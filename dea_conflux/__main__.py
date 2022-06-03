@@ -1081,7 +1081,12 @@ def db_to_csv(output, verbose, jobs, shapefile, begin_index, end_index):
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
     shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
 
-    uids = set(shapefile[shapefile.index.isin(shapefile.index[begin_index:end_index])]["uid"])
+    if has_s3:
+        gpd.io.file._VALID_URLS.add("s3")
+
+    uids = set(
+        shapefile[shapefile.index.isin(shapefile.index[begin_index:end_index])]["uid"]
+    )
 
     dea_conflux.stack.stack_waterbodies_db_to_csv(
         out_path=output, verbose=verbose > 0, n_workers=jobs, uids=uids
