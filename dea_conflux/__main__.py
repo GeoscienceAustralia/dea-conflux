@@ -1053,20 +1053,19 @@ def package_delivery(csv_path, output, precision, verbose):
     help="Number of workers",
 )
 @click.option(
-    "--begin-index",
-    "-b",
+    "--index-num",
+    "-i",
     type=click.INT,
     default=0,
-    help="Waterbodies UID list begin index.",
+    help="The waterbodies ID chunks index after split overall waterbodies ID list by split-num.",
 )
 @click.option(
-    "--end-index",
-    "-e",
+    "--split-num",
     type=click.INT,
-    default=-1,
-    help="Waterbodies UID list end index.",
+    default=1,
+    help="Number of chunks after split overall waterbodies ID list.",
 )
-def db_to_csv(output, verbose, jobs, begin_index, end_index):
+def db_to_csv(output, verbose, jobs, index_num, split_num):
     """Output Waterbodies-style CSVs from a database."""
     logging_setup(verbose)
 
@@ -1074,8 +1073,8 @@ def db_to_csv(output, verbose, jobs, begin_index, end_index):
         out_path=output,
         verbose=verbose > 0,
         n_workers=jobs,
-        begin_index=begin_index,
-        end_index=end_index,
+        index_num=index_num,
+        split_num=split_num,
     )
 
 

@@ -19,6 +19,7 @@ from pathlib import Path
 
 import fsspec
 import geohash
+import numpy as np
 import pandas as pd
 import s3fs
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -484,8 +485,8 @@ def stack_waterbodies_db_to_csv(
     uids: {str} = None,
     engine=None,
     n_workers: int = 8,
-    begin_index: int = 0,
-    end_index: int = -1,
+    index_num: int = 0,
+    split_num: int = 1,
 ):
     """Write waterbodies CSVs out from the interstitial DB.
 
@@ -509,6 +510,14 @@ def stack_waterbodies_db_to_csv(
 
     n_workers : int
         Number of threads to connect to the database with.
+
+    split_num: int
+        Number of chunks after split overall waterbodies ID list
+
+    index_index: int
+        Index number of waterbodies ID list. Use to create the subset of
+        waterbodies, then generate relative CSV files.
+
     """
     # connect to the db
     if not engine:
@@ -561,8 +570,8 @@ def stack_waterbodies_db_to_csv(
             .all()
         )
 
-    # only pick up subste of whole workload
-    waterbodies = waterbodies[begin_index:end_index]
+    # generate the waterbodies list
+    waterbodies = np.array_split(waterbodies, split_num)[index_index]
 
     # Write all CSVs with a thread pool.
     with tqdm(total=len(waterbodies)) as bar:
