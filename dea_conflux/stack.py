@@ -511,12 +511,12 @@ def stack_waterbodies_db_to_csv(
     n_workers : int
         Number of threads to connect to the database with.
 
-    split_num: int
-        Number of chunks after split overall waterbodies ID list
-
-    index_index: int
+    index_num: int
         Index number of waterbodies ID list. Use to create the subset of
         waterbodies, then generate relative CSV files.
+
+    split_num: int
+        Number of chunks after split overall waterbodies ID list
 
     """
     # connect to the db
@@ -571,7 +571,7 @@ def stack_waterbodies_db_to_csv(
         )
 
     # generate the waterbodies list
-    waterbodies = np.array_split(waterbodies, split_num)[index_index]
+    waterbodies = np.array_split(waterbodies, split_num)[index_num]
 
     # Write all CSVs with a thread pool.
     with tqdm(total=len(waterbodies)) as bar:
