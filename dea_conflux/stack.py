@@ -484,6 +484,8 @@ def stack_waterbodies_db_to_csv(
     uids: {str} = None,
     engine=None,
     n_workers: int = 8,
+    begin_index: int = 0,
+    end_index: int = -1,
 ):
     """Write waterbodies CSVs out from the interstitial DB.
 
@@ -558,6 +560,9 @@ def stack_waterbodies_db_to_csv(
             .filter(dea_conflux.db.Waterbody.wb_name.in_(uids))
             .all()
         )
+
+    # only pick up subste of whole workload
+    waterbodies = waterbodies[begin_index:end_index]
 
     # Write all CSVs with a thread pool.
     with tqdm(total=len(waterbodies)) as bar:
