@@ -110,6 +110,33 @@ def test_run_one(run_main):
 
 
 @mock_sqs
+def test_run_from_queue(run_main):
+    queue_name = "waterbodies_queue_name"
+    import boto3
+
+    sqs = boto3.resource("sqs")
+    _ = sqs.create_queue(QueueName=queue_name)
+    _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
+
+    run_one_result = run_main(
+        [
+            "run-from-queue",
+            "-p",
+            TEST_PLUGIN_OK,
+            "-q",
+            queue_name,
+            "-s",
+            TEST_SHP,
+            "-o",
+            "test_output",
+            "-vv",
+        ],
+        expect_success=True,
+    )
+    print(run_one_result)
+
+
+@mock_sqs
 def test_make_s3_queue(run_main):
     make_queue_result = run_main(
         ["make", "waterbodies_queue_name"], expect_success=True
