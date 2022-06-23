@@ -41,6 +41,12 @@ TEST_WIT_PQ_DATA_FILE = (
     / "wit_ls5_aa7116e4-b27d-466b-b987-7c99f7f29b63_19870523-234949-486906.pq"
 )
 
+TEST_WIT_CSV_DATA = HERE / "data" / "qld_waterbodies_csv"
+TEST_WIT_CSV_DATA_FILE = (
+    TEST_WIT_CSV_DATA
+    / "r4e3jw0v8_v2.csv"
+)
+
 TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
 TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
 
@@ -101,6 +107,19 @@ def test_wit_stacking(tmp_path):
     assert (
         len(csv.columns) == 8
     )  # feature_id, bs, npv, pc_missing, pv, water, wet and date
+
+
+def test_wit_single_file_stacking(tmp_path):
+    dea_conflux.stack.stack(
+        path=TEST_WIT_CSV_DATA,
+        mode=dea_conflux.stack.StackMode.WITTOOLING_SINGLE_FILE_DELIVERY,
+        output_dir=f"{tmp_path}/testout",
+        precision=2,
+    )
+    out_csv_path = tmp_path / "testout" / f"overall.csv"
+    out_pq_path = tmp_path / "testout" / f"overall.pq"
+    assert out_csv_path.exists()
+    assert out_pq_path.exists()
 
 
 @mock_s3
