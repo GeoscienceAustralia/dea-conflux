@@ -257,7 +257,7 @@ def test_push_to_s3_queue(run_main):
     _ = sqs.create_queue(QueueName=queue_name)
 
     with open(file_name, "w") as f:
-        f.write("")
+        f.write(ARD_UUID)
 
     make_queue_result = run_main(
         ["push-to-queue", "--txt", file_name, "--queue", queue_name],
@@ -268,13 +268,19 @@ def test_push_to_s3_queue(run_main):
 
 
 @mock_sqs
-def test_delete_s3_queue():
+def test_delete_s3_queue(run_main):
     queue_name = "waterbodies_queue_name"
     import boto3
 
     sqs = boto3.resource("sqs")
     _ = sqs.create_queue(QueueName=queue_name)
     _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
+
+    del_queue_result = run_main(
+        ["delete", queue_name],
+        expect_success=True,
+    )
+    print(del_queue_result)
 
 
 # TODO(MatthewJA): Add a test on scene 234fec8f-1de7-488a-a115-818ebd4bfec4.
