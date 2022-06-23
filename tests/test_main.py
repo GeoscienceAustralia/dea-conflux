@@ -2,6 +2,8 @@ import logging
 import sys
 from pathlib import Path
 
+from moto import mock_s3
+
 import pytest
 from click.testing import CliRunner
 from moto import mock_sqs
@@ -20,6 +22,9 @@ TEST_ID_FIELD = "uid"
 TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
 TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
 TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
+
+# Under: s3://dea-public-data/baseline/ga_ls7e_ard_3/090/084/2000/02/02/*.json
+ARD_UUID = "b17ad657-00fa-4abe-91a6-07fd24895e5d"
 
 TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
 TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
@@ -115,10 +120,14 @@ def test_run_from_queue(run_main):
     import boto3
 
     sqs = boto3.resource("sqs")
-    _ = sqs.create_queue(QueueName=queue_name)
+    waterbodies_queue = sqs.create_queue(QueueName=queue_name)
     _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
 
-    run_one_result = run_main(
+    waterbodies_queue.send_message(
+        MessageBody=ARD_UUID
+    )
+
+    not_overwrite = run_main(
         [
             "run-from-queue",
             "-p",
@@ -129,11 +138,115 @@ def test_run_from_queue(run_main):
             TEST_SHP,
             "-o",
             "test_output",
+            "--no-db",
             "-vv",
         ],
         expect_success=True,
     )
-    print(run_one_result)
+    print(not_overwrite)
+
+    waterbodies_queue.send_message(
+        MessageBody=ARD_UUID
+    )
+
+    overwrite = run_main(
+        [
+            "run-from-queue",
+            "-p",
+            TEST_PLUGIN_OK,
+            "-q",
+            queue_name,
+            "-s",
+            TEST_SHP,
+            "-o",
+            "test_output",
+            "--no-db",
+            "--overwrite",
+            "-vv",
+        ],
+        expect_success=True,
+    )
+    print(overwrite)
+
+
+@mock_s3
+def test_get_ids(run_main):
+
+    import boto3
+
+    get_ids_result = run_main(
+        [
+            "get-ids",
+            "ga_ls_wo_3",
+            "-vv",
+        ],
+        expect_success=True,
+    )
+    print(get_ids_result)
+
+    s3 = boto3.resource("s3", region_name="ap-southeast-2")
+    bucket_name = "dea-public-data-dev"
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={
+            "LocationConstraint": "ap-southeast-2",
+        },
+    )
+
+    get_ids_result = run_main(
+        [
+            "get-ids",
+            "ga_ls_wo_3",
+            "-vv",
+            "--s3"
+        ],
+        expect_success=True,
+    )
+    print(get_ids_result)
+
+    get_ids_result = run_main(
+        [
+            "get-ids",
+            "ga_ls_wo_3",
+            "-vv",
+            "-s",
+            TEST_SHP,
+        ],
+        expect_success=True,
+    )
+    print(get_ids_result)
+
+
+
+@mock_sqs
+def test_filter_from_queue(run_main):
+    queue_name = "waterbodies_queue_name"
+    raw_queue_name = queue_name + "_raw"
+    import boto3
+
+    sqs = boto3.resource("sqs")
+    _ = sqs.create_queue(QueueName=queue_name)
+    raw_queue = sqs.create_queue(QueueName=raw_queue_name)
+    
+    # uuid is: s3://dea-public-data/baseline/ga_ls7e_ard_3/090/084/2000/02/02/*.json
+    raw_queue.send_message(
+        MessageBody=ARD_UUID
+    )
+
+    filter_result = run_main(
+        [
+            "filter-from-queue",
+            "-iq",
+            raw_queue_name,
+            "-oq",
+            queue_name,
+            "-s",
+            TEST_SHP,
+            "-vv",
+        ],
+        expect_success=True,
+    )
+    print(filter_result)
 
 
 @mock_sqs
@@ -169,15 +282,13 @@ def test_push_to_s3_queue(run_main):
 
 
 @mock_sqs
-def test_delete_s3_queue(run_main):
+def test_delete_s3_queue():
     queue_name = "waterbodies_queue_name"
     import boto3
 
     sqs = boto3.resource("sqs")
     _ = sqs.create_queue(QueueName=queue_name)
     _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
-    del_queue_result = run_main(["delete", queue_name], expect_success=True)
-    print(del_queue_result)
 
 
 # TODO(MatthewJA): Add a test on scene 234fec8f-1de7-488a-a115-818ebd4bfec4.

@@ -42,10 +42,7 @@ TEST_WIT_PQ_DATA_FILE = (
 )
 
 TEST_WIT_CSV_DATA = HERE / "data" / "qld_waterbodies_csv"
-TEST_WIT_CSV_DATA_FILE = (
-    TEST_WIT_CSV_DATA
-    / "r4e3jw0v8_v2.csv"
-)
+TEST_WIT_CSV_DATA_FILE = TEST_WIT_CSV_DATA / "r4e3jw0v8_v2.csv"
 
 TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
 TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
@@ -116,8 +113,8 @@ def test_wit_single_file_stacking(tmp_path):
         output_dir=f"{tmp_path}/testout",
         precision=2,
     )
-    out_csv_path = tmp_path / "testout" / f"overall.csv"
-    out_pq_path = tmp_path / "testout" / f"overall.pq"
+    out_csv_path = tmp_path / "testout" / "overall.csv"
+    out_pq_path = tmp_path / "testout" / "overall.pq"
     assert out_csv_path.exists()
     assert out_pq_path.exists()
 
