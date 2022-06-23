@@ -764,7 +764,15 @@ def run_from_queue(
     help="The number of processes to filter datasets.",
     default=4,
 )
-def get_ids(product, expressions, verbose, shapefile, use_id, s3, num_worker):
+@click.option(
+    "--bucket-name",
+    type=str,
+    help="The default bucket to save the get_ids result.",
+    default="dea-public-data-dev",
+)
+def get_ids(
+    product, expressions, verbose, shapefile, use_id, s3, num_worker, bucket_name
+):
     """Get IDs based on an expression."""
     logging_setup(verbose)
     dss = dea_conflux.hopper.find_datasets(expressions, [product])
@@ -796,7 +804,7 @@ def get_ids(product, expressions, verbose, shapefile, use_id, s3, num_worker):
         logger.info(f"dataset size: {len(ids)} messages...")
     else:
         out_path = (
-            "s3://dea-public-data-dev/waterbodies/conflux/"
+            f"s3://{bucket_name}/waterbodies/conflux/"
             + "conflux_ids_"
             + str(pyuuid.uuid4())
             + ".json"

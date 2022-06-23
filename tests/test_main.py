@@ -179,7 +179,7 @@ def test_get_ids(run_main):
     print(get_ids_result)
 
     s3 = boto3.resource("s3", region_name="ap-southeast-2")
-    bucket_name = "dea-public-data-dev"
+    bucket_name = "testbucket"
     s3.create_bucket(
         Bucket=bucket_name,
         CreateBucketConfiguration={
@@ -188,7 +188,7 @@ def test_get_ids(run_main):
     )
 
     get_ids_result = run_main(
-        ["get-ids", "ga_ls_wo_3", "-vv", "--s3"],
+        ["get-ids", "ga_ls_wo_3", "-vv", "--s3", "--bucket-name", bucket_name],
         expect_success=True,
     )
     print(get_ids_result)
