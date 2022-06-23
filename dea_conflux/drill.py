@@ -557,6 +557,8 @@ def drill(
     # more bands than we need the first time! Ignore for MVP.
     if not overedge:
         # just load the scene we asked for
+        logger.debug("Loading datasets:")
+        logger.debug(f"\t{reference_dataset.id}")
         reference_scene = dc.load(
             datasets=[reference_dataset], output_crs=crs, resolution=resolution
         )

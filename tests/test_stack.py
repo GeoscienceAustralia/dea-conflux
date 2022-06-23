@@ -23,14 +23,22 @@ TEST_SHP = HERE / "data" / "waterbodies_canberra.shp"
 # UID of Lake Ginninderra.
 LAKE_GINNINDERRA_ID = "r3dp84s8n"
 
+WIT_POLYGON_ID = "r4ucrn3y1_v2"
+
 TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
 TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
 TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
 
-TEST_PQ_DATA = HERE / "data" / "canberra_waterbodies_pq"
-TEST_PQ_DATA_FILE = (
-    TEST_PQ_DATA
+TEST_WB_PQ_DATA = HERE / "data" / "canberra_waterbodies_pq"
+TEST_WB_PQ_DATA_FILE = (
+    TEST_WB_PQ_DATA
     / "waterbodies_234fec8f-1de7-488a-a115-818ebd4bfec4_20000202-234328-500000.pq"
+)
+
+TEST_WIT_PQ_DATA = HERE / "data" / "qld_waterbodies_pq"
+TEST_WIT_PQ_DATA_FILE = (
+    TEST_WIT_PQ_DATA
+    / "wit_ls5_aa7116e4-b27d-466b-b987-7c99f7f29b63_19870523-234949-486906.pq"
 )
 
 TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
@@ -68,7 +76,7 @@ def mock_aws_response() -> None:
 
 def test_waterbodies_stacking(tmp_path):
     dea_conflux.stack.stack(
-        TEST_PQ_DATA,
+        TEST_WB_PQ_DATA,
         mode=dea_conflux.stack.StackMode.WATERBODIES,
         output_dir=tmp_path / "testout",
     )
@@ -78,6 +86,21 @@ def test_waterbodies_stacking(tmp_path):
     csv = pd.read_csv(outpath)
     assert len(csv) == 2
     assert len(csv.columns) == 4  # 3 bands + date
+
+
+def test_wit_stacking(tmp_path):
+    dea_conflux.stack.stack(
+        TEST_WIT_PQ_DATA,
+        mode=dea_conflux.stack.StackMode.WITTOOLING,
+        output_dir=f"{tmp_path}/testout",
+    )
+    outpath = tmp_path / "testout" / f"{WIT_POLYGON_ID}.csv"
+    assert outpath.exists()
+    csv = pd.read_csv(outpath)
+    assert len(csv) == 1
+    assert (
+        len(csv.columns) == 8
+    )  # feature_id, bs, npv, pc_missing, pv, water, wet and date
 
 
 @mock_s3
@@ -118,7 +141,7 @@ def test_waterbodies_db_stacking():
     Session = dea_conflux.stack.sessionmaker(bind=engine)
     session = Session()
     dea_conflux.stack.stack_waterbodies_db(
-        paths=[TEST_PQ_DATA_FILE], verbose=True, engine=engine, uids=None
+        paths=[TEST_WB_PQ_DATA_FILE], verbose=True, engine=engine, uids=None
     )
     all_obs = list(session.query(dea_conflux.db.WaterbodyObservation).all())
     # Check all observations exist
