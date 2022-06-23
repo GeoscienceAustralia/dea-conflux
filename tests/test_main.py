@@ -2,11 +2,9 @@ import logging
 import sys
 from pathlib import Path
 
-from moto import mock_s3
-
 import pytest
 from click.testing import CliRunner
-from moto import mock_sqs
+from moto import mock_s3, mock_sqs
 
 import dea_conflux.__main__ as main_module
 from dea_conflux.__main__ import main
@@ -123,9 +121,7 @@ def test_run_from_queue(run_main):
     waterbodies_queue = sqs.create_queue(QueueName=queue_name)
     _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
 
-    waterbodies_queue.send_message(
-        MessageBody=ARD_UUID
-    )
+    waterbodies_queue.send_message(MessageBody=ARD_UUID)
 
     not_overwrite = run_main(
         [
@@ -145,9 +141,7 @@ def test_run_from_queue(run_main):
     )
     print(not_overwrite)
 
-    waterbodies_queue.send_message(
-        MessageBody=ARD_UUID
-    )
+    waterbodies_queue.send_message(MessageBody=ARD_UUID)
 
     overwrite = run_main(
         [
@@ -194,12 +188,7 @@ def test_get_ids(run_main):
     )
 
     get_ids_result = run_main(
-        [
-            "get-ids",
-            "ga_ls_wo_3",
-            "-vv",
-            "--s3"
-        ],
+        ["get-ids", "ga_ls_wo_3", "-vv", "--s3"],
         expect_success=True,
     )
     print(get_ids_result)
@@ -217,7 +206,6 @@ def test_get_ids(run_main):
     print(get_ids_result)
 
 
-
 @mock_sqs
 def test_filter_from_queue(run_main):
     queue_name = "waterbodies_queue_name"
@@ -227,11 +215,9 @@ def test_filter_from_queue(run_main):
     sqs = boto3.resource("sqs")
     _ = sqs.create_queue(QueueName=queue_name)
     raw_queue = sqs.create_queue(QueueName=raw_queue_name)
-    
+
     # uuid is: s3://dea-public-data/baseline/ga_ls7e_ard_3/090/084/2000/02/02/*.json
-    raw_queue.send_message(
-        MessageBody=ARD_UUID
-    )
+    raw_queue.send_message(MessageBody=ARD_UUID)
 
     filter_result = run_main(
         [
