@@ -21,6 +21,9 @@ TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
 TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
 TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
 
+TEST_WB_PQ_DATA = HERE / "data" / "canberra_waterbodies_pq"
+TEST_WIT_CSV_DATA = HERE / "data" / "qld_waterbodies_csv"
+
 # Under: s3://dea-public-data/baseline/ga_ls7e_ard_3/090/084/2000/02/02/*.json
 ARD_UUID = "b17ad657-00fa-4abe-91a6-07fd24895e5d"
 
@@ -281,6 +284,36 @@ def test_delete_s3_queue(run_main):
         expect_success=True,
     )
     print(del_queue_result)
+
+
+def test_waterbodies_stack(run_main, tmp_path):
+    stack_result = run_main(
+        [
+            "stack",
+            "--parquet-path",
+            TEST_WB_PQ_DATA,
+            "--output",
+            str(tmp_path / "testout"),
+            "--mode",
+            "waterbodies",
+        ],
+        expect_success=True,
+    )
+    print(stack_result)
+
+
+def test_wit_package(run_main, tmp_path):
+    stack_result = run_main(
+        [
+            "package-delivery",
+            "--csv-path",
+            TEST_WIT_CSV_DATA,
+            "--output",
+            str(tmp_path / "testout"),
+        ],
+        expect_success=True,
+    )
+    print(stack_result)
 
 
 # TODO(MatthewJA): Add a test on scene 234fec8f-1de7-488a-a115-818ebd4bfec4.
