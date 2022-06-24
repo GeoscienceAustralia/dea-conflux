@@ -30,7 +30,12 @@ def get_engine_sqlite(path) -> Engine:
 
 def get_engine_inmem() -> Engine:
     """Get a SQLite in-memory database engine."""
-    return create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
+    return create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        echo=True,
+        future=True,
+    )
 
 
 def get_engine_waterbodies() -> Engine:
@@ -105,11 +110,11 @@ def get_or_create(session, model, defaults=None, **kwargs):
         try:
             session.add(instance)
             session.commit()
+        # The actual exception depends on the specific database
+        # so we catch all exceptions. This is similar to the
+        # official documentation:
+        # https://docs.sqlalchemy.org/en/latest/orm/session_transaction.html
         except Exception:
-            # The actual exception depends on the specific database
-            # so we catch all exceptions. This is similar to the
-            # official documentation:
-            # https://docs.sqlalchemy.org/en/latest/orm/session_transaction.html
             session.rollback()
             instance = session.query(model).filter_by(**kwargs).one()
             return instance, False

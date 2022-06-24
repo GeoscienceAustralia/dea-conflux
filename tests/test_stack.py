@@ -165,3 +165,19 @@ def test_waterbodies_db_stacking():
     # Check time is correct
     correct_time = datetime.datetime(2000, 2, 2, 23, 43, 28, 500000)
     assert all(obs.date == correct_time for obs in all_obs)
+
+
+def test_db_to_csv_stacking(tmp_path):
+    engine = dea_conflux.db.get_engine_inmem()
+    Session = dea_conflux.stack.sessionmaker(bind=engine)
+    session = Session()
+    dea_conflux.stack.stack_waterbodies_db(
+        paths=[TEST_WB_PQ_DATA_FILE], verbose=True, engine=engine, uids=None
+    )
+    dea_conflux.stack.stack_waterbodies_db_to_csv(
+        out_path=tmp_path / "testout",
+        verbose=True,
+        engine=engine,
+        uids=None,
+        n_workers=1,
+    )
