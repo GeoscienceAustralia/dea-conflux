@@ -170,7 +170,7 @@ def test_waterbodies_db_stacking():
 def test_db_to_csv_stacking(tmp_path):
     engine = dea_conflux.db.get_engine_inmem()
     Session = dea_conflux.stack.sessionmaker(bind=engine)
-    session = Session()
+    _ = Session()
     dea_conflux.stack.stack_waterbodies_db(
         paths=[TEST_WB_PQ_DATA_FILE], verbose=True, engine=engine, uids=None
     )
