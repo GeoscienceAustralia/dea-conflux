@@ -12,6 +12,7 @@ if __name__ == "__main__":
         install_requires=[
             "click",
             "pytest",
+            "pytest-cov",
             "geopandas",
             "datacube",
             "boto3",
