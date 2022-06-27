@@ -32,7 +32,7 @@ jobs:
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "coverage run -m pytest ."
+          docker-compose exec -T conflux bash -c "coverage run --source=dea_conflux -m pytest -v tests"
           docker-compose exec -T conflux bash -c "coverage xml"
           docker-compose down
 
