@@ -32,8 +32,7 @@ jobs:
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "coverage run --source=dea_conflux -m pytest -v tests"
-          docker-compose exec -T conflux bash -c "coverage xml"
+          docker-compose exec -T conflux bash -c "pytest --cov=. --cov-report=xml tests/"
           docker-compose down
 
     - name: Upload coverage to Codecov
