@@ -32,7 +32,7 @@ jobs:
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "pytest --cov-report=xml ."
+          docker-compose exec -T conflux bash -c "pytest --cov=code --cov-report=xml ."
           docker-compose down
 
     - name: Upload coverage to Codecov
