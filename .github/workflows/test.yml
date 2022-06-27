@@ -32,10 +32,5 @@ jobs:
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "python -m pytest --cov=. --cov-report=xml tests/"
+          docker-compose exec -T conflux bash -c "pytest ."
           docker-compose down
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
-      with:
-        fail_ci_if_error: false
