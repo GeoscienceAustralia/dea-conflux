@@ -34,3 +34,8 @@ jobs:
           ./tests/setup_test_datacube.sh
           docker-compose exec -T conflux bash -c "pytest ."
           docker-compose down
+
+    - name: Clean dea-conflux image
+      run: |
+          docker container prune
+          docker image prune -a
