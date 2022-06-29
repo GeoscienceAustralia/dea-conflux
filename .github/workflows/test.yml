@@ -28,12 +28,6 @@ jobs:
       run: |
         docker-compose build
 
-    # copy paste solutino from: https://github.com/opendatacube/datacube-core/blob/develop/.github/workflows/docker-test-runner.yml#L66-L74
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
     - name: Test dea-conflux image
       run: |
           docker-compose up -d
