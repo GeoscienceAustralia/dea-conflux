@@ -263,6 +263,10 @@ def stack_wit_tooling_to_single_file(
             decimals=precision
         )
 
+    # Add normalise method section
+    # 1) compute vegetation_area_size (1 - water - wet)
+    # 2) normlise pv/npv/bs by vegetation_area_size
+
     overall_result.to_parquet(overall_pq_filename, index=False)
     overall_result.to_csv(overall_csv_filename, index=False)
 
