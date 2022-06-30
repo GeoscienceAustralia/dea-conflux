@@ -271,7 +271,7 @@ def main():
     """Run dea-conflux."""
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option(
     "--plugin",
     "-p",
@@ -399,7 +399,7 @@ def run_one(
         return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option("--input-queue", "-iq", help="Queue to read all IDs.")
 @click.option("--output-queue", "-oq", help="Queue to save filered IDs.")
 @click.option(
@@ -518,7 +518,7 @@ def filter_from_queue(
     return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option(
     "--plugin",
     "-p",
@@ -740,7 +740,7 @@ def run_from_queue(
     return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.argument("product", type=str)
 @ui.parsed_search_expressions
 @click.option("-v", "--verbose", count=True)
@@ -816,7 +816,7 @@ def get_ids(
     return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.argument("name")
 @click.option(
     "--timeout", type=int, help="Visibility timeout in seconds", default=18 * 60
@@ -871,7 +871,7 @@ def make(name, timeout, retries, retention_period):
     return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.argument("name")
 def delete(name):
     import boto3
@@ -902,7 +902,7 @@ def delete(name):
     return arn
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option(
     "--txt",
     type=click.Path(),
@@ -946,7 +946,7 @@ def push_to_queue(txt, queue, verbose):
         post_messages(messages, count)
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option(
     "--parquet-path",
     type=click.Path(),
@@ -1005,7 +1005,7 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
     return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option(
     "--csv-path",
     type=click.Path(),
@@ -1046,7 +1046,7 @@ def package_delivery(csv_path, output, precision, verbose):
     return 0
 
 
-@main.command()
+@main.command(no_args_is_help=True)
 @click.option(
     "--output",
     type=click.Path(),
