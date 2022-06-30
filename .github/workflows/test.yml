@@ -39,8 +39,3 @@ jobs:
       run: |
           (echo y) | docker container prune
           (echo y) | docker image prune -a
-
-    # ref: https://github.com/satackey/action-docker-layer-caching/issues/139
-    - name: Clean OS
-      run: |
-          rm -rf /usr/local/android /usr/share/dotnet /usr/local/share/boost /opt/ghc
