@@ -69,3 +69,9 @@ Summarise is applied to just the pixels in the polygon.
 	❯ pre-commit install
 
 Your code will now be formatted and validated before each commit by running `pre-commit run -a`
+
+## The run-from-queue processing pipeline
+
+The dea-conflux has two main processing functions. The `run_one` designs to do the local test and the `run_from_queue` design to run big scale processing. As its name, the `run_from_queue` needs a queue system as backend. We are using the [AWS SQS queue](https://aws.amazon.com/sqs/) as example.
+
+<img src="./doc/dea-conflux-control-flow.svg">
