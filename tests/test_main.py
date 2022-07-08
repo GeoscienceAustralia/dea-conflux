@@ -1,16 +1,10 @@
-import inspect
 import logging
-import os
 import sys
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 from moto import mock_s3, mock_sqs
-
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
 
 import dea_conflux.__main__ as main_module
 from dea_conflux.__main__ import main

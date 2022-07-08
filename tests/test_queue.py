@@ -1,14 +1,6 @@
-import inspect
-import os
-import sys
-
 import pytest
 from click import ClickException
 from moto import mock_sqs
-
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
 
 from dea_conflux.queues import get_queue, move_to_deadletter_queue, verify_name
 
