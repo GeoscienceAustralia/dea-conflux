@@ -72,6 +72,12 @@ Your code will now be formatted and validated before each commit by running `pre
 
 ## The run-from-queue processing pipeline
 
-The dea-conflux has two main processing functions. The `run_one` designs to do the local test and the `run_from_queue` design to run big scale processing. As its name, the `run_from_queue` needs a queue system as backend. We are using the [AWS SQS queue](https://aws.amazon.com/sqs/) as example.
+The dea-conflux has two main processing functions. The `run_one` designs to do the local test and the `run_from_queue` design to run big scale processing. The `run_from_queue` needs a queue system as backend. We are using the [AWS SQS queue](https://aws.amazon.com/sqs/) as example.
 
 <img src="./doc/dea-conflux-control-flow.svg">
+
+## The run_one processing pipeline
+
+The `run_one` feature designs to do the single scene processing. The user have to provide the expected scene UUID in opendatacube.
+
+<img src="./doc/dea-conflux-control-flow-local.svg">
