@@ -116,7 +116,7 @@ def test_run_one(run_main):
 
 
 @mock_sqs
-def test_run_from_queue(run_main):
+def test_run_from_queue(run_main, tmp_path):
     queue_name = "waterbodies_queue_name"
     import boto3
 
@@ -136,7 +136,7 @@ def test_run_from_queue(run_main):
             "-s",
             TEST_SHP,
             "-o",
-            "test_output",
+            str(tmp_path / "testout"),
             "--no-db",
             "-vv",
         ],
@@ -156,7 +156,7 @@ def test_run_from_queue(run_main):
             "-s",
             TEST_SHP,
             "-o",
-            "test_output",
+            str(tmp_path / "testout"),
             "--no-db",
             "--overwrite",
             "-vv",
