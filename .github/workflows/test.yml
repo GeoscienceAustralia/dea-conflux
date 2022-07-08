@@ -28,12 +28,23 @@ jobs:
       run: |
         docker-compose build
 
-    - name: Test dea-conflux image
+    - name: Setup dea-conflux test environment
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "pytest ."
+          docker-compose exec -T conflux bash -c "pip install -e ."
+
+    - name: Run dea-conflux test
+      run: |
+          docker-compose exec -T conflux bash -c "coverage run -m pytest ."
+          docker-compose exec -T conflux bash -c "coverage report -m"
+          docker-compose exec -T conflux bash -c "coverage xml"
           docker-compose down
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        fail_ci_if_error: false
 
     - name: Clean dea-conflux image
       run: |
