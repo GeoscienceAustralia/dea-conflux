@@ -28,13 +28,11 @@ jobs:
       run: |
         docker-compose build
 
-    - name: Setup dea-conflux DB
+    - name: Setup dea-conflux test environment
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
-
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
+          docker-compose exec -T conflux bash -c "pip install -e ."
 
     - name: Run dea-conflux test
       run: |
