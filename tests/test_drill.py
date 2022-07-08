@@ -1,10 +1,16 @@
+import inspect
 import logging
+import os
 import sys
 from pathlib import Path
 
 import datacube
 import geopandas as gpd
 import pytest
+
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
 from dea_conflux.__main__ import load_and_reproject_shapefile, run_plugin
 from dea_conflux.drill import _get_directions, drill, find_datasets

@@ -1,11 +1,17 @@
 import datetime
+import inspect
 import logging
+import os
 import random
 import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
+
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
 import dea_conflux.io as io
 
