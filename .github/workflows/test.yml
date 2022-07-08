@@ -28,10 +28,16 @@ jobs:
       run: |
         docker-compose build
 
-    - name: Test dea-conflux image
+    - name: Setup dea-conflux DB
       run: |
           docker-compose up -d
           ./tests/setup_test_datacube.sh
+
+    - name: Setup upterm session
+      uses: lhotari/action-upterm@v1
+
+    - name: Run dea-conflux test
+      run: |
           docker-compose exec -T conflux bash -c "coverage run -m pytest ."
           docker-compose exec -T conflux bash -c "coverage report -m"
           docker-compose exec -T conflux bash -c "coverage xml"
