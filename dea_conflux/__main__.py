@@ -1,4 +1,4 @@
-"""CLI: Run a polygon drill step on scenes.
+"""CLI: Run a polygon drill step on a scene.
 
 Matthew Alger, Vanessa Newey, Alex Leith
 Geoscience Australia
