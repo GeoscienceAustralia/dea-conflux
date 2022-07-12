@@ -41,7 +41,11 @@ Conflux can also read from an AWS SQS queue. Messages must be the UUID of a scen
 dea-conflux run-from-queue --queue QUEUE_NAME --plugin PLUGIN_PATH -o OUTPUT_PATH -s SHAPEFILE_PATH
 ```
 
-### Plugins
+Note:
+
+The dea-conflux only allows to run on `partial` mode right now. The polygons which partial overlap with the scene will also be processed.
+
+## Plugins
 
 A plugin defines the inputs and outputs of a polygon drill. It is a Python file with the extensions `.conflux.py`. Examples are provided in the `examples/` directory.
 
