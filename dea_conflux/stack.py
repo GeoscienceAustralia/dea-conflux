@@ -168,6 +168,38 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     return all_paths
 
 
+def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
+    """Removed the timeseries duplicated (same day) data in DataFrame.
+
+    Arguments
+    ---------
+    df : pd.DataFrame
+        The polygon base timeseries result.
+
+    Returns
+    -------
+    pd.DataFrame
+        The polygon base timeseries result without duplicated data.
+    """
+
+    df_columns = ["pc_missing", "date"]
+
+    if len([e for e in list(df.columns) if e in df_columns]) == len(df_columns):
+        df['DAY'] = [e.split("T")[0] for e in df["date"]]
+    elif "pc_missing" in list(df.columns):
+        df['DAY'] = [e.split("T")[0] for e in df.index]
+    else:
+        # If the DataFrame does not have pc_missing, stop processing
+        raise NotImplementedError
+
+    df = df.sort_values(["DAY", "pc_missing"], ascending=True)
+    # The pc_missing the less the better, so we only keep the first one
+    df = df.drop_duplicates("DAY", keep="first")
+
+    # Remember to remove the temp column day in result_df
+    return df.drop(columns=["DAY"])
+
+
 def load_pq_file(path):
     """Load Parquet file from given path.
 
@@ -204,6 +236,10 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath):
     """
     # feature_id, single_polygon_df = item
     filename = f"{outpath}/{feature_id}.csv"
+
+    # Remove the timeseries duplicated data
+    single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
+
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
@@ -371,6 +407,7 @@ def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
     logger.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
+        df = remove_timeseries_with_duplicated(df)
         df.sort_index(inplace=True)
         filename = f"{outpath}/{uid[:4]}/{uid}.csv"
         logger.info(f"Writing {filename}")
@@ -554,6 +591,7 @@ def stack_waterbodies_db_to_csv(
         ]
 
         df = pd.DataFrame(rows, columns=["date", "pc_wet", "px_wet"])
+        df = remove_timeseries_with_duplicated(df)
         df.to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,
