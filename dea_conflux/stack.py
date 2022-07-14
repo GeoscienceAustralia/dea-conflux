@@ -185,9 +185,9 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
     df_columns = ["pc_missing", "date"]
 
     if len([e for e in list(df.columns) if e in df_columns]) == len(df_columns):
-        df['DAY'] = [e.split("T")[0] for e in df["date"]]
+        df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
     elif "pc_missing" in list(df.columns):
-        df['DAY'] = [e.split("T")[0] for e in df.index]
+        df = df.assign(DAY=[e.split("T")[0] for e in df.index])
     else:
         # If the DataFrame does not have pc_missing, stop processing
         raise NotImplementedError
@@ -221,7 +221,7 @@ def load_pq_file(path):
     return df
 
 
-def save_df_as_csv(single_polygon_df, feature_id, outpath):
+def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_data):
     """Save polygon base pandas.DataFrame as
     CSV file in output folder.
 
@@ -233,12 +233,15 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath):
         Polygon unique ID.
     outpath : str
         Path (s3 or local) to save the CSV files.
+    remove_duplicated_data: bool
+        Remove timeseries duplicated data or not
     """
     # feature_id, single_polygon_df = item
     filename = f"{outpath}/{feature_id}.csv"
 
-    # Remove the timeseries duplicated data
-    single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
+    if remove_duplicated_data:
+        # Remove the timeseries duplicated data
+        single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
 
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
@@ -307,7 +310,12 @@ def stack_wit_tooling_to_single_file(
     overall_result.to_csv(overall_csv_filename, index=False)
 
 
-def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
+def stack_wit_tooling(
+    paths: [str],
+    output_dir: str,
+    remove_duplicated_data: bool = True,
+    verbose: bool = False,
+):
     """Stack wit tooling parquet result files into CSVs.
 
     Arguments
@@ -316,6 +324,8 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
         List of paths to Parquet files to stack.
     output_dir : str
         Path to output directory.
+    remove_duplicated_data: bool
+        Remove timeseries duplicated data
 
     verbose : bool
     """
@@ -367,6 +377,7 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
                     polygon_groups.get_group(feature_id),
                     feature_id,
                     output_dir,
+                    remove_duplicated_data,
                 ): feature_id
                 for feature_id in feature_ids
             }
@@ -375,7 +386,12 @@ def stack_wit_tooling(paths: [str], output_dir: str, verbose: bool = False):
                 bar.update(1)
 
 
-def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
+def stack_waterbodies(
+    paths: [str],
+    output_dir: str,
+    remove_duplicated_data: bool = True,
+    verbose: bool = False,
+):
     """Stack Parquet files into CSVs like DEA Waterbodies does.
 
     Arguments
@@ -385,6 +401,9 @@ def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
 
     output_dir : str
         Path to output directory.
+
+    remove_duplicated_data: bool
+        Remove timeseries duplicated data or not
 
     verbose : bool
     """
@@ -407,7 +426,8 @@ def stack_waterbodies(paths: [str], output_dir: str, verbose: bool = False):
     logger.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
-        df = remove_timeseries_with_duplicated(df)
+        if remove_duplicated_data:
+            df = remove_timeseries_with_duplicated(df)
         df.sort_index(inplace=True)
         filename = f"{outpath}/{uid[:4]}/{uid}.csv"
         logger.info(f"Writing {filename}")
@@ -524,6 +544,7 @@ def stack_waterbodies_db_to_csv(
     out_path: str,
     verbose: bool = False,
     uids: {str} = None,
+    remove_duplicated_data: bool = True,
     engine=None,
     n_workers: int = 8,
     index_num: int = 0,
@@ -544,6 +565,9 @@ def stack_waterbodies_db_to_csv(
 
     uids : {uids}
         Set of waterbody IDs. If not specified, use all.
+
+    remove_duplicated_data: bool
+        Remove timeseries duplicated data or not
 
     engine : Engine
         Database engine. If not specified, use the
@@ -591,7 +615,8 @@ def stack_waterbodies_db_to_csv(
         ]
 
         df = pd.DataFrame(rows, columns=["date", "pc_wet", "px_wet"])
-        df = remove_timeseries_with_duplicated(df)
+        if remove_duplicated_data:
+            df = remove_timeseries_with_duplicated(df)
         df.to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,

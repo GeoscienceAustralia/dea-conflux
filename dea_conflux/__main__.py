@@ -975,7 +975,12 @@ def push_to_queue(txt, queue, verbose):
 @click.option(
     "--drop/--no-drop", default=False, help="Drop database if applicable. Default False"
 )
-def stack(parquet_path, output, pattern, mode, verbose, drop):
+@click.option(
+    "--remove-duplicated-data/--no-remove-duplicated-data",
+    default=True,
+    help="Remove timeseries duplicated data if applicable. Default True",
+)
+def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_data):
     """
     Stack outputs of dea-conflux into other formats.
     """
@@ -991,8 +996,10 @@ def stack(parquet_path, output, pattern, mode, verbose, drop):
     kwargs = {}
     if mode == "waterbodies" or mode == "wit_tooling":
         kwargs["output_dir"] = output
+        kwargs["remove_duplicated_data"] = remove_duplicated_data
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
+        kwargs["remove_duplicated_data"] = remove_duplicated_data
 
     dea_conflux.stack.stack(
         parquet_path,
