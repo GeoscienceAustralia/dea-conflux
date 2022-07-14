@@ -182,7 +182,11 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
         The polygon base timeseries result without duplicated data.
     """
 
-    df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
+    if "date" not in df.columns:
+        # In the WaterBody PQ to CSV use case, the index is date
+        df = df.assign(DAY=[e.split("T")[0] for e in df.index])
+    else:
+        df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
 
     df = df.sort_values(["DAY", "pc_missing"], ascending=True)
     # The pc_missing the less the better, so we only keep the first one
@@ -613,7 +617,7 @@ def stack_waterbodies_db_to_csv(
             print(out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv")
         # The pc_missing should not in final WaterBodies result
         df.drop(columns=["pc_missing"], inplace=True)
-        
+
         df.to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,
