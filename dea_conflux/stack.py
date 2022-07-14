@@ -182,15 +182,7 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
         The polygon base timeseries result without duplicated data.
     """
 
-    df_columns = ["pc_missing", "date"]
-
-    if len([e for e in list(df.columns) if e in df_columns]) == len(df_columns):
-        df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
-    elif "pc_missing" in list(df.columns):
-        df = df.assign(DAY=[e.split("T")[0] for e in df.index])
-    else:
-        # If the DataFrame does not have pc_missing, stop processing
-        raise NotImplementedError
+    df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
 
     df = df.sort_values(["DAY", "pc_missing"], ascending=True)
     # The pc_missing the less the better, so we only keep the first one
@@ -610,13 +602,17 @@ def stack_waterbodies_db_to_csv(
                 "date": stack_format_date(ob.date),
                 "pc_wet": round(ob.pc_wet * 100, 2),
                 "px_wet": ob.px_wet,
+                "pc_missing": ob.pc_missing,
             }
             for ob in obs
         ]
 
-        df = pd.DataFrame(rows, columns=["date", "pc_wet", "px_wet"])
+        df = pd.DataFrame(rows, columns=["date", "pc_wet", "px_wet", "pc_missing"])
         if remove_duplicated_data:
             df = remove_timeseries_with_duplicated(df)
+            print(out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv")
+        # The pc_missing should not in final WaterBodies result
+        df = df.drop(columns=["pc_missing"])
         df.to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,

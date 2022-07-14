@@ -1080,7 +1080,12 @@ def package_delivery(csv_path, output, precision, verbose):
     default=1,
     help="Number of chunks after split overall waterbodies ID list.",
 )
-def db_to_csv(output, verbose, jobs, index_num, split_num):
+@click.option(
+    "--remove-duplicated-data/--no-remove-duplicated-data",
+    default=True,
+    help="Remove timeseries duplicated data if applicable. Default True",
+)
+def db_to_csv(output, verbose, jobs, index_num, split_num, remove_duplicated_data):
     """Output Waterbodies-style CSVs from a database."""
     logging_setup(verbose)
 
@@ -1090,6 +1095,7 @@ def db_to_csv(output, verbose, jobs, index_num, split_num):
         n_workers=jobs,
         index_num=index_num,
         split_num=split_num,
+        remove_duplicated_data=remove_duplicated_data,
     )
 
 
