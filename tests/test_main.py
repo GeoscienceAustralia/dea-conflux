@@ -301,6 +301,36 @@ def test_waterbodies_stack(run_main, tmp_path):
     )
     print(stack_result)
 
+    stack_result = run_main(
+        [
+            "stack",
+            "--parquet-path",
+            TEST_WB_PQ_DATA,
+            "--output",
+            str(tmp_path / "testout"),
+            "--mode",
+            "waterbodies",
+            "--remove-duplicated-data",
+        ],
+        expect_success=True,
+    )
+    print(stack_result)
+
+    stack_result = run_main(
+        [
+            "stack",
+            "--parquet-path",
+            TEST_WB_PQ_DATA,
+            "--output",
+            str(tmp_path / "testout"),
+            "--mode",
+            "waterbodies",
+            "--no-remove-duplicated-data",
+        ],
+        expect_success=True,
+    )
+    print(stack_result)
+
 
 def test_wit_package(run_main, tmp_path):
     stack_result = run_main(
