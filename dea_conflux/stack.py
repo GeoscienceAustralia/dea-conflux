@@ -612,7 +612,8 @@ def stack_waterbodies_db_to_csv(
             df = remove_timeseries_with_duplicated(df)
             print(out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv")
         # The pc_missing should not in final WaterBodies result
-        df = df.drop(columns=["pc_missing"])
+        df.drop(columns=["pc_missing"], inplace=True)
+        
         df.to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,
