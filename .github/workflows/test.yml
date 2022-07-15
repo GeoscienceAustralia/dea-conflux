@@ -39,6 +39,7 @@ jobs:
           docker-compose exec -T conflux bash -c "coverage run -m pytest ."
           docker-compose exec -T conflux bash -c "coverage report -m"
           docker-compose exec -T conflux bash -c "coverage xml"
+          docker-compose exec -T conflux bash -c "coverage html"
           docker-compose down
 
     - name: Upload coverage to Codecov
