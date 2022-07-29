@@ -618,11 +618,14 @@ def stack_waterbodies_db_to_csv(
         # The pc_missing should not in final WaterBodies result
         df.drop(columns=["pc_missing"], inplace=True)
 
-        df.to_csv(
-            out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
-            header=True,
-            index=False,
-        )
+        if len(df) > 0:
+            df.to_csv(
+                out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
+                header=True,
+                index=False,
+            )
+        else:
+            logger.info(f"The waterbodies {wb.wb_name} has no result.")
 
         Session.remove()
 
