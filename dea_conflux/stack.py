@@ -279,7 +279,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
-        single_polygon_df.to_csv(f, index_label=False)
+        single_polygon_df.to_csv(f, index=False)
     return filename
 
 
