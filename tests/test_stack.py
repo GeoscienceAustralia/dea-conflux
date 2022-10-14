@@ -103,7 +103,7 @@ def test_wit_stacking(tmp_path):
     assert len(csv) == 1
     assert (
         len(csv.columns) == 11
-    )  # feature_id, bs, npv, pc_missing, pv, water, wet, norm_pv, norm_npv, norm_bs and date
+    )  # bs, npv, pc_missing, pv, water, wet, date, feature_id, norm_pv, norm_npv, norm_bs
 
 
 def test_wit_single_file_stacking(tmp_path):
