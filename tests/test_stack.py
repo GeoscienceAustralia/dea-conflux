@@ -102,8 +102,8 @@ def test_wit_stacking(tmp_path):
     csv = pd.read_csv(outpath)
     assert len(csv) == 1
     assert (
-        len(csv.columns) == 8
-    )  # feature_id, bs, npv, pc_missing, pv, water, wet and date
+        len(csv.columns) == 11
+    )  # feature_id, bs, npv, pc_missing, pv, water, wet, norm_pv, norm_npv, norm_bs and date
 
 
 def test_wit_single_file_stacking(tmp_path):
