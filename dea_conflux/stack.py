@@ -378,9 +378,7 @@ def stack_wit_tooling(
     logger.info("Reading...")
 
     with tqdm(total=len(paths)) as bar:
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=multiprocessing.cpu_count() * 16
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             wit_df_list = []
             futures = {executor.submit(load_pq_file, path): path for path in paths}
             for future in concurrent.futures.as_completed(futures):
