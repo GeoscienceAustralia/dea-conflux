@@ -239,6 +239,42 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
 
+    # The tech challenge here is: if we don't remove the duplicated data, we cannot use
+    # date to reindex the result
+    single_polygon_df.set_index("date", inplace=True)
+
+    # WIT Normalise Step
+
+    # 1. compute the expected vegetation area total size: 1 - water (%) - wet (%)
+    single_polygon_df["veg_areas"] = (
+        1 - single_polygon_df["water"] - single_polygon_df["wet"]
+    )
+
+    # 2. normalse the vegetation values based on vegetation size (to handle FC values more than 100 issue)
+    # WARNNING: Not touch the water and wet, cause they are pixel classification result
+    single_polygon_df["overall_veg_num"] = (
+        single_polygon_df["pv"] + single_polygon_df["npv"] + single_polygon_df["bs"]
+    )
+
+    # 3. if the overall_veg_num is 0, no need to normalize veg area
+    norm_veg_index = single_polygon_df["overall_veg_num"] != 0
+
+    # the normlized values will be saved as norm_bs/norm_pv/norm_npv
+    for band in ["pv", "npv", "bs"]:
+
+        # assign pv/npv/bs values to norm_pv/norm_npv/norm_bs firstly
+        single_polygon_df.loc[:, "norm_" + band] = single_polygon_df.loc[:, band]
+
+        # only modify the norm_pv/npv/bs which overall_ver_num is not 0
+        single_polygon_df.loc[norm_veg_index, "norm_" + band] = (
+            single_polygon_df.loc[norm_veg_index, band]
+            / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
+            * single_polygon_df.loc[norm_veg_index, "veg_areas"]
+        )
+
+    # remove the temp column
+    single_polygon_df.drop(["overall_veg_num", "veg_areas"], axis=1, inplace=True)
+
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
@@ -266,6 +302,8 @@ def stack_wit_tooling_to_single_file(
     polygon_df_list = []
     logger.info("Reading...")
 
+    # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
+    # then we assume they already had the norm_pv, norm_npv, norm_bs there.
     with tqdm(total=len(paths)) as bar:
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=multiprocessing.cpu_count() * 16
@@ -289,7 +327,17 @@ def stack_wit_tooling_to_single_file(
     if not output_dir.startswith("s3://"):
         os.makedirs(Path(overall_pq_filename).parent, exist_ok=True)
 
-    column_names = ["bs", "npv", "pc_missing", "pv", "water", "wet"]
+    column_names = [
+        "bs",
+        "npv",
+        "pc_missing",
+        "pv",
+        "water",
+        "wet",
+        "norm_pv",
+        "norm_npv",
+        "norm_bs",
+    ]
 
     logger.info(f"Begin to reduce the precision of the data to {str(precision)}")
 
