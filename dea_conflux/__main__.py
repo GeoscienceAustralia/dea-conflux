@@ -70,7 +70,10 @@ def id_field_values_is_unique(shapefile_path: str, id_field) -> bool:
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile_path} to check id field.")
-    gdf = gpd.read_file(shapefile_path, driver="ESRI Shapefile")
+    try:
+        gdf = gpd.read_file(shapefile_path, driver="ESRI Shapefile")
+    except DriverError:
+        gdf = gpd.read_file(shapefile_path, driver="GeoJSON")
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
     return len(set(gdf[id_field])) == len(gdf)
@@ -176,7 +179,10 @@ def load_and_reproject_shapefile(
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
-    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    try:
+        shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    except DriverError:
+        shapefile = gpd.read_file(shapefile, driver="GeoJSON")
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
 
