@@ -3,11 +3,11 @@ import xarray as xr
 product_name = "waterbodies"
 version = "0.0.1"
 resampling = "nearest"
-output_crs = "EPSG:3577"
-resolution = (-25, 25)
+output_crs = "EPSG:6933"
+resolution = (-30, 30)
 
 input_products = {
-    "wofs_albers": ["water"],
+    "wofs_ls": ["water"],
 }
 
 
