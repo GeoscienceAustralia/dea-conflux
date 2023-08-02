@@ -507,7 +507,7 @@ def drill(
     assert str(shapefile.crs).lower() == str(crs).lower()
 
     # Get a datacube if we don't have one already.
-    if not dc:
+    if dc is not None:
         dc = datacube.Datacube(app="dea-conflux-drill")
 
     # Assign a one-indexed numeric column for the polygons.
