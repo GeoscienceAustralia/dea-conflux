@@ -20,14 +20,14 @@ import geopandas as gpd
 from datacube.ui import click as ui
 from rasterio.errors import RasterioIOError
 
-import dea_conflux.__version__
-import dea_conflux.db
-import dea_conflux.drill
-import dea_conflux.hopper
-import dea_conflux.io
-import dea_conflux.queues
-import dea_conflux.stack
-from dea_conflux.types import CRS
+import deafrica_conflux.__version__
+import deafrica_conflux.db
+import deafrica_conflux.drill
+import deafrica_conflux.hopper
+import deafrica_conflux.io
+import deafrica_conflux.queues
+import deafrica_conflux.stack
+from deafrica_conflux.types import CRS
 
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -213,7 +213,7 @@ def run_plugin(plugin_path: str) -> ModuleType:
     -------
     module
     """
-    spec = importlib.util.spec_from_file_location("dea_conflux.plugin", plugin_path)
+    spec = importlib.util.spec_from_file_location("deafrica_conflux.plugin", plugin_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -272,7 +272,7 @@ def logging_setup(verbose: int):
 
 
 @click.group()
-@click.version_option(version=dea_conflux.__version__)
+@click.version_option(version=deafrica_conflux.__version__)
 def main():
     """Run dea-conflux."""
 
@@ -377,7 +377,7 @@ def run_one(
     try:
         # Do the drill!
         dc = datacube.Datacube(app="dea-conflux-drill")
-        table = dea_conflux.drill.drill(
+        table = deafrica_conflux.drill.drill(
             plugin,
             shapefile,
             uuid,
@@ -392,7 +392,7 @@ def run_one(
         # dump that dataframe as PQ file
         if (dump_empty_dataframe) or (not table.empty):
             centre_date = dc.index.datasets.get(uuid).center_time
-            dea_conflux.io.write_table(
+            deafrica_conflux.io.write_table(
                 plugin.product_name, uuid, centre_date, table, output
             )
     except KeyError as keyerr:
@@ -489,7 +489,7 @@ def filter_from_queue(
 
             ids = [dc.index.datasets.get(uuid) for uuid in uuids]
 
-            uuids = dea_conflux.drill.filter_dataset(
+            uuids = deafrica_conflux.drill.filter_dataset(
                 ids, shapefile, worker_num=num_worker
             )
 
@@ -642,7 +642,7 @@ def run_from_queue(
     queue_url = queue.url
 
     if db:
-        engine = dea_conflux.db.get_engine_waterbodies()
+        engine = deafrica_conflux.db.get_engine_waterbodies()
 
     dc = datacube.Datacube(app="dea-conflux-drill")
     message_retries = 10
@@ -682,14 +682,14 @@ def run_from_queue(
 
             if not overwrite:
                 logger.info(f"Checking existence of {id_}")
-                exists = dea_conflux.io.table_exists(
+                exists = deafrica_conflux.io.table_exists(
                     plugin.product_name, id_, centre_date, output
                 )
 
             # NameError should be impossible thanks to short-circuiting
             if overwrite or not exists:
                 try:
-                    table = dea_conflux.drill.drill(
+                    table = deafrica_conflux.drill.drill(
                         plugin,
                         shapefile,
                         id_,
@@ -703,12 +703,12 @@ def run_from_queue(
                     # if always dump drill result, or drill result is not empty,
                     # dump that dataframe as PQ file
                     if (dump_empty_dataframe) or (not table.empty):
-                        pq_filename = dea_conflux.io.write_table(
+                        pq_filename = deafrica_conflux.io.write_table(
                             plugin.product_name, id_, centre_date, table, output
                         )
                         if db:
                             logger.debug(f"Writing {pq_filename} to DB")
-                            dea_conflux.stack.stack_waterbodies_db(
+                            deafrica_conflux.stack.stack_waterbodies_db(
                                 paths=[pq_filename],
                                 verbose=verbose,
                                 engine=engine,
@@ -716,15 +716,15 @@ def run_from_queue(
                             )
                 except KeyError as keyerr:
                     logger.error(f"Found {id_} has KeyError: {str(keyerr)}")
-                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    deafrica_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
                     success_flag = False
                 except TypeError as typeerr:
                     logger.error(f"Found {id_} has TypeError: {str(typeerr)}")
-                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    deafrica_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
                     success_flag = False
                 except RasterioIOError as ioerror:
                     logger.error(f"Found {id_} has RasterioIOError: {str(ioerror)}")
-                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    deafrica_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
                     success_flag = False
             else:
                 logger.info(f"{id_} already exists, skipping")
@@ -781,7 +781,7 @@ def get_ids(
 ):
     """Get IDs based on an expression."""
     logging_setup(verbose)
-    dss = dea_conflux.hopper.find_datasets(expressions, [product])
+    dss = deafrica_conflux.hopper.find_datasets(expressions, [product])
 
     if shapefile:
         crs = get_crs(shapefile)
@@ -798,7 +798,7 @@ def get_ids(
         )
         logger.info(f"shapefile RAM usage: {sys.getsizeof(shapefile)}.")
 
-        ids = dea_conflux.drill.filter_dataset(dss, shapefile, worker_num=num_worker)
+        ids = deafrica_conflux.drill.filter_dataset(dss, shapefile, worker_num=num_worker)
     else:
         ids = [str(ds.id) for ds in dss]
 
@@ -839,7 +839,7 @@ def make(name, timeout, retries, retention_period):
     import boto3
     from botocore.config import Config
 
-    dea_conflux.queues.verify_name(name)
+    deafrica_conflux.queues.verify_name(name)
 
     deadletter = name + "_deadletter"
 
@@ -882,7 +882,7 @@ def make(name, timeout, retries, retention_period):
 def delete(name):
     import boto3
 
-    dea_conflux.queues.verify_name(name)
+    deafrica_conflux.queues.verify_name(name)
 
     sqs = boto3.resource("sqs")
 
@@ -923,7 +923,7 @@ def push_to_queue(txt, queue, verbose):
     """
     # Cribbed from datacube-alchemist
     logging_setup(verbose)
-    alive_queue = dea_conflux.queues.get_queue(queue)
+    alive_queue = deafrica_conflux.queues.get_queue(queue)
 
     def post_messages(messages, count):
         alive_queue.send_messages(Entries=messages)
@@ -994,9 +994,9 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_
 
     # Convert mode to StackMode
     mode_map = {
-        "waterbodies": dea_conflux.stack.StackMode.WATERBODIES,
-        "waterbodies_db": dea_conflux.stack.StackMode.WATERBODIES_DB,
-        "wit_tooling": dea_conflux.stack.StackMode.WITTOOLING,
+        "waterbodies": deafrica_conflux.stack.StackMode.WATERBODIES,
+        "waterbodies_db": deafrica_conflux.stack.StackMode.WATERBODIES_DB,
+        "wit_tooling": deafrica_conflux.stack.StackMode.WITTOOLING,
     }
 
     kwargs = {}
@@ -1007,7 +1007,7 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_
         kwargs["drop"] = drop
         kwargs["remove_duplicated_data"] = remove_duplicated_data
 
-    dea_conflux.stack.stack(
+    deafrica_conflux.stack.stack(
         parquet_path,
         pattern,
         mode_map[mode],
@@ -1048,10 +1048,10 @@ def package_delivery(csv_path, output, precision, verbose):
     kwargs["precision"] = precision
     kwargs["output_dir"] = output
 
-    dea_conflux.stack.stack(
+    deafrica_conflux.stack.stack(
         csv_path,
         ".*",
-        dea_conflux.stack.StackMode.WITTOOLING_SINGLE_FILE_DELIVERY,
+        deafrica_conflux.stack.StackMode.WITTOOLING_SINGLE_FILE_DELIVERY,
         verbose=verbose,
         **kwargs,
     )
@@ -1095,7 +1095,7 @@ def db_to_csv(output, verbose, jobs, index_num, split_num, remove_duplicated_dat
     """Output Waterbodies-style CSVs from a database."""
     logging_setup(verbose)
 
-    dea_conflux.stack.stack_waterbodies_db_to_csv(
+    deafrica_conflux.stack.stack_waterbodies_db_to_csv(
         out_path=output,
         verbose=verbose > 0,
         n_workers=jobs,

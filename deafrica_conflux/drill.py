@@ -24,7 +24,7 @@ import tqdm
 import xarray as xr
 from datacube.utils.geometry import assign_crs
 
-from dea_conflux.types import CRS
+from deafrica_conflux.types import CRS
 
 logger = logging.getLogger(__name__)
 

@@ -25,10 +25,10 @@ import s3fs
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from tqdm.auto import tqdm
 
-import dea_conflux.db
-import dea_conflux.io
-from dea_conflux.db import Engine
-from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
+import deafrica_conflux.db
+import deafrica_conflux.io
+from deafrica_conflux.db import Engine
+from deafrica_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class StackMode(enum.Enum):
 
 
 def stack_format_date(date: datetime.datetime) -> str:
-    """Format a date to match DEA conflux products datetime.
+    """Format a date to match DE Africa conflux products datetime.
 
     Arguments
     ---------
@@ -208,10 +208,10 @@ def load_pq_file(path):
     [pandas.DataFrame]
         pandas.DataFrame
     """
-    df = dea_conflux.io.read_table(path)
+    df = deafrica_conflux.io.read_table(path)
     # the pq file will be empty if no polygon belongs to that scene
     if df.empty is not True:
-        date = dea_conflux.io.string_to_date(df.attrs["date"])
+        date = deafrica_conflux.io.string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         df.loc[:, "date"] = date
     return df
@@ -435,7 +435,7 @@ def stack_waterbodies(
     remove_duplicated_data: bool = True,
     verbose: bool = False,
 ):
-    """Stack Parquet files into CSVs like DEA Waterbodies does.
+    """Stack Parquet files into CSVs like DE Africa Waterbodies does.
 
     Arguments
     ---------
@@ -456,8 +456,8 @@ def stack_waterbodies(
     if verbose:
         paths = tqdm(paths)
     for path in paths:
-        df = dea_conflux.io.read_table(path)
-        date = dea_conflux.io.string_to_date(df.attrs["date"])
+        df = deafrica_conflux.io.read_table(path)
+        date = deafrica_conflux.io.string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         # df is ids x bands
         # for each ID...
@@ -491,8 +491,8 @@ def get_waterbody_key(uid: str, session: Session):
         "centroid_lat": lat,
         "centroid_lon": lon,
     }
-    inst, _ = dea_conflux.db.get_or_create(
-        session, dea_conflux.db.Waterbody, wb_name=uid, defaults=defaults
+    inst, _ = deafrica_conflux.db.get_or_create(
+        session, deafrica_conflux.db.Waterbody, wb_name=uid, defaults=defaults
     )
     return inst.wb_id
 
@@ -529,17 +529,17 @@ def stack_waterbodies_db(
 
     # connect to the db
     if not engine:
-        engine = dea_conflux.db.get_engine_waterbodies()
+        engine = deafrica_conflux.db.get_engine_waterbodies()
 
     Session = sessionmaker(bind=engine)
     session = Session()
 
     # drop tables if requested
     if drop:
-        dea_conflux.db.drop_waterbody_tables(engine)
+        deafrica_conflux.db.drop_waterbody_tables(engine)
 
     # ensure tables exist
-    dea_conflux.db.create_waterbody_tables(engine)
+    deafrica_conflux.db.create_waterbody_tables(engine)
 
     if not uids:
         uids = set()
@@ -555,9 +555,9 @@ def stack_waterbodies_db(
 
     for path in paths:
         # read the table in...
-        df = dea_conflux.io.read_table(path)
+        df = deafrica_conflux.io.read_table(path)
         # parse the date...
-        date = dea_conflux.io.string_to_date(df.attrs["date"])
+        date = deafrica_conflux.io.string_to_date(df.attrs["date"])
         # df is ids x bands
         # for each ID...
         obss = []
@@ -568,7 +568,7 @@ def stack_waterbodies_db(
                 uid_to_key[uid] = key
 
             key = uid_to_key[uid]
-            obs = dea_conflux.db.WaterbodyObservation(
+            obs = deafrica_conflux.db.WaterbodyObservation(
                 wb_id=key,
                 px_wet=series.px_wet,
                 pc_wet=series.pc_wet,
@@ -629,22 +629,22 @@ def stack_waterbodies_db_to_csv(
     """
     # connect to the db
     if not engine:
-        engine = dea_conflux.db.get_engine_waterbodies()
+        engine = deafrica_conflux.db.get_engine_waterbodies()
 
     session_factory = sessionmaker(bind=engine)
     Session = scoped_session(session_factory)
 
     # Iterate over waterbodies.
 
-    def thread_run(wb: dea_conflux.db.Waterbody):
+    def thread_run(wb: deafrica_conflux.db.Waterbody):
         session = Session()
 
         # get all observations
         logger.debug(f"Processing {wb.wb_name}")
         obs = (
-            session.query(dea_conflux.db.WaterbodyObservation)
-            .filter(dea_conflux.db.WaterbodyObservation.wb_id == wb.wb_id)
-            .order_by(dea_conflux.db.WaterbodyObservation.date.asc())
+            session.query(deafrica_conflux.db.WaterbodyObservation)
+            .filter(deafrica_conflux.db.WaterbodyObservation.wb_id == wb.wb_id)
+            .order_by(deafrica_conflux.db.WaterbodyObservation.date.asc())
             .all()
         )
 
@@ -676,12 +676,12 @@ def stack_waterbodies_db_to_csv(
     session = Session()
     if not uids:
         # query all
-        waterbodies = session.query(dea_conflux.db.Waterbody).all()
+        waterbodies = session.query(deafrica_conflux.db.Waterbody).all()
     else:
         # query some
         waterbodies = (
-            session.query(dea_conflux.db.Waterbody)
-            .filter(dea_conflux.db.Waterbody.wb_name.in_(uids))
+            session.query(deafrica_conflux.db.Waterbody)
+            .filter(deafrica_conflux.db.Waterbody.wb_name.in_(uids))
             .all()
         )
 
@@ -718,7 +718,7 @@ def stack(
         Regex to match filenames against.
 
     mode : StackMode
-        Method of stacking. Default is like DEA Waterbodies v1,
+        Method of stacking. Default is like DE Africa Waterbodies v1,
         a collection of polygon CSVs.
 
     verbose : bool

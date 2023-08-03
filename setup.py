@@ -6,8 +6,8 @@ if __name__ == "__main__":
         use_scm_version=True,
         setup_requires=["setuptools_scm"],
         # package metadata
-        name="dea-conflux",
-        packages=["dea_conflux"],
+        name="deafrica-conflux",
+        packages=["deafrica_conflux"],
         python_requires=">=3.6",
         install_requires=[
             "click",
@@ -26,6 +26,6 @@ if __name__ == "__main__":
             # "python-geohash",
         ],
         entry_points={
-            "console_scripts": ["dea-conflux=dea_conflux.__main__:main"],
+            "console_scripts": ["deafrica-conflux=deafrica_conflux.__main__:main"],
         },
     )
