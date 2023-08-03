@@ -4,7 +4,7 @@ Matthew Alger, Vanessa Newey, Alex Leith
 Geoscience Australia
 2021
 """
-
+import os
 import importlib.util
 import json
 import logging
@@ -29,10 +29,33 @@ import deafrica_conflux.queues
 import deafrica_conflux.stack
 from deafrica_conflux.types import CRS
 
-from fiona.errors import DriverError
-
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
+
+def get_file_driver(shapefile_path):
+    """
+    Get the appropriate fiona driver for a 
+    shapefile or geojson file.
+    
+    Arguments
+    ---------
+    shapefile_path : str
+        Path to shapefile.
+    Returns
+    -------
+    driver: str
+        File Driver 
+    """
+    
+    file_extension = os.path.splitext(shapefile_path)[-1]
+
+    if file_extension.lower() == ".geojson":
+        file_driver = "GeoJSON"
+    elif file_extension.lower() == ".shp":
+        file_driver = "ESRI Shapefile"
+
+    return file_driver
 
 
 def get_crs(shapefile_path: str) -> CRS:
@@ -72,10 +95,7 @@ def id_field_values_is_unique(shapefile_path: str, id_field) -> bool:
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile_path} to check id field.")
-    try:
-        gdf = gpd.read_file(shapefile_path, driver="ESRI Shapefile")
-    except DriverError:
-        gdf = gpd.read_file(shapefile_path, driver="GeoJSON")
+    gdf = gpd.read_file(shapefile_path, driver=get_file_driver(shapefile_path))
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
     return len(set(gdf[id_field])) == len(gdf)
@@ -181,10 +201,7 @@ def load_and_reproject_shapefile(
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
-    try:
-        shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
-    except DriverError:
-        shapefile = gpd.read_file(shapefile, driver="GeoJSON")
+    shapefile = gpd.read_file(shapefile, driver=get_file_driver(shapefile))
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
 
