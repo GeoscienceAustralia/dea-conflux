@@ -29,6 +29,8 @@ import deafrica_conflux.queues
 import deafrica_conflux.stack
 from deafrica_conflux.types import CRS
 
+from fiona.errors import DriverError
+
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
