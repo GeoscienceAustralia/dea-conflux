@@ -782,7 +782,7 @@ def run_from_queue(
     default=None,
     help="Optional. Unique key id in shapefile.",
 )
-@click.option("--s3/--stdout", default=False)
+@click.option("--s3/--local", default=False)
 @click.option(
     "--num-worker",
     type=int,
@@ -793,7 +793,7 @@ def run_from_queue(
     "--bucket-name",
     type=str,
     help="The default bucket to save the get_ids result.",
-    default="dea-public-data-dev",
+    default="deafrica-data-dev-af",
 )
 def get_ids(
     product, expressions, verbose, shapefile, use_id, s3, num_worker, bucket_name
@@ -822,11 +822,21 @@ def get_ids(
         ids = [str(ds.id) for ds in dss]
 
     if not s3:
+        
+        out_path = (
+            f"waterbodies_conflux_ids_"
+            + str(pyuuid.uuid4())
+            + ".json"
+        )
+        with fsspec.open(out_path, "w") as f:
+            f.write("\n".join(ids))
+        
+        print(json.dumps({"ids_path": out_path}), end="")
         # stdout
-        for id_ in ids:
-            print(id_)
+        #for id_ in ids:
+        #    print(id_)
 
-        logger.info(f"dataset size: {len(ids)} messages...")
+        #logger.info(f"dataset size: {len(ids)} messages...")
     else:
         out_path = (
             f"s3://{bucket_name}/waterbodies/conflux/"
