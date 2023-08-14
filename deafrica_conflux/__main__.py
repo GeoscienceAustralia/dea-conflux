@@ -796,14 +796,14 @@ def run_from_queue(
     "--bucket-name",
     type=str,
     help="The default s3 bucket to save the get_ids result.",
-    default="deafrica-data-dev-af",
+    #default="deafrica-data-dev-af",
     show_default=True,
     required=False
 )
 @click.option(
     "--output-folder",
     type=str,
-    help="The default folder to save the get_ids result.",
+    help="The default folder to save the get_ids result. Default is current directory.",
     default=None,
     show_default=True,
     required=False
