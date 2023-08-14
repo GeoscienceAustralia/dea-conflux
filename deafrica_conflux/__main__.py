@@ -33,7 +33,7 @@ logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def get_storage_location(ctx, param, value):
-    if values is not None:
+    if value is not None:
         ctx.command.params[1].required = True
     else:
         ctx.command.params[2].required = True
