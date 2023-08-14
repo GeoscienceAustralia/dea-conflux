@@ -33,9 +33,9 @@ logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def get_storage_location(ctx, param, value):
-    if value is not None:
+    if value:
         ctx.command.params[1].required = True
-    else:
+    elif not value:
         ctx.command.params[2].required = True
 
 def get_file_driver(shapefile_path):
