@@ -32,6 +32,11 @@ from deafrica_conflux.types import CRS
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+def get_storage_location(ctx, param, value):
+    if value == True:
+        ctx.command.params[1].required = True
+    else:
+        ctx.command.params[2].required = True
 
 def get_file_driver(shapefile_path):
     """
@@ -784,13 +789,24 @@ def run_from_queue(
 )
 @click.option("--s3/--local", 
               help="Save the get_ids result to either an s3 bucket or to a local file.",
-              default=False)
+              default=False, 
+              callback=get_storage_location
+              )
 @click.option(
     "--bucket-name",
     type=str,
     help="The default s3 bucket to save the get_ids result.",
     default="deafrica-data-dev-af",
-    show_default=True
+    show_default=True,
+    required=False
+)
+@click.option(
+    "--output-folder",
+    type=str,
+    help="The default folder to save the get_ids result.",
+    default=None,
+    show_default=True,
+    required=False
 )
 @click.option(
     "--num-worker",
@@ -799,8 +815,8 @@ def run_from_queue(
     default=4,
 )
 
-def get_ids(
-    product, expressions, verbose, shapefile, use_id, s3, num_worker, bucket_name
+def get_ids(product, expressions, verbose, shapefile, use_id, s3, num_worker, bucket_name, 
+    output_folder
 ):
     """Get IDs based on an expression."""
     logging_setup(verbose)
@@ -826,8 +842,12 @@ def get_ids(
         ids = [str(ds.id) for ds in dss]
 
     if not s3:
-        current_directory = os.getcwd()
-        output_directory = f"{current_directory}/waterbodies/conflux/"
+        if output_folder is None:
+            current_directory = os.getcwd()
+            output_directory = f"{current_directory}/waterbodies/conflux/"
+        else:
+            output_directory = f"{output_folder}/waterbodies/conflux/"
+            
         os.makedirs(output_directory, exist_ok=True)
 
         out_path = (
