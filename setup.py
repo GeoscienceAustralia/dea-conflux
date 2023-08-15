@@ -26,6 +26,6 @@ if __name__ == "__main__":
             # "python-geohash",
         ],
         entry_points={
-            "console_scripts": ["deafrica-conflux=deafrica_conflux.__main__:main"],
+            "console_scripts": ["deafrica-conflux=deafrica_conflux.cli:main"],
         },
     )
