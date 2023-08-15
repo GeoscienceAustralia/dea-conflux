@@ -16,7 +16,7 @@ import pyarrow
 import pyarrow.parquet
 import s3fs
 
-logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 # File extensions to recognise as Parquet files.

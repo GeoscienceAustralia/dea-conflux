@@ -11,7 +11,7 @@ from typing import Dict, Iterable
 from datacube import Datacube
 from datacube.model import Dataset
 
-logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 def find_datasets(
@@ -57,7 +57,7 @@ def find_datasets(
                 if limit is not None and count >= limit:
                     return
         except ValueError as e:
-            logger.warning(
+            _log.warning(
                 f"Error searching for datasets. "
                 f"Maybe none were returned? "
                 f"Error was {e}"

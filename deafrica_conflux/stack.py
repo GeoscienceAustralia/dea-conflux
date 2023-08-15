@@ -30,7 +30,7 @@ import deafrica_conflux.io
 from deafrica_conflux.db import Engine
 from deafrica_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
-logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 class StackMode(enum.Enum):
@@ -301,7 +301,7 @@ def stack_wit_tooling_to_single_file(
     verbose : bool
     """
     polygon_df_list = []
-    logger.info("Reading...")
+    _log.info("Reading...")
 
     # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
     # then we assume they already had the norm_pv, norm_npv, norm_bs there.
@@ -316,13 +316,13 @@ def stack_wit_tooling_to_single_file(
                 bar.update(1)
 
     if len(polygon_df_list) == 0:
-        logger.warning("Cannot find any available WIT result.")
+        _log.warning("Cannot find any available WIT result.")
         return 0
     else:
-        logger.info("Concat WIT result...")
+        _log.info("Concat WIT result...")
         overall_result = pd.concat(polygon_df_list)
 
-    logger.info("Writing overall result...")
+    _log.info("Writing overall result...")
     overall_pq_filename = f"{output_dir}/overall.pq"
     overall_csv_filename = f"{output_dir}/overall.csv"
     if not output_dir.startswith("s3://"):
@@ -340,7 +340,7 @@ def stack_wit_tooling_to_single_file(
         "norm_bs",
     ]
 
-    logger.info(f"Begin to reduce the precision of the data to {str(precision)}")
+    _log.info(f"Begin to reduce the precision of the data to {str(precision)}")
 
     for column_name in column_names:
         overall_result[column_name] = overall_result[column_name].round(
@@ -375,7 +375,7 @@ def stack_wit_tooling(
     verbose : bool
     """
     wit_df_list = []
-    logger.info("Reading...")
+    _log.info("Reading...")
 
     with tqdm(total=len(paths)) as bar:
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
@@ -386,23 +386,23 @@ def stack_wit_tooling(
                 bar.update(1)
 
     if len(wit_df_list) == 0:
-        logger.warning("Cannot find any available WIT result.")
+        _log.warning("Cannot find any available WIT result.")
         return 0
     else:
-        logger.info("Concat WIT result...")
+        _log.info("Concat WIT result...")
         wit_result = pd.concat(wit_df_list)
 
     # delete the temp result to release RAM
     del wit_df_list
 
-    logger.info("Writing overall result...")
+    _log.info("Writing overall result...")
     overall_filename = f"{output_dir}/overall.pq"
 
     if not output_dir.startswith("s3://"):
         os.makedirs(Path(overall_filename).parent, exist_ok=True)
     wit_result.to_parquet(overall_filename)
 
-    logger.info("Writing polygon base result...")
+    _log.info("Writing polygon base result...")
 
     polygon_groups = wit_result.groupby(wit_result.index)
     feature_ids = wit_result.index.unique()
@@ -452,7 +452,7 @@ def stack_waterbodies(
     """
     # id -> [series of date x bands]
     id_to_series = collections.defaultdict(list)
-    logger.info("Reading...")
+    _log.info("Reading...")
     if verbose:
         paths = tqdm(paths)
     for path in paths:
@@ -466,14 +466,14 @@ def stack_waterbodies(
             id_to_series[uid].append(series)
     outpath = output_dir
     outpath = str(outpath)  # handle Path type
-    logger.info("Writing...")
+    _log.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
         if remove_duplicated_data:
             df = remove_timeseries_with_duplicated(df)
         df.sort_index(inplace=True)
         filename = f"{outpath}/{uid[:4]}/{uid}.csv"
-        logger.info(f"Writing {filename}")
+        _log.info(f"Writing {filename}")
         if not outpath.startswith("s3://"):
             os.makedirs(Path(filename).parent, exist_ok=True)
         with fsspec.open(filename, "w") as f:
@@ -640,7 +640,7 @@ def stack_waterbodies_db_to_csv(
         session = Session()
 
         # get all observations
-        logger.debug(f"Processing {wb.wb_name}")
+        _log.debug(f"Processing {wb.wb_name}")
         obs = (
             session.query(deafrica_conflux.db.WaterbodyObservation)
             .filter(deafrica_conflux.db.WaterbodyObservation.wb_id == wb.wb_id)
@@ -728,7 +728,7 @@ def stack(
     """
     path = str(path)
 
-    logger.info(f"Begin to query {path} with pattern {pattern}")
+    _log.info(f"Begin to query {path} with pattern {pattern}")
 
     if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
         paths = find_csv_files(path, pattern)
