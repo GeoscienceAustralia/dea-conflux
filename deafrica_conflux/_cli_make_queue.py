@@ -20,7 +20,7 @@ import deafrica_conflux.queues
     default=7 * 24 * 3600,
 )
 @click.option("--retries", type=int, help="Number of retries", default=5)
-def make(name, timeout, retries, retention_period):
+def make_queue(name, timeout, retries, retention_period):
     """
     Make a queue.
     """
