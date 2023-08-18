@@ -3,7 +3,7 @@
 requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
 
 [tool.setuptools_scm]
-write_to = "dea_conflux/__version__.py"
+write_to = "deafrica_conflux/__version__.py"
 
 [tool.pytest.ini_options]
 log_cli = true

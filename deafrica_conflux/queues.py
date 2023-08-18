@@ -23,7 +23,7 @@ def get_queue(queue_name: str):
 def verify_name(name):
     if (not name.startswith("waterbodies_")) and (not name.startswith("wit_")):
         raise click.ClickException(
-            "DEA conflux queues must start with waterbodies_ or wit_"
+            "DE Africa conflux queues must start with waterbodies_ or wit_"
         )
 
 

@@ -24,9 +24,9 @@ import tqdm
 import xarray as xr
 from datacube.utils.geometry import assign_crs
 
-from dea_conflux.types import CRS
+from deafrica_conflux.types import CRS
 
-logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 def xr_rasterise(
@@ -79,7 +79,7 @@ def xr_rasterise(
     except ValueError:
         y, x = len(xy_coords[0]), len(xy_coords[1])
 
-    logger.debug(f"Rasterizing to match xarray.DataArray dimensions ({y}, {x})")
+    _log.debug(f"Rasterizing to match xarray.DataArray dimensions ({y}, {x})")
 
     # Use the geometry and attributes from `gdf` to create an iterable
     shapes = zip(gdf.geometry, gdf[attribute_col])
@@ -507,7 +507,7 @@ def drill(
     assert str(shapefile.crs).lower() == str(crs).lower()
 
     # Get a datacube if we don't have one already.
-    if not dc:
+    if dc is not None:
         dc = datacube.Datacube(app="dea-conflux-drill")
 
     # Assign a one-indexed numeric column for the polygons.
@@ -529,26 +529,26 @@ def drill(
         buffer=partial,
     )
     _n_filtered_quick = len(shapefile)
-    logger.debug(f"Quick filter removed {_n_initial - _n_filtered_quick} polygons")
+    _log.debug(f"Quick filter removed {_n_initial - _n_filtered_quick} polygons")
 
     # Remove things outside the box.
     # We do this after the quick filter so the intersection is way faster.
     shapefile = filter_shapefile_full(shapefile, reference_dataset)
     _n_filtered_full = len(shapefile)
-    logger.debug(f"Full filter removed {_n_filtered_quick - _n_filtered_full} polygons")
+    _log.debug(f"Full filter removed {_n_filtered_quick - _n_filtered_full} polygons")
 
     # If overedge, remove anything which intersects with a 3-scene
     # width box.
     if overedge:
         shapefile = filter_shapefile_intersections(shapefile, reference_dataset)
-        logger.debug(
+        _log.debug(
             "Overedge filter removed {} polygons".format(
                 _n_filtered_full - len(shapefile)
             )
         )
 
     if len(shapefile) == 0:
-        logger.warning(f"No polygons found in scene {uuid}")
+        _log.warning(f"No polygons found in scene {uuid}")
         return pd.DataFrame({})
 
     # Load the image of the input scene so we can build the raster.
@@ -557,8 +557,8 @@ def drill(
     # more bands than we need the first time! Ignore for MVP.
     if not overedge:
         # just load the scene we asked for
-        logger.debug("Loading datasets:")
-        logger.debug(f"\t{reference_dataset.id}")
+        _log.debug("Loading datasets:")
+        _log.debug(f"\t{reference_dataset.id}")
         reference_scene = dc.load(
             datasets=[reference_dataset], output_crs=crs, resolution=resolution
         )
@@ -578,11 +578,11 @@ def drill(
         req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span
         )
-        logger.debug("Loading datasets:")
+        _log.debug("Loading datasets:")
         for ds_ in req_datasets:
-            logger.debug(f"\t{ds_.id}")
+            _log.debug(f"\t{ds_.id}")
 
-        logger.debug(f"Going to load {len(req_datasets)} datasets")
+        _log.debug(f"Going to load {len(req_datasets)} datasets")
         # There really shouldn't be more than nine of these.
         # But, they sometimes split into two scenes per tile in
         # collection 2. So we'll insist there's <= 18.
@@ -595,7 +595,7 @@ def drill(
             resolution=resolution,
         )
 
-    logger.info(f"Reference scene is {reference_scene.sizes}")
+    _log.info(f"Reference scene is {reference_scene.sizes}")
 
     # Detect intersections.
     # We only have to do this if partial and not overedge.
@@ -640,7 +640,7 @@ def drill(
             query["geopolygon"] = geopolygon
             query["time"] = time_span
             query["group_by"] = "solar_day"
-        logger.debug(f"Query: {repr(query)}")
+        _log.debug(f"Query: {repr(query)}")
         da = dc.load(**query)
         for band in measurements:
             bands[band] = da[band]
