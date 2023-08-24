@@ -1,7 +1,7 @@
 import click
 import boto3
 
-from ._cli_common import main
+from .common import main
 
 import deafrica_conflux.queues
 

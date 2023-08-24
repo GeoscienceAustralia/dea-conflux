@@ -1,6 +1,6 @@
 import click
 import logging
-from ._cli_common import main, logging_setup
+from .common import main, logging_setup
 
 import deafrica_conflux.queues
 

@@ -7,8 +7,7 @@ import json
 import uuid as pyuuid
 from datacube.ui import click as ui
 
-from ._cli_common import main, command_required_option_from_option, logging_setup
-from ._vector_file_utils import get_crs, guess_id_field, load_and_reproject_shapefile
+from .common import main, command_required_option_from_option, logging_setup, get_crs, guess_id_field, load_and_reproject_shapefile
 
 import deafrica_conflux.hopper
 

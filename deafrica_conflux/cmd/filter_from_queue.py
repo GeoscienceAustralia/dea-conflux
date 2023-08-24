@@ -4,8 +4,7 @@ import click
 import logging
 import datacube
 
-from ._cli_common import main, logging_setup
-from ._vector_file_utils import get_crs, guess_id_field, load_and_reproject_shapefile
+from .common import main, logging_setup, get_crs, guess_id_field, load_and_reproject_shapefile
 
 import deafrica_conflux.drill
 

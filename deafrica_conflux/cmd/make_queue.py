@@ -3,7 +3,7 @@ import boto3
 import json
 from botocore.config import Config
 
-from ._cli_common import main
+from .common import main
 
 import deafrica_conflux.queues
 
