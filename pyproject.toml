@@ -41,7 +41,7 @@ dependencies= [
     "moto[s3]",
     "tqdm",
     "SQLAlchemy",
-    # "python-geohash",
+    "python-geohash",
 ]
 dynamic = ["version"]
 
