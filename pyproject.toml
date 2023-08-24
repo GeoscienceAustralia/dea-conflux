@@ -1,6 +1,60 @@
 # pyproject.toml
 [build-system]
-requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+
+[project]
+name = "deafrica-conflux"
+description = "Digital Earth Africa tool for processing bulk polygon drills"
+authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
+maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+# If you change the License, remember to change the Trove Classifier!
+license = {file = "LICENSE"}
+classifiers=[
+    # Trove classifiers
+    # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    'License :: OSI Approved :: Apache Software License',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering :: GIS',
+    'Topic :: Scientific/Engineering :: Hydrology',
+]
+requires-python = ">=3.6"
+dependencies= [
+    "click",
+    "pytest",
+    "coverage",
+    "geopandas",
+    "datacube",
+    "boto3",
+    "botocore",
+    "pyarrow",
+    "fsspec",
+    "s3fs",
+    "moto[s3]",
+    "tqdm",
+    "SQLAlchemy",
+    # "python-geohash",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/digitalearthafrica/deafrica-conflux"
+Repository = "https://github.com/digitalearthafrica/deafrica-conflux"
+Documentation = "https://github.com/digitalearthafrica/deafrica-conflux#readme"
+
+[project.scripts]
+deafrica-conflux="deafrica_conflux.cmd.cli:main"
+
+[tool.setuptools]
+packages = ["deafrica_conflux"]
 
 [tool.setuptools_scm]
 write_to = "deafrica_conflux/__version__.py"
