@@ -5,7 +5,7 @@ from rasterio.errors import RasterioIOError
 
 from ._cli_common import main, logging_setup
 from ._vector_file_utils import get_crs, guess_id_field, load_and_reproject_shapefile
-from .plugins._plugin_utils import run_plugin, validate_plugin
+from .plugins.utils import run_plugin, validate_plugin
 
 import deafrica_conflux.drill
 import deafrica_conflux.io
