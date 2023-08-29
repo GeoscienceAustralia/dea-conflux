@@ -1,0 +1,29 @@
+name: deafrica-conflux-env
+channels:
+  - conda-forge
+dependencies:
+  - python = 3.10.6 
+  - gdal = 3.6.3 
+  - pip:
+    - --extra-index-url="https://packages.dea.ga.gov.au"
+    - pip-tools
+    - click
+    - coverage
+    - geopandas
+    - datacube
+    - boto3
+    - botocore
+    - pyarrow
+    - fsspec
+    - s3fs
+    - moto[s3]
+    - tqdm
+    - SQLAlchemy
+    - python-geohash
+    - deafrica-tools >= 2.1.0
+    # Code style
+    - flake8
+    - black
+    # Testing
+    - pytest
+    
