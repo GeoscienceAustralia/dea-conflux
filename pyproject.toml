@@ -42,6 +42,11 @@ dependencies= [
     "tqdm",
     "SQLAlchemy",
     "python-geohash",
+    # Code style
+    'flake8',
+    'black', 
+    # Testing
+    'pytest',
 ]
 dynamic = ["version"]
 
