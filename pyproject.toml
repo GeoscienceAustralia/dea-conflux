@@ -29,7 +29,6 @@ classifiers=[
 requires-python = ">=3.6"
 dependencies= [
     "click",
-    "pytest",
     "coverage",
     "geopandas",
     "datacube",
@@ -43,10 +42,10 @@ dependencies= [
     "SQLAlchemy",
     "python-geohash",
     # Code style
-    'flake8',
-    'black', 
+    "flake8",
+    "black", 
     # Testing
-    'pytest',
+    "pytest",
 ]
 dynamic = ["version"]
 
@@ -56,7 +55,7 @@ Repository = "https://github.com/digitalearthafrica/deafrica-conflux"
 Documentation = "https://github.com/digitalearthafrica/deafrica-conflux#readme"
 
 [project.scripts]
-deafrica-conflux="deafrica_conflux.cmd.cli:main"
+deafrica-conflux="deafrica_conflux.cli.main:main"
 
 [tool.setuptools]
 packages = ["deafrica_conflux"]

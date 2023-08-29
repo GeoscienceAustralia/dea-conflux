@@ -200,9 +200,3 @@ def load_and_reproject_shapefile(
     # zero-buffer to fix some oddities.
     shapefile.geometry = shapefile.geometry.buffer(0)
     return shapefile
-
-
-@click.version_option(package_name="deafrica_conflux", version=deafrica_conflux.__version__)
-@click.group(help="Run deafrica-conflux.")
-def main():
-    pass
