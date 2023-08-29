@@ -12,25 +12,6 @@ import deafrica_conflux.__version__
 _log = logging.getLogger(__name__)
 
 
-def command_required_option_from_option(require_name, require_map):
-
-    class CommandOptionRequiredClass(click.Command):
-
-        def invoke(self, ctx):
-            require = ctx.params[require_name]
-            if require not in require_map:
-                raise click.ClickException(
-                    "Unexpected value for --'{}': {}".format(
-                        require_name, require))
-            if ctx.params[require_map[require].lower()] is None:
-                raise click.ClickException(
-                    "With {}={} must specify option --{}".format(
-                        require_name, require, require_map[require]))
-            super(CommandOptionRequiredClass, self).invoke(ctx)
-
-    return CommandOptionRequiredClass
-
-
 def get_file_driver(shapefile_path):
     """
     Get the appropriate fiona driver for a
