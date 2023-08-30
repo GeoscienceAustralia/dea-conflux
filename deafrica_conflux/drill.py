@@ -361,7 +361,7 @@ def filter_datasets(
     """
     with multiprocessing.Pool(processes=worker_num) as pool:
         filtered_datasets_ = list(
-            tqdm.tqdm(pool.imap(partial(check_ds_near_polygons, polygons_gdf=polygons_gdf), dss))
+            tqdm.tqdm(pool.imap(partial(check_ds_near_polygons, polygons_gdf), dss))
         )
     
     # Remove empty strings.
