@@ -92,7 +92,7 @@ def get_ids(product,
         except Exception as error:
             _log.error(error)
             raise
-    
+        
         # Guess the ID field.
         id_field = guess_id_field(polygons_gdf, use_id)
         _log.debug(f"Guessed ID field: {id_field}")
@@ -101,6 +101,10 @@ def get_ids(product,
         polygons_gdf.set_index(id_field)
 
         _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
+
+        # Reprojection is done to avoid UserWarning: Geometry is in a geographic CRS.
+        # when using filter_datasets when polygons are in "EPSG:4326" crs.
+        polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
 
         ids = filter_datasets(dss, polygons_gdf, worker_num=num_worker)
     else:
