@@ -119,9 +119,9 @@ def get_ids(product,
             os.makedirs(output_directory)
             _log.info(f"{output_directory} folder created.")
     
-        out_path = f"file://{output_directory}conflux_ids.json"
+        out_path = f"file://{output_directory}conflux_ids.txt"
     else:
-        out_path = f"s3://{output_bucket_name}/{object_prefix}conflux_ids.json"
+        out_path = f"s3://{output_bucket_name}/{object_prefix}conflux_ids.txt"
 
     _log.info(f"Writing IDs to: {out_path}.")
     
