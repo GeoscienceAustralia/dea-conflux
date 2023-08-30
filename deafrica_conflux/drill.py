@@ -1,4 +1,5 @@
-"""Run a polygon drill step on a scene.
+"""
+Run a polygon drill step on a scene.
 
 Matthew Alger, Vanessa Newey
 Geoscience Australia
@@ -12,97 +13,25 @@ import multiprocessing
 import warnings
 from functools import partial
 from types import ModuleType
-from typing import Union
 
 import datacube
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import rasterio.features
 import shapely.geometry
 import tqdm
 import xarray as xr
-from datacube.utils.geometry import assign_crs
 
 from deafrica_conflux.types import CRS
+
+from deafrica_tools.spatial import xr_rasterize
 
 _log = logging.getLogger(__name__)
 
 
-def xr_rasterise(
-    gdf: gpd.GeoDataFrame, da: Union[xr.DataArray, xr.Dataset], attribute_col: str
-) -> xr.DataArray:
-    """
-    Rasterizes a geopandas.GeoDataFrame into an xarray.DataArray.
-
-    Cribbed from dea-tools:
-    Krause, C., Dunn, B., Bishop-Taylor, R., Adams, C., Burton, C.,
-    Alger, M., Chua, S., Phillips, C., Newey, V., Kouzoubov, K.,
-    Leith, A., Ayers, D., Hicks, A., DEA Notebooks contributors 2021.
-    Digital Earth Australia notebooks and tools repository.
-    Geoscience Australia, Canberra. https://doi.org/10.26186/145234
-
-    Arguments
-    ----------
-    gdf : geopandas.GeoDataFrame
-        Vectors to rasterise in the same CRS as the da.
-    da : xarray.DataArray / xarray.Dataset
-        Template for raster.
-    attribute_col : string
-        Name of the attribute column that the pixels
-        in the raster will contain.
-
-    Returns
-    -------
-    xarray.DataArray
-    """
-    # Get the CRS
-    crs = da.geobox.crs
-    if crs is None:
-        raise ValueError("da must have a CRS")
-    assert crs == gdf.crs
-
-    # Same for transform
-    transform = da.geobox.transform
-    if transform is None:
-        raise TypeError("da must have a transform")
-
-    # Grab the 2D dims (not time)
-    dims = da.geobox.dims
-
-    # Coords
-    xy_coords = [da[dims[0]], da[dims[1]]]
-
-    # Shape
-    try:
-        y, x = da.geobox.shape
-    except ValueError:
-        y, x = len(xy_coords[0]), len(xy_coords[1])
-
-    _log.debug(f"Rasterizing to match xarray.DataArray dimensions ({y}, {x})")
-
-    # Use the geometry and attributes from `gdf` to create an iterable
-    shapes = zip(gdf.geometry, gdf[attribute_col])
-
-    # Rasterise shapes into an array
-    arr = rasterio.features.rasterize(
-        shapes=shapes, out_shape=(y, x), transform=transform
-    )
-
-    # Convert result to a xarray.DataArray
-    xarr = xr.DataArray(
-        arr, coords=xy_coords, dims=dims, attrs=da.attrs, name="polygons"
-    )
-
-    # Add back crs if xarr.attrs doesn't have it
-    if xarr.geobox is None:
-        xarr = assign_crs(xarr, str(crs))
-
-    return xarr
-
-
 def _get_directions(og_geom, int_geom):
-    """Helper to get direction of intersection between geometry, intersection.
+    """
+    Helper to get direction of intersection between geometry, intersection.
 
     Arguments
     ---------
@@ -183,27 +112,37 @@ def _get_directions(og_geom, int_geom):
 
 
 def get_intersections(
-    gdf: gpd.GeoDataFrame, extent: shapely.geometry.Polygon
-) -> gpd.GeoDataFrame:
-    """Find which polygons intersect with an extent and in what direction.
+        polygons_gdf: gpd.GeoDataFrame,
+        ds_extent: datacube.utils.geometry.Geometry
+) -> pd.DataFrame:
+    """
+    Find which polygons intersect with a Dataset or DataArray extent
+    and in what direction.
 
     Arguments
     ---------
-    gdf : gpd.GeoDataFrame
+    polygons_gdf : gpd.GeoDataFrame
         Set of polygons.
 
-    extent : shapely.geometry.Polygon
-        Extent polygon to check intersection against.
+    ds_extent : datacube.utils.geometry.Geometry
+        Valid extent of a dataset to check intersection against.
 
     Returns
     -------
-    gpd.GeoDataFrame
+    pd.DataFrame
         Table of intersections.
     """
-    all_intersection = gdf.geometry.intersection(extent)
+    # Check if the set of polygons and the dataset extent have the same
+    # CRS.
+    assert polygons_gdf.crs == ds_extent.crs
+
+    # Get the geometry of the dataset extent.
+    ds_extent_geom = ds_extent.geom
+
+    all_intersection = polygons_gdf.geometry.intersection(ds_extent_geom)
     # Which ones have decreased in area thanks to our intersection?
     intersects_mask = ~(all_intersection.area == 0)
-    ratios = all_intersection.area / gdf.area
+    ratios = all_intersection.area / polygons_gdf.area
     directions = []
     dir_names = ["North", "South", "East", "West"]
     for ratio, intersects, idx in zip(ratios, intersects_mask, ratios.index):
@@ -211,7 +150,7 @@ def get_intersections(
         if not intersects or ratio == 1:
             directions.append({d: False for d in dir_names})
             continue
-        og_geom = gdf.loc[idx].geometry
+        og_geom = polygons_gdf.loc[idx].geometry
         # Buffer to dodge some bad geometry behaviour
         int_geom = all_intersection.loc[idx].buffer(0)
         dirs = _get_directions(og_geom, int_geom)
@@ -220,10 +159,14 @@ def get_intersections(
     return pd.DataFrame(directions, index=ratios.index)
 
 
-def find_datasets(
-    dc: datacube.Datacube, plugin: ModuleType, uuid: str, strict: bool = False
+def find_datasets_for_plugin(
+        dc: datacube.Datacube,
+        plugin: ModuleType,
+        scene_uuid: str,
+        strict: bool = False
 ) -> [datacube.model.Dataset]:
-    """Find the datasets that a plugin requires given a related scene UUID.
+    """
+    Find the datasets that a plugin requires given a related scene UUID.
 
     Arguments
     ---------
@@ -231,7 +174,7 @@ def find_datasets(
         A Datacube to search.
     plugin : module
         Plugin defining input products.
-    uuid : str
+    scene_uuid : str
         UUID of scene to look up.
     strict : bool
         Default False. Error on duplicate scenes (otherwise warn).
@@ -242,7 +185,7 @@ def find_datasets(
         List of datasets.
     """
     # Load the metadata of the specified scene.
-    metadata = dc.index.datasets.get(uuid)
+    metadata = dc.index.datasets.get(scene_uuid)
     # Find the datasets that have the same centre time and
     # fall within this extent.
     datasets = {}
@@ -252,10 +195,10 @@ def find_datasets(
         )
         if len(datasets_) > 1:
             if strict:
-                raise ValueError(f"Found multiple datasets at same time for {uuid}")
+                raise ValueError(f"Found multiple datasets at same time for {scene_uuid}")
             else:
                 warnings.warn(
-                    f"Found multiple datasets at same time for {uuid}, "
+                    f"Found multiple datasets at same time for {scene_uuid}, "
                     "choosing one arbitrarily",
                     RuntimeWarning,
                 )
@@ -266,7 +209,8 @@ def find_datasets(
 
 
 def dataset_to_dict(ds: xr.Dataset) -> dict:
-    """Convert a 0d dataset into a dict.
+    """
+    Convert a 0d dataset into a dictionary.
 
     Arguments
     ---------
@@ -276,59 +220,87 @@ def dataset_to_dict(ds: xr.Dataset) -> dict:
     -------
     dict
     """
-    return {key: val["data"] for key, val in ds.to_dict()["data_vars"].items()}
+    ds_dict = ds.to_dict(data='list')
+    data_vars_dict = ds_dict["data_vars"]
+
+    data_dict = {}
+    for key, val in data_vars_dict.items():
+        data_dict[key] = val["data"]
+
+    return data_dict
 
 
-def filter_shapefile_full(
-    gdf: gpd.GeoDataFrame, ds: datacube.model.Dataset
+def polygons_in_ds_extent(
+        polygons_gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset
 ) -> gpd.GeoDataFrame:
-    """Filter a shapefile to only include objects that are in a scene.
+    """
+    Filter a set of polygons to only include polygons that intersect with
+    the extent of a dataset.
 
     Arguments
     ---------
-    gdf : gpd.GeoDataFrame
+    polygons_gdf : gpd.GeoDataFrame
     ds : datacube.model.Dataset
 
     Returns
     -------
     gpd.GeoDataFrame
     """
-    # reproject the ds extent into gdf crs
-    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs).to_crs(gdf.crs).geometry[0]
+    # Get the extent of the dataset.
+    ds_extent = ds.extent
 
-    return gdf[gdf.geometry.intersects(ext)]
+    # Reproject the extent of the dataset to match the set of polygons.
+    ds_extent = ds_extent.to_crs(polygons_gdf.crs)
+
+    # Get the shapely geometry of the reprojected extent of the dataset.
+    ds_extent_geom = ds_extent.geom
+
+    # Filter the polygons.
+    filtered_polygons_gdf = polygons_gdf[polygons_gdf.geometry.intersects(ds_extent_geom)]
+
+    return filtered_polygons_gdf
 
 
-def filter_shapefile_quick(
-    gdf: gpd.GeoDataFrame, ds: datacube.model.Dataset, buffer=True
+def polygons_centroids_in_ds_extent_bbox(
+        polygons_gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset,
+        buffer=True
 ) -> gpd.GeoDataFrame:
-    """Filter a shapefile to only include nearby objects.
-
-    Checks if centroids are in a (buffered) bounding box.
+    """
+    Filter a set of polygons to only include polygons whose centroids intersect
+    with the (buffered) bounding box of the extent of a dataset.
 
     Arguments
     ---------
-    gdf : gpd.GeoDataFrame
+    polygons_gdf : gpd.GeoDataFrame
     ds : datacube.model.Dataset
     buffer : bool
-        Optional (True). Extend the bounding box by the
-        width of a scene.
+        Optional (True).
+        Extend the bounding box of the extent of a dataset by the
+        width of the extent of the dataset.
 
     Returns
     -------
     gpd.GeoDataFrame
     """
-    # reproject the ds extent into gdf crs
-    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs).to_crs(gdf.crs).geometry[0]
-    # e.g. (1494917.6079637874, -4008086.2291621473,
-    #       1749149.241417757, -3774896.017328557)
-    bbox = ext.bounds
+    # Get the extent of the dataset.
+    ds_extent = ds.extent
+
+    # Reproject the extent of the dataset to match the set of polygons.
+    ds_extent = ds_extent.to_crs(polygons_gdf.crs)
+
+    # Get the bounding box of the extent of the dataset.
+    bbox = ds_extent.boundingbox
     left, bottom, right, top = bbox
-    centroids = gdf.centroid
+
+    centroids = polygons_gdf.centroid
+
     width = height = 0
     if buffer:
         width = right - left
         height = top - bottom
+    
     included = (
         (centroids.x > (left - width))
         & (centroids.x < (right + width))
@@ -336,31 +308,97 @@ def filter_shapefile_quick(
         & (centroids.y > (bottom - height))
     )
 
-    gdf = gdf[included]
-    return gdf
+    filtered_polygons_gdf = polygons_gdf[included]
+
+    return filtered_polygons_gdf
 
 
-def filter_shapefile_intersections(
-    gdf: gpd.GeoDataFrame, ds: datacube.model.Dataset
-) -> gpd.GeoDataFrame:
-    """Filter a shapefile to remove objects more than 1 scene away.
+def check_ds_near_polygons(
+        polygons_gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset,
+):
+    """
+    Use the 'polygons_in_ds_extent' and 'polygons_centroids_in_ds_extent_bbox'
+    functions to check if a dataset is near a set of polygons.
+    Returns the dataset's id if the dataset is near a set of polygons else
+    returns an empty string.
+
+    Parameters
+    ----------
+    polygons_gdf : gpd.GeoDataFrame
+    ds : datacube.model.Dataset
+
+    Returns
+    -------
+    str
+    """
+    if len(polygons_centroids_in_ds_extent_bbox(polygons_gdf, ds)) > 0:
+        if len(polygons_in_ds_extent(polygons_gdf, ds)) > 0:
+            return str(ds.id)
+        else:
+            return ""
+    else:
+        return ""
+
+
+def filter_datasets(
+        dss: [datacube.model.Dataset],
+        polygons_gdf: gpd.GeoDataFrame,
+        worker_num: int = 1):
+    """
+    Filter out datasets that are not near a set of polygons, using a
+    multi-process approach to run the check_ds_near_polygons function.
 
     Arguments
     ---------
-    gdf : gpd.GeoDataFrame
+    dss : [datacube.model.Dataset]
+    polygons_gdf : gpd.GeoDataFrame
+    worker_num : int
+
+    Returns
+    -------
+    filtered_datasets: [str]
+    """
+    with multiprocessing.Pool(processes=worker_num) as pool:
+        filtered_datasets_ = list(
+            tqdm.tqdm(pool.imap(partial(check_ds_near_polygons, polygons_gdf=polygons_gdf), dss))
+        )
+    
+    # Remove empty strings.
+    filtered_datasets = [item for item in filtered_datasets_ if item]
+
+    return filtered_datasets
+
+
+def polygons_in_tripled_ds_extent_bbox_boundary(
+        polygons_gdf: gpd.GeoDataFrame,
+        ds: datacube.model.Dataset
+) -> gpd.GeoDataFrame:
+    """
+    Filter a set of polygons to remove polygons that intersect with the
+    boundary of a polygon three times the size of the bounding box of the extent
+    of a dataset.
+
+    Arguments
+    ---------
+    polygons_gdf : gpd.GeoDataFrame
     ds : datacube.model.Dataset
 
     Returns
     -------
     gpd.GeoDataFrame
     """
-    # reproject the ds extent into gdf crs
-    ext = gpd.GeoDataFrame(geometry=[ds.extent], crs=ds.crs).to_crs(gdf.crs).geometry[0]
-    # e.g. (1494917.6079637874, -4008086.2291621473,
-    #       1749149.241417757, -3774896.017328557)
-    bbox = ext.bounds
+    # Get the extent of the dataset.
+    ds_extent = ds.extent
+
+    # Reproject the extent of the dataset to match the set of polygons.
+    ds_extent = ds_extent.to_crs(polygons_gdf.crs)
+
+    # Get the bounding box of the extent of the dataset.
+    bbox = ds_extent.boundingbox
     left, bottom, right, top = bbox
 
+    # Create a polygon 3 times the size of the bounding box.
     width = right - left
     height = top - bottom
 
@@ -372,78 +410,39 @@ def filter_shapefile_intersections(
             (right + width, bottom - height),
         ]
     )
-    return gdf[~gdf.geometry.intersects(testbox.boundary)]
 
+    filtered_polygons_gdf = polygons_gdf[~polygons_gdf.geometry.intersects(testbox.boundary)]
 
-def filter_dataset(dss, shapefile, worker_num=1):
-    """Use multi-process approach to run polygon_in_dataset method.
-    Only keep the dataset id which can pass polygon_in_dataset check.
-
-    Arguments
-    ---------
-    dss : [datacube.model.Dataset]
-    shapefile : gpd.GeoDataFrame
-
-    Returns
-    -------
-    filtered_datasets: [str]
-    """
-    with multiprocessing.Pool(processes=worker_num) as pool:
-        filtered_datasets = list(
-            tqdm.tqdm(pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss))
-        )
-
-    return [e for e in filtered_datasets if e]
-
-
-def polygon_in_dataset(ds, shapefile):
-    """Use method filter_shapefile_quick to filter out dataset which no
-    polygon near it.
-
-    Arguments
-    ---------
-    ds : datacube.model.Dataset
-    shapefile : gpd.GeoDataFrame
-
-    Returns
-    -------
-    ds.id: str
-    """
-    if len(filter_shapefile_quick(shapefile, ds)) > 0:
-        if len(filter_shapefile_full(shapefile, ds)) > 0:
-            return str(ds.id)
-        else:
-            return ""
-    else:
-        return ""
+    return filtered_polygons_gdf
 
 
 def drill(
-    plugin: ModuleType,
-    shapefile: gpd.GeoDataFrame,
-    uuid: str,
-    crs: CRS,
-    resolution: (int, int),
-    partial=True,
-    overedge=False,
-    dc: datacube.Datacube = None,
-    time_buffer=datetime.timedelta(hours=1),
+        plugin: ModuleType,
+        polygons_gdf: gpd.GeoDataFrame,
+        scene_uuid: str,
+        output_crs: CRS,
+        resolution: (int, int),
+        partial=True,
+        overedge=False,
+        dc: datacube.Datacube = None,
+        time_buffer=datetime.timedelta(hours=1),
 ) -> pd.DataFrame:
-    """Perform a polygon drill.
+    """
+    Perform a polygon drill.
 
     Arguments
     ---------
     plugin : module
         Plugin to drill with.
 
-    shapefile : GeoDataFrame
-        A shapefile loaded into GeoPandas, in the correct CRS,
-        with the ID as the index.
+    polygons_gdf : GeoDataFrame
+        A GeoDataFrame in the same CRS as the output_crs,
+        with the ID (column containing the polygons ids) as the index.
 
-    uuid : str
+    scene_uuid : str
         ID of scene to process.
 
-    crs : datacube.utils.geometry.CRS
+    output_crs : datacube.utils.geometry.CRS
         CRS to output to.
 
     resolution : (int, int)
@@ -504,51 +503,45 @@ def drill(
     if not partial:
         raise NotImplementedError()
 
-    assert str(shapefile.crs).lower() == str(crs).lower()
+    assert str(polygons_gdf.crs).lower() == str(output_crs).lower()
 
     # Get a datacube if we don't have one already.
     if dc is not None:
-        dc = datacube.Datacube(app="dea-conflux-drill")
+        dc = datacube.Datacube(app="deafrica-conflux-drill")
 
     # Assign a one-indexed numeric column for the polygons.
     # This will allow us to build a polygon enumerated raster.
     attr_col = "_conflux_one_index"
-    # This mutates the (in-memory) shapefile, but that's OK.
-    shapefile[attr_col] = range(1, len(shapefile.index) + 1)
-    one_index_to_id = {v: k for k, v in shapefile[attr_col].to_dict().items()}
+    # This mutates the (in-memory) polygons_gdf, but that's OK.
+    polygons_gdf[attr_col] = range(1, len(polygons_gdf.index) + 1)
+    conflux_one_index_to_id = {v: k for k, v in polygons_gdf[attr_col].to_dict().items()}
 
     # Get the dataset we asked for.
-    reference_dataset = dc.index.datasets.get(uuid)
+    reference_dataset = dc.index.datasets.get(scene_uuid)
 
     # Filter out polygons that aren't anywhere near this scene.
-    _n_initial = len(shapefile)
-    shapefile = filter_shapefile_quick(
-        shapefile,
-        reference_dataset,
-        # ...and limit it to centroids in this scene if not partial.  # noqa: E128
-        buffer=partial,
-    )
-    _n_filtered_quick = len(shapefile)
+    _n_initial = len(polygons_gdf)
+    filtered_polygons_gdf = polygons_centroids_in_ds_extent_bbox(polygons_gdf,
+                                                                 reference_dataset,
+                                                                 # ...and limit it to centroids in this scene if not partial.  # noqa: E128
+                                                                 buffer=partial)
+    _n_filtered_quick = len(filtered_polygons_gdf)
     _log.debug(f"Quick filter removed {_n_initial - _n_filtered_quick} polygons")
 
     # Remove things outside the box.
     # We do this after the quick filter so the intersection is way faster.
-    shapefile = filter_shapefile_full(shapefile, reference_dataset)
-    _n_filtered_full = len(shapefile)
+    filtered_polygons_gdf = polygons_in_ds_extent(filtered_polygons_gdf, reference_dataset)
+    _n_filtered_full = len(filtered_polygons_gdf)
     _log.debug(f"Full filter removed {_n_filtered_quick - _n_filtered_full} polygons")
 
     # If overedge, remove anything which intersects with a 3-scene
     # width box.
     if overedge:
-        shapefile = filter_shapefile_intersections(shapefile, reference_dataset)
-        _log.debug(
-            "Overedge filter removed {} polygons".format(
-                _n_filtered_full - len(shapefile)
-            )
-        )
+        filtered_polygons_gdf = polygons_in_tripled_ds_extent_bbox_boundary(filtered_polygons_gdf, reference_dataset)
+        _log.debug(f"Overedge filter removed {_n_filtered_full - len(filtered_polygons_gdf)} polygons")
 
-    if len(shapefile) == 0:
-        _log.warning(f"No polygons found in scene {uuid}")
+    if len(filtered_polygons_gdf) == 0:
+        _log.warning(f"No polygons found in scene {scene_uuid}")
         return pd.DataFrame({})
 
     # Load the image of the input scene so we can build the raster.
@@ -559,25 +552,21 @@ def drill(
         # just load the scene we asked for
         _log.debug("Loading datasets:")
         _log.debug(f"\t{reference_dataset.id}")
-        reference_scene = dc.load(
-            datasets=[reference_dataset], output_crs=crs, resolution=resolution
-        )
+        reference_scene = dc.load(datasets=[reference_dataset], output_crs=output_crs, resolution=resolution)
         # and grab the datasets we want too
-        datasets = find_datasets(dc, plugin, uuid)
+        datasets = find_datasets_for_plugin(dc, plugin, scene_uuid)
     else:
         # search for all the datasets we need to cover the area
         # of the polygons.
         reference_product = reference_dataset.type.name
-        geopolygon = datacube.utils.geometry.Geometry(
-            shapely.geometry.box(*shapefile.total_bounds), crs=shapefile.crs
-        )
-        time_span = (
-            reference_dataset.center_time - time_buffer,
-            reference_dataset.center_time + time_buffer,
-        )
-        req_datasets = dc.find_datasets(
-            product=reference_product, geopolygon=geopolygon, time=time_span
-        )
+
+        geopolygon = datacube.utils.geometry.Geometry(geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
+                                                      crs=filtered_polygons_gdf.crs)
+        
+        time_span = (reference_dataset.center_time - time_buffer, reference_dataset.center_time + time_buffer,)
+        req_datasets = dc.find_datasets(product=reference_product,
+                                        geopolygon=geopolygon,
+                                        time=time_span)
         _log.debug("Loading datasets:")
         for ds_ in req_datasets:
             _log.debug(f"\t{ds_.id}")
@@ -591,9 +580,8 @@ def drill(
             product=reference_product,
             geopolygon=geopolygon,
             time=time_span,
-            output_crs=crs,
-            resolution=resolution,
-        )
+            output_crs=output_crs,
+            resolution=resolution,)
 
     _log.info(f"Reference scene is {reference_scene.sizes}")
 
@@ -602,9 +590,8 @@ def drill(
     # If not partial, then there can't be any intersections.
     # If overedge, then there are no partly observed polygons.
     if partial and not overedge:
-        intersection_features = get_intersections(
-            shapefile, reference_scene.extent.geom
-        )
+        intersection_features = get_intersections(filtered_polygons_gdf,
+                                                  reference_scene.extent)
         intersection_features.rename(
             inplace=True,
             columns={
@@ -616,7 +603,7 @@ def drill(
         )
 
     # Build the enumerated polygon raster.
-    polygon_raster = xr_rasterise(shapefile, reference_scene, attr_col)
+    polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
 
     # Load the images.
     resampling = "nearest"
@@ -629,7 +616,7 @@ def drill(
             assert band not in bands, f"Duplicate band: {product}{band}"
         query = dict(
             measurements=measurements,
-            output_crs=crs,
+            output_crs=output_crs,
             resolution=getattr(plugin, "resolution", None),
             resampling=resampling,
         )
@@ -687,10 +674,10 @@ def drill(
 
     def map_with_err(k):
         # KeyError if the index is missing
-        return one_index_to_id[k]
+        return conflux_one_index_to_id[k]
 
     summary_df = pd.DataFrame(
-        {one_index_to_id[int(k)]: summaries[k] for k in summaries}
+        {conflux_one_index_to_id[int(k)]: summaries[k] for k in summaries}
     ).T
 
     # Merge in the edge information.
