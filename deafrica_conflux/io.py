@@ -10,6 +10,8 @@ import json
 import logging
 import os
 from pathlib import Path
+import boto3
+from botocore.exceptions import ClientError
 
 import pandas as pd
 import pyarrow
@@ -237,3 +239,26 @@ def read_table(path: str) -> pd.DataFrame:
     for key, val in metadata.items():
         df.attrs[key] = val
     return df
+
+
+def check_bucket_exists(bucket_name: str):
+    """
+    Check if a bucket exists and if the user has acess to write to the bucket.
+
+    Parameters
+    ----------
+    bucket_name : str
+        Name of the s3 bucket.
+    """
+    s3_resource = boto3.resource("s3")
+    try:
+        s3_resource.meta.client.head_bucket(Bucket=bucket_name)
+        _log.info(f"Bucket {bucket_name} exists.")
+    except ClientError as error:
+        _log.error(error)
+        error_code = int(error.response['Error']['Code'])
+        if error_code == 403:
+            _log.error(f"{bucket_name} is a private Bucket. Forbidden Access! ")
+        elif error_code == 404:
+            _log.info(f"Bucket {bucket_name} Does Not Exist!")
+        raise

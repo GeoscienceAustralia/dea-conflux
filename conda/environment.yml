@@ -20,6 +20,7 @@ dependencies:
     - tqdm
     - SQLAlchemy
     - python-geohash
+    - s3urls
     - deafrica-tools >= 2.1.0
     # Code style
     - flake8

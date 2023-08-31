@@ -3,21 +3,20 @@ import sys
 import click
 import logging
 import fsspec
-import json
+from s3urls import parse_url
+from urllib.parse import urlparse
 import geopandas as gpd
 from datacube.ui import click as ui
 
 from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.cli.group_options import MutuallyExclusiveOption
 
 from deafrica_conflux.id_field import guess_id_field
 from deafrica_conflux.hopper import find_datasets
 from deafrica_conflux.drill import filter_datasets
-
+from deafrica_conflux.io import check_bucket_exists
 
 @click.command("get-ids",
-               no_args_is_help=True,
-               )
+               no_args_is_help=True,)
 @click.argument("product", type=str)
 @ui.parsed_search_expressions
 @click.option("-v", "--verbose", count=True)
@@ -33,47 +32,24 @@ from deafrica_conflux.drill import filter_datasets
     default=None,
     help="Optional. Unique key id in shapefile.",
 )
-@click.option("--s3",
-              "storage_location",
-              flag_value="s3",
-              help="Save the output to an s3 bucket.")
-@click.option("--local",
-              "storage_location",
-              flag_value="local",
-              default=True,
-              help="Save the output to a local folder.")
-@click.option("--output-bucket-name",
-              type=str,
-              show_default=True,
-              cls=MutuallyExclusiveOption,
-              mutually_exclusive=["output_local_folder"],
-              help="The s3 bucket to write the output to.",)
-@click.option("--output-local-folder",
-              type=click.Path(),
-              cls=MutuallyExclusiveOption,
-              mutually_exclusive=["output_bucket_name"],
-              help="Local directory to write the waterbody polygons to.",)
+@click.option(
+    "--output-file-path",
+    type=click.Path(),
+    help="File URI or S3 URI of the text file to write the dataset ids to.")
 @click.option(
     "--num-worker",
     type=int,
     help="The number of processes to filter datasets.",
     default=4,
 )
-@click.option("--product-version",
-              type=str,
-              default="0.0.1",
-              show_default=True,
-              help="Product version for the DE Africa Waterbodies product.")
 def get_ids(product,
             expressions,
             verbose,
             polygons_vector_file,
             use_id,
-            storage_location,
-            output_bucket_name,
-            output_local_folder,
+            output_file_path,
             num_worker,
-            product_version):
+            ):
     
     """
     Get IDs based on an expression.
@@ -110,24 +86,27 @@ def get_ids(product,
     else:
         ids = [str(ds.id) for ds in dss]
 
-    object_prefix = f'{product_version.replace(".", "-")}/timeseries/conflux/'
+    # Check if output file path is an S3 URI.
+    try:
+        bucket_name = parse_url(output_file_path)["bucket"]
+        check_bucket_exists(bucket_name)
+    except ValueError:
+        _log.info("Dataset ids will be saved to a local text file")
+        parsed_output_fp = urlparse(output_file_path).path
+        absolute_output_fp =  os.path.abspath(parsed_output_fp)
+        path_head, path_tail = os.path.split(absolute_output_fp)
 
-    if storage_location == "local":
-        output_directory = os.path.join(os.path.abspath(output_local_folder), object_prefix)
-        
-        if not os.path.exists(output_directory):
-            os.makedirs(output_directory)
-            _log.info(f"{output_directory} folder created.")
-    
-        out_path = f"file://{output_directory}conflux_ids.txt"
-    else:
-        out_path = f"s3://{output_bucket_name}/{object_prefix}conflux_ids.txt"
+        if path_head:
+            if not os.path.exists(path_head):
+                os.makedirs(path_head)
+                _log.info(f"Loca folder {path_head} created.")
+    except Exception as error:
+        _log.error(error)
+        raise
 
-    _log.info(f"Writing IDs to: {out_path}.")
+    _log.info(f"Writing IDs to: {output_file_path}.")
     
-    with fsspec.open(out_path, "w") as f:
+    with fsspec.open(output_file_path, "w") as f:
         f.write("\n".join(ids))
     
-    print(json.dumps({"ids_path": out_path}), end="")
-
     return 0
