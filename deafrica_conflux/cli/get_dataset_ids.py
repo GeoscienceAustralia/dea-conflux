@@ -3,8 +3,8 @@ import sys
 import click
 import logging
 import fsspec
-from s3urls import parse_url
-from urllib.parse import urlparse
+import s3urls
+import urllib
 import geopandas as gpd
 from datacube.ui import click as ui
 
@@ -13,7 +13,7 @@ from deafrica_conflux.cli.logs import logging_setup
 from deafrica_conflux.id_field import guess_id_field
 from deafrica_conflux.hopper import find_datasets
 from deafrica_conflux.drill import filter_datasets
-from deafrica_conflux.io import check_bucket_exists
+from deafrica_conflux.io import check_s3_file_exists
 
 
 @click.command("get-dataset-ids",
@@ -84,31 +84,40 @@ def get_dataset_ids(
         # when using filter_datasets when polygons are in "EPSG:4326" crs.
         polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
 
-        ids = filter_datasets(dss, polygons_gdf, worker_num=num_worker)
+        dataset_ids = filter_datasets(dss, polygons_gdf, worker_num=num_worker)
     else:
-        ids = [str(ds.id) for ds in dss]
+        dataset_ids = [str(ds.id) for ds in dss]
 
-    # Check if output file path is an S3 URI.
+    # Check if file exists.
     try:
-        bucket_name = parse_url(output_file_path)["bucket"]
-        check_bucket_exists(bucket_name)
-    except ValueError:
-        _log.info("Dataset ids will be saved to a local text file")
-        parsed_output_fp = urlparse(output_file_path).path
-        absolute_output_fp = os.path.abspath(parsed_output_fp)
-        path_head, path_tail = os.path.split(absolute_output_fp)
+        # File is an s3 file.
+        test_if_s3_file = s3urls.parse_url(output_file_path)
 
-        if path_head:
-            if not os.path.exists(path_head):
-                os.makedirs(path_head)
-                _log.info(f"Loca folder {path_head} created.")
+        check_s3_file_exists(output_file_path, reverse=False)
+        _log.info("Dataset ids will be saved to s3 file")
+    except ValueError:
+        # File is a local file.
+        if os.path.exists(output_file_path):
+            _log.error(f"File {output_file_path} already exists!")
+            raise ValueError("File already exists!")
+        else:
+            _log.info("Dataset ids will be saved to a local text file")
+            parsed_output_fp = urllib.parse.urlparse(output_file_path).path
+            absolute_output_fp = os.path.abspath(parsed_output_fp)
+            path_head, path_tail = os.path.split(absolute_output_fp)
+
+            if path_head:
+                if not os.path.exists(path_head):
+                    os.makedirs(path_head)
+                    _log.info(f"Local folder {path_head} created.")
     except Exception as error:
         _log.error(error)
         raise
-
-    _log.info(f"Writing IDs to: {output_file_path}.")
     
-    with fsspec.open(output_file_path, "w") as f:
-        f.write("\n".join(ids))
+    with fsspec.open(output_file_path, "a") as file:
+        for dataset_id in dataset_ids:
+            file.write("%s\n" % dataset_id)
+
+    _log.info(f"Dataset IDs written to: {output_file_path}.")
     
     return 0

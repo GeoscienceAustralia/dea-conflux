@@ -10,6 +10,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import s3urls
 import boto3
 from botocore.exceptions import ClientError
 
@@ -243,22 +244,87 @@ def read_table(path: str) -> pd.DataFrame:
 
 def check_bucket_exists(bucket_name: str):
     """
-    Check if a bucket exists and if the user has acess to write to the bucket.
+    Check if a bucket exists and if user has permission to access it.
 
     Parameters
     ----------
     bucket_name : str
-        Name of the s3 bucket.
+        Name of s3 bucket to check.
     """
-    s3_resource = boto3.resource("s3")
+    s3_client = boto3.client("s3")
     try:
-        s3_resource.meta.client.head_bucket(Bucket=bucket_name)
-        _log.info(f"Bucket {bucket_name} exists.")
+        response = s3_client.head_bucket(Bucket=bucket_name)
+        _log.info("Bucket {bucket_name} exists.")
     except ClientError as error:
         _log.error(error)
+
         error_code = int(error.response['Error']['Code'])
+    
         if error_code == 403:
-            _log.error(f"{bucket_name} is a private Bucket. Forbidden Access! ")
+            _log.error(f"{bucket_name} is a private Bucket. Forbidden Access!")
         elif error_code == 404:
             _log.info(f"Bucket {bucket_name} Does Not Exist!")
         raise
+    except Exception as error:
+        _log.error(error)
+        raise
+
+
+def check_s3_file_exists(s3_file_uri: str, reverse=False):
+    """
+    Check if an object in an S3 bucket exists.
+    If reverse is False, raises an error if the object exists.
+    If reverse is True, raises an error if the object does not exist.
+
+    Parameters
+    ----------
+    s3_file_uri : str
+        S3 URI of the file to check.
+    """
+    
+    bucket_name = s3urls.parse_url(s3_file_uri)["bucket"]
+    object_key = s3urls.parse_url(s3_file_uri)["key"]
+
+    # First check if bucket exists.
+    check_bucket_exists(bucket_name)
+
+    s3_client = boto3.client("s3")
+
+    if not reverse:
+        try:
+            response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
+            _log.error(f"File {s3_file_uri}  already exists!")
+            raise ValueError("File already exists!")
+        except ClientError as error:
+
+            error_code = int(error.response['Error']['Code'])
+
+            # File exists but user does not have access to the file.
+            if error_code == 403:
+                _log.error(f"File {s3_file_uri} already exists!")
+                raise ValueError("File already exists!")
+            # File does not exist.
+            elif error_code == 404:
+                pass
+        except Exception as error:
+            _log.error(error)
+            raise
+    elif not reverse:
+        try:
+            response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
+            _log.info("File {s3_file_uri} exists!")
+        except ClientError as error:
+
+            error_code = int(error.response['Error']['Code'])
+
+            # File exists but user does not have access to the file.
+            if error_code == 403:
+                _log.error(f"File {s3_file_uri} exists but forbidden access!")
+                raise ValueError("File exists, but forbidden access!")
+            # File does not exist.
+            elif error_code == 404:
+                _log.error(f"File {s3_file_uri} does not exist!")
+                raise ValueError(f"File {s3_file_uri} does not exist!")
+        except Exception as error:
+            _log.error(error)
+            raise
