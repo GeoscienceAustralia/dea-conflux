@@ -16,7 +16,7 @@ from deafrica_conflux.drill import filter_datasets
 from deafrica_conflux.io import check_bucket_exists
 
 
-@click.command("get-ids",
+@click.command("get-dataset-ids",
                no_args_is_help=True,)
 @click.argument("product", type=str)
 @ui.parsed_search_expressions
@@ -31,7 +31,7 @@ from deafrica_conflux.io import check_bucket_exists
     "-u",
     type=str,
     default=None,
-    help="Optional. Unique key id in shapefile.",
+    help="Optional. Unique key id in polygons vector file.",
 )
 @click.option(
     "--output-file-path",
@@ -43,17 +43,18 @@ from deafrica_conflux.io import check_bucket_exists
     help="The number of processes to filter datasets.",
     default=4,
 )
-def get_ids(product,
-            expressions,
-            verbose,
-            polygons_vector_file,
-            use_id,
-            output_file_path,
-            num_worker,
-            ):
+def get_dataset_ids(
+    product,
+    expressions,
+    verbose,
+    polygons_vector_file,
+    use_id,
+    output_file_path,
+    num_worker,
+):
     
     """
-    Get IDs based on an expression.
+    Get dataset IDs based on an expression.
     """
 
     logging_setup(verbose)

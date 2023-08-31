@@ -41,6 +41,8 @@ dependencies= [
     "tqdm",
     "SQLAlchemy",
     "python-geohash",
+    "s3urls",
+    "deafrica-tools",
     # Code style
     "flake8",
     "black", 
