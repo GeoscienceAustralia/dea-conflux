@@ -102,7 +102,10 @@ def make_name(drill_name: str, uuid: str, centre_date: datetime.datetime) -> str
 
 
 def table_exists(
-    drill_name: str, uuid: str, centre_date: datetime.datetime, output: str
+    drill_name: str,
+    uuid: str,
+    centre_date: datetime.datetime,
+    output: str
 ) -> bool:
     """Check whether a table already exists.
 

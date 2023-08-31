@@ -2,48 +2,53 @@ import click
 import boto3
 import datacube
 import logging
+import geopandas as gpd
 from rasterio.errors import RasterioIOError
 
-from .common import main, logging_setup, get_crs, guess_id_field, load_and_reproject_shapefile
-from ..plugins.utils import run_plugin, validate_plugin
+from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
+from deafrica_conflux.id_field import guess_id_field
 
 import deafrica_conflux.db
 import deafrica_conflux.io
 import deafrica_conflux.stack
 import deafrica_conflux.drill
-
 import deafrica_conflux.queues
 
 
-@main.command("run-from-queue", no_args_is_help=True)
+@click.command("run-from-queue",
+               no_args_is_help=True,
+               help="Run deafrica-conflux on dataset ids from an SQS queue.")
 @click.option(
     "--plugin",
     "-p",
     type=click.Path(exists=True, dir_okay=False),
     help="Path to Conflux plugin (.py).",
 )
-@click.option("--queue", "-q", help="Queue to read IDs from.")
 @click.option(
-    "--shapefile",
-    "-s",
+    "-dataset-ids-queue",
+    type=str,
+    help="SQS Queue to read dataset IDs from to run deafrica-conflux on.")
+@click.option(
+    "--polygons-vector-file",
     type=click.Path(),
     # Don't mandate existence since this might be s3://.
-    help="REQUIRED. Path to the polygon " "shapefile to run polygon drill on.",
+    help="Path to the vector file defining the polygon(s) to run polygon drill on."
 )
 @click.option(
     "--use-id",
     "-u",
     type=str,
     default=None,
-    help="Optional. Unique key id in shapefile.",
+    help="Optional. Unique key id in polygons vector file.",
 )
 @click.option(
-    "--output",
+    "--output-directory",
     "-o",
     type=click.Path(),
     default=None,
     # Don't mandate existence since this might be s3://.
-    help="REQUIRED. Path to the output directory.",
+    help="REQUIRED. File URI or S3 URI to the output directory.",
 )
 @click.option(
     "--partial/--no-partial",
@@ -64,18 +69,20 @@ import deafrica_conflux.queues
 @click.option(
     "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
 )
-@click.option("--db/--no-db", default=True, help="Write to the Waterbodies database.")
+@click.option("--db/--no-db",
+              default=True,
+              help="Write to the Waterbodies database.")
 @click.option(
     "--dump-empty-dataframe/--not-dump-empty-dataframe",
     default=True,
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
 )
 def run_from_queue(
-    plugin,
-    queue,
-    shapefile,
+    plugin_file,
+    dataset_ids_queue,
+    polygons_vector_file,
     use_id,
-    output,
+    output_directory,
     partial,
     overwrite,
     overedge,
@@ -85,27 +92,40 @@ def run_from_queue(
     dump_empty_dataframe,
 ):
     """
-    Run deafrica-conflux on a scene from a queue.
+    Run deafrica-conflux on dataset ids from an SQS queue.
     """
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
-    # TODO(MatthewJA): Refactor this to combine with run-one.
-    # TODO(MatthewJA): Generalise the database to not just Waterbodies.
-    # Maybe this is really easy? It's all done by env vars,
-    # so perhaps a documentation/naming change is all we need.
-
     # Read the plugin as a Python module.
-    plugin = run_plugin(plugin)
+    plugin = run_plugin(plugin_file)
     _log.info(f"Using plugin {plugin.__file__}")
     validate_plugin(plugin)
 
-    # Get the CRS from the shapefile if one isn't specified.
+    # Read the vector file.
+    try:
+        polygons_gdf = gpd.read_file(polygons_vector_file)
+    except Exception as error:
+        _log.error(error)
+        raise
+    
+    # Guess the ID field.
+    id_field = guess_id_field(polygons_gdf, use_id)
+    _log.debug(f"Guessed ID field: {id_field}")
+
+    # Set the ID field as the index.
+    polygons_gdf.set_index(id_field)
+
+    # Get the CRS.
     if hasattr(plugin, "output_crs"):
         crs = plugin.output_crs
     else:
-        crs = get_crs(shapefile)
+        # If a CRS is not specified use the crs "EPSG:6933"
+        crs = "EPSG:6933"
+
     _log.debug(f"Found CRS: {crs}")
+    # Reproject the polygons to the required CRS.
+    polygons_gdf = polygons_gdf.to_crs(crs)
 
     # Get the output resolution from the plugin.
     # TODO(MatthewJA): Make this optional by guessing
@@ -114,22 +134,11 @@ def run_from_queue(
     # is in native CRS.
     resolution = plugin.resolution
 
-    # Guess the ID field.
-    id_field = guess_id_field(shapefile, use_id)
-    _log.debug(f"Guessed ID field: {id_field}")
-
-    # Load and reproject the shapefile.
-    shapefile = load_and_reproject_shapefile(
-        shapefile,
-        id_field,
-        crs,
-    )
-
-    dl_queue_name = queue + "_deadletter"
+    dl_queue_name = dataset_ids_queue + "_deadletter"
 
     # Read ID/s from the queue.
     sqs = boto3.resource("sqs")
-    queue = sqs.get_queue_by_name(QueueName=queue)
+    queue = sqs.get_queue_by_name(QueueName=dataset_ids_queue)
     queue_url = queue.url
 
     if db:
@@ -174,7 +183,7 @@ def run_from_queue(
             if not overwrite:
                 _log.info(f"Checking existence of {id_}")
                 exists = deafrica_conflux.io.table_exists(
-                    plugin.product_name, id_, centre_date, output
+                    plugin.product_name, id_, centre_date, output_directory
                 )
 
             # NameError should be impossible thanks to short-circuiting
@@ -182,7 +191,7 @@ def run_from_queue(
                 try:
                     table = deafrica_conflux.drill.drill(
                         plugin,
-                        shapefile,
+                        polygons_gdf,
                         id_,
                         crs,
                         resolution,
@@ -195,7 +204,7 @@ def run_from_queue(
                     # dump that dataframe as PQ file
                     if (dump_empty_dataframe) or (not table.empty):
                         pq_filename = deafrica_conflux.io.write_table(
-                            plugin.product_name, id_, centre_date, table, output
+                            plugin.product_name, id_, centre_date, table, output_directory
                         )
                         if db:
                             _log.debug(f"Writing {pq_filename} to DB")
