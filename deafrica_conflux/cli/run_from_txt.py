@@ -70,7 +70,7 @@ import deafrica_conflux.drill
 )
 @click.option("-v", "--verbose", count=True)
 @click.option("--db/--no-db",
-              default=True,
+              default=False,
               help="Write to the Waterbodies database.")
 @click.option(
     "--dump-empty-dataframe/--not-dump-empty-dataframe",
@@ -148,7 +148,7 @@ def run_from_txt(
         
     # Read ID/s from the S3 URI or File URI.
     with fsspec.open(dataset_ids_file, "rb") as file:
-        dataset_ids = [line.strip() for line in file]
+        dataset_ids = [line.decode().strip() for line in file]
 
     _log.info(f"Read {dataset_ids} from file.")
    
