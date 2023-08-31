@@ -24,8 +24,8 @@ def logging_setup(verbose: int = 1):
     )
 
     # Suppress all (other than CRITICAL) errors for boto3
-    logging.getLogger('botocore').setLevel(logging.WARNING)
-    logging.getLogger('boto3').setLevel(logging.WARNING)
+    #logging.getLogger('botocore').setLevel(logging.WARNING)
+    #logging.getLogger('boto3').setLevel(logging.WARNING)
 
 
 # Keeping this here incase its needed.

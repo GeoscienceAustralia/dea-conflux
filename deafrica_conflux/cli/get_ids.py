@@ -15,6 +15,7 @@ from deafrica_conflux.hopper import find_datasets
 from deafrica_conflux.drill import filter_datasets
 from deafrica_conflux.io import check_bucket_exists
 
+
 @click.command("get-ids",
                no_args_is_help=True,)
 @click.argument("product", type=str)
@@ -93,7 +94,7 @@ def get_ids(product,
     except ValueError:
         _log.info("Dataset ids will be saved to a local text file")
         parsed_output_fp = urlparse(output_file_path).path
-        absolute_output_fp =  os.path.abspath(parsed_output_fp)
+        absolute_output_fp = os.path.abspath(parsed_output_fp)
         path_head, path_tail = os.path.split(absolute_output_fp)
 
         if path_head:
