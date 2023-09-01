@@ -113,7 +113,7 @@ def run_from_txt(
     _log.debug(f"Guessed ID field: {id_field}")
 
     # Set the ID field as the index.
-    polygons_gdf.set_index(id_field)
+    polygons_gdf.set_index(id_field, inplace=True)
 
     # Get the CRS.
     if hasattr(plugin, "output_crs"):
