@@ -76,7 +76,7 @@ def get_dataset_ids(
         _log.debug(f"Guessed ID field: {id_field}")
 
         # Set the ID field as the index.
-        polygons_gdf.set_index(id_field)
+        polygons_gdf.set_index(id_field, inplace=True)
 
         _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
 
