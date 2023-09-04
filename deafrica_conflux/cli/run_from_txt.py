@@ -1,8 +1,6 @@
-import os
 import click
 import datacube
 import logging
-import s3urls
 import fsspec
 import geopandas as gpd
 from rasterio.errors import RasterioIOError
@@ -10,7 +8,7 @@ from rasterio.errors import RasterioIOError
 from deafrica_conflux.cli.logs import logging_setup
 from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
 from deafrica_conflux.id_field import guess_id_field
-from deafrica_conflux.io import check_s3_file_exists
+from deafrica_conflux.io import check_if_s3_uri, check_local_file_exists, check_s3_object_exists
 
 import deafrica_conflux.db
 import deafrica_conflux.io
@@ -135,17 +133,14 @@ def run_from_txt(
 
     # Read dataset ids.
     # Check if the file exists.
-    try:
-        # File is an s3 file.
-        test_if_s3_file = s3urls.parse_url(dataset_ids_file)
-        # Raises an error if s3 file does not exist.
-        check_s3_file_exists(dataset_ids_file, reverse=True)
-    except ValueError:
-        # File is a local file.
-        if not os.path.exists(dataset_ids_file):
-            _log.error(f"File {dataset_ids_file} does not exist!")
-            raise ValueError(f"File {dataset_ids_file} does not exist!")
-        
+    # Check if file is an s3 file.
+    is_s3_file = check_if_s3_uri(dataset_ids_file)
+
+    if is_s3_file:
+        check_s3_object_exists(dataset_ids_file, error_if_exists=False)
+    else:
+        check_local_file_exists(dataset_ids_file, error_if_exists=False)
+
     # Read ID/s from the S3 URI or File URI.
     with fsspec.open(dataset_ids_file, "rb") as file:
         dataset_ids = [line.decode().strip() for line in file]

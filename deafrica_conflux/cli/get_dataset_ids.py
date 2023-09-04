@@ -3,7 +3,6 @@ import sys
 import click
 import logging
 import fsspec
-import s3urls
 import urllib
 import geopandas as gpd
 from datacube.ui import click as ui
