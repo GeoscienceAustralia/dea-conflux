@@ -13,7 +13,7 @@ from deafrica_conflux.cli.logs import logging_setup
 from deafrica_conflux.id_field import guess_id_field
 from deafrica_conflux.hopper import find_datasets
 from deafrica_conflux.drill import filter_datasets
-from deafrica_conflux.io import check_s3_file_exists
+from deafrica_conflux.io import check_if_s3_uri, check_local_file_exists, check_s3_object_exists
 
 
 @click.command("get-dataset-ids",
@@ -88,32 +88,25 @@ def get_dataset_ids(
     else:
         dataset_ids = [str(ds.id) for ds in dss]
 
-    # Check if file exists.
-    try:
-        # File is an s3 file.
-        test_if_s3_file = s3urls.parse_url(output_file_path)
-
-        check_s3_file_exists(output_file_path, reverse=False)
-        _log.info("Dataset ids will be saved to s3 file")
-    except ValueError:
-        # File is a local file.
-        if os.path.exists(output_file_path):
-            _log.error(f"File {output_file_path} already exists!")
-            raise ValueError("File already exists!")
-        else:
-            _log.info("Dataset ids will be saved to a local text file")
-            parsed_output_fp = urllib.parse.urlparse(output_file_path).path
-            absolute_output_fp = os.path.abspath(parsed_output_fp)
-            path_head, path_tail = os.path.split(absolute_output_fp)
-
-            if path_head:
-                if not os.path.exists(path_head):
-                    os.makedirs(path_head)
-                    _log.info(f"Local folder {path_head} created.")
-    except Exception as error:
-        _log.error(error)
-        raise
+    _log.info(f"Found {len(dataset_ids)} datasets.")
     
+    # Check if file is an s3 file.
+    is_s3_file = check_if_s3_uri(output_file_path)
+
+    if is_s3_file:
+        check_s3_object_exists(output_file_path, error_if_exists=True)
+    else:
+        check_local_file_exists(output_file_path, error_if_exists=True)
+        _log.info("Dataset ids will be saved to a local text file")
+        parsed_output_fp = urllib.parse.urlparse(output_file_path).path
+        absolute_output_fp = os.path.abspath(parsed_output_fp)
+        path_head, path_tail = os.path.split(absolute_output_fp)
+
+        if path_head:
+            if not os.path.exists(path_head):
+                os.makedirs(path_head)
+                _log.info(f"Local folder {path_head} created.")
+
     with fsspec.open(output_file_path, "a") as file:
         for dataset_id in dataset_ids:
             file.write("%s\n" % dataset_id)
