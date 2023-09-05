@@ -542,7 +542,7 @@ def drill(
     if len(filtered_polygons_gdf) == 0:
         _log.warning(f"No polygons found in scene {scene_uuid}")
         return pd.DataFrame({})
-
+    
     # Load the image of the input scene so we can build the raster.
     # TODO(MatthewJA): If this is also a dataset required for drilling,
     # we will load it twice - and even worse, we'll load it with
@@ -562,7 +562,8 @@ def drill(
         geopolygon = datacube.utils.geometry.Geometry(geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
                                                       crs=filtered_polygons_gdf.crs)
         
-        time_span = (reference_dataset.center_time - time_buffer, reference_dataset.center_time + time_buffer,)
+        time_span = (reference_dataset.center_time - time_buffer, reference_dataset.center_time + time_buffer)
+
         req_datasets = dc.find_datasets(product=reference_product,
                                         geopolygon=geopolygon,
                                         time=time_span)
@@ -605,9 +606,10 @@ def drill(
     polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
 
     # Load the images.
-    resampling = "nearest"
     if hasattr(plugin, "resampling"):
         resampling = plugin.resampling
+    else:
+        resampling = "nearest"
 
     bands = {}
     for product, measurements in plugin.input_products.items():
@@ -616,7 +618,7 @@ def drill(
         query = dict(
             measurements=measurements,
             output_crs=output_crs,
-            resolution=getattr(plugin, "resolution", None),
+            resolution=resolution,
             resampling=resampling,
         )
         if not overedge:
