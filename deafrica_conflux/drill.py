@@ -498,7 +498,8 @@ def drill(
     # not overedge | report  | not
 
     if overedge and not partial:
-        warnings.warn("overedge=True expects partial=True")
+        # warnings.warn("overedge=True expects partial=True")
+        raise ValueError("overedge=True expects partial=True")
 
     if not partial:
         raise NotImplementedError()
