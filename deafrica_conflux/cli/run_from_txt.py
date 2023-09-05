@@ -99,6 +99,10 @@ def run_from_txt(
     _log.info(f"Using plugin {plugin.__file__}")
     validate_plugin(plugin)
 
+    # Get the CRS.
+    crs = plugin.output_crs
+    _log.debug(f"Found CRS: {crs}")
+
     # Read the vector file.
     try:
         polygons_gdf = gpd.read_file(polygons_vector_file)
@@ -106,6 +110,9 @@ def run_from_txt(
         _log.error(error)
         raise
     
+    # Reproject the polygons to the required CRS.
+    polygons_gdf = polygons_gdf.to_crs(crs)
+
     # Guess the ID field.
     id_field = guess_id_field(polygons_gdf, use_id)
     _log.debug(f"Guessed ID field: {id_field}")
@@ -113,16 +120,8 @@ def run_from_txt(
     # Set the ID field as the index.
     polygons_gdf.set_index(id_field, inplace=True)
 
-    # Get the CRS.
-    if hasattr(plugin, "output_crs"):
-        crs = plugin.output_crs
-    else:
-        # If a CRS is not specified use the crs "EPSG:6933"
-        crs = "EPSG:6933"
-
-    _log.debug(f"Found CRS: {crs}")
-    # Reproject the polygons to the required CRS.
-    polygons_gdf = polygons_gdf.to_crs(crs)
+    
+    
 
     # Get the output resolution from the plugin.
     # TODO(MatthewJA): Make this optional by guessing
