@@ -1,11 +1,11 @@
 import click
 
-from .common import main, logging_setup
+from deafrica_conflux.cli.logs import logging_setup
 
 import deafrica_conflux.stack
 
 
-@main.command("stack", no_args_is_help=True)
+@click.command("stack", no_args_is_help=True)
 @click.option(
     "--parquet-path",
     type=click.Path(),

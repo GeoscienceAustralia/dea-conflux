@@ -35,15 +35,10 @@ def summarise(inputs: xr.Dataset) -> xr.Dataset:
 
     valid_and_dry_count = np.count_nonzero(inputs.water == 0)
     valid_and_wet_count = np.count_nonzero(inputs.water == 128)
-
-    if invalid_count < pixel_count:
-        valid_and_wet_percentage = (valid_and_wet_count / pixel_count) * 100
-        valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100
-        invalid_percentage = (invalid_count / pixel_count) * 100
-    else:
-        valid_and_wet_percentage = np.nan
-        valid_and_dry_percentage = np.nan
-        invalid_percentage = 100
+   
+    valid_and_wet_percentage = (valid_and_wet_count / pixel_count) * 100
+    valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100
+    invalid_percentage = (invalid_count / pixel_count) * 100
 
     return xr.Dataset({"wet_percentage": valid_and_wet_percentage,
                        "wet_pixel_count": valid_and_wet_count,
