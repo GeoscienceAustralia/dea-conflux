@@ -1,4 +1,5 @@
 import xarray as xr
+import numpy as np
 
 product_name = "waterbodies"
 version = "0.0.1"
@@ -12,26 +13,38 @@ input_products = {
 
 
 def transform(inputs: xr.Dataset) -> xr.Dataset:
-    # ignore sea, terrain/low solar angle
-    # by disabling those flags
-    wofl = inputs.water & 0b11110011
-    # then check for wet, dry
-    is_wet = wofl == 128
-    is_ok = is_wet | (wofl == 0)
-    masked_wet = is_wet.where(is_ok)
-    return xr.Dataset({"water": masked_wet})
+    wofl = inputs.water
+
+    clear_and_wet = (wofl == 128)
+    clear_and_dry = (wofl == 0)
+
+    clear = clear_and_wet | clear_and_dry
+
+    # Set the invalid (not clear) pixels to np.nan.
+    wofl_clear = wofl.where(clear, np.nan)
+    return xr.Dataset({"water": wofl_clear})
 
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
-    pc_missing = inputs.water.isnull().mean()
-    px_wet = pc_wet = float("nan")
-    if pc_missing <= 0.1:
-        px_wet = inputs.water.sum()
-        pc_wet = px_wet / inputs.water.size
-    return xr.Dataset(
-        {
-            "px_wet": px_wet,
-            "pc_wet": pc_wet,
-            "pc_missing": pc_missing,
-        }
-    )
+    pixel_count = inputs.water.size
+
+    valid_count = np.count_nonzero(~np.isnan(inputs.water))
+    invalid_count = np.count_nonzero(np.isnan(inputs.water))
+
+    assert valid_count + invalid_count == pixel_count
+
+    valid_and_dry_count = np.count_nonzero(inputs.water == 0)
+    valid_and_wet_count = np.count_nonzero(inputs.water == 128)
+
+    if invalid_count < pixel_count:
+        valid_and_wet_percentage = (valid_and_wet_count / pixel_count) * 100
+        valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100
+        invalid_percentage = (invalid_count / pixel_count) * 100
+    else:
+        valid_and_wet_percentage = np.nan
+        valid_and_dry_percentage = np.nan
+        invalid_percentage = 100
+
+    return xr.Dataset({"wet_percentage": valid_and_wet_percentage,
+                       "wet_pixel_count": valid_and_wet_count,
+                       "invalid_percentage": invalid_percentage, })
