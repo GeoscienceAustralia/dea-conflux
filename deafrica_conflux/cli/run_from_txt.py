@@ -98,20 +98,16 @@ def run_from_txt(
     plugin = run_plugin(plugin_file)
     _log.info(f"Using plugin {plugin.__file__}")
     validate_plugin(plugin)
+    
+    # Get the product name from the plugin.
+    product_name = plugin.product_name
 
-    # Get the CRS.
-    crs = plugin.output_crs
-    _log.debug(f"Found CRS: {crs}")
-
-    # Read the vector file.
+    # Read the polygons vector file.
     try:
         polygons_gdf = gpd.read_file(polygons_vector_file)
     except Exception as error:
         _log.error(error)
         raise
-    
-    # Reproject the polygons to the required CRS.
-    polygons_gdf = polygons_gdf.to_crs(crs)
 
     # Guess the ID field.
     id_field = guess_id_field(polygons_gdf, use_id)
@@ -119,16 +115,6 @@ def run_from_txt(
 
     # Set the ID field as the index.
     polygons_gdf.set_index(id_field, inplace=True)
-
-    
-    
-
-    # Get the output resolution from the plugin.
-    # TODO(MatthewJA): Make this optional by guessing
-    # the resolution, if at all possible.
-    # I think this is doable provided that everything
-    # is in native CRS.
-    resolution = plugin.resolution
 
     # Read dataset ids.
     # Check if the file exists.
@@ -143,7 +129,6 @@ def run_from_txt(
     # Read ID/s from the S3 URI or File URI.
     with fsspec.open(dataset_ids_file, "rb") as file:
         dataset_ids = [line.decode().strip() for line in file]
-
     _log.info(f"Read {dataset_ids} from file.")
    
     if db:
@@ -163,7 +148,7 @@ def run_from_txt(
         if not overwrite:
             _log.info(f"Checking existence of {id_}")
             exists = deafrica_conflux.io.table_exists(
-                plugin.product_name, id_, centre_date, output_directory
+                product_name, id_, centre_date, output_directory
             )
 
         # NameError should be impossible thanks to short-circuiting
@@ -173,8 +158,6 @@ def run_from_txt(
                     plugin,
                     polygons_gdf,
                     id_,
-                    crs,
-                    resolution,
                     partial=partial,
                     overedge=overedge,
                     dc=dc,
@@ -184,7 +167,7 @@ def run_from_txt(
                 # dump that dataframe as PQ file
                 if (dump_empty_dataframe) or (not table.empty):
                     pq_filename = deafrica_conflux.io.write_table(
-                        plugin.product_name, id_, centre_date, table, output_directory
+                        product_name, id_, centre_date, table, output_directory
                     )
                     if db:
                         _log.debug(f"Writing {pq_filename} to DB")
