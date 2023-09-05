@@ -420,8 +420,6 @@ def drill(
         plugin: ModuleType,
         polygons_gdf: gpd.GeoDataFrame,
         scene_uuid: str,
-        output_crs: CRS,
-        resolution: (int, int),
         partial=True,
         overedge=False,
         dc: datacube.Datacube = None,
@@ -433,7 +431,7 @@ def drill(
     Arguments
     ---------
     plugin : module
-        Plugin to drill with.
+        A validated plugin to drill with.
 
     polygons_gdf : GeoDataFrame
         A GeoDataFrame in the same CRS as the output_crs,
@@ -441,12 +439,6 @@ def drill(
 
     scene_uuid : str
         ID of scene to process.
-
-    output_crs : datacube.utils.geometry.CRS
-        CRS to output to.
-
-    resolution : (int, int)
-        Raster resolution in (-metres, metres).
 
     partial : bool
         Optional (defaults to True). Whether to include polygons that partially
@@ -497,17 +489,24 @@ def drill(
     # overedge     | not     | not
     # not overedge | report  | not
 
-    if overedge and not partial:
-        warnings.warn("overedge=True expects partial=True")
-
     if not partial:
-        raise NotImplementedError()
-
-    assert str(polygons_gdf.crs).lower() == str(output_crs).lower()
+        if overedge:
+            # warnings.warn("overedge=True expects partial=True")
+            raise ValueError("overedge=True expects partial=True")
+        else:
+            raise NotImplementedError()
 
     # Get a datacube if we don't have one already.
     if dc is not None:
         dc = datacube.Datacube(app="deafrica-conflux-drill")
+
+    # Get the output crs and resolution from the plugin.
+    output_crs = plugin.output_crs
+    resolution = plugin.resolution
+
+    # Reproject the polygons to the required CRS.
+    polygons_gdf = polygons_gdf.to_crs(output_crs)
+    assert str(polygons_gdf.crs).lower() == str(output_crs).lower()
 
     # Assign a one-indexed numeric column for the polygons.
     # This will allow us to build a polygon enumerated raster.
@@ -543,7 +542,7 @@ def drill(
     if len(filtered_polygons_gdf) == 0:
         _log.warning(f"No polygons found in scene {scene_uuid}")
         return pd.DataFrame({})
-
+    
     # Load the image of the input scene so we can build the raster.
     # TODO(MatthewJA): If this is also a dataset required for drilling,
     # we will load it twice - and even worse, we'll load it with
@@ -563,7 +562,8 @@ def drill(
         geopolygon = datacube.utils.geometry.Geometry(geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
                                                       crs=filtered_polygons_gdf.crs)
         
-        time_span = (reference_dataset.center_time - time_buffer, reference_dataset.center_time + time_buffer,)
+        time_span = (reference_dataset.center_time - time_buffer, reference_dataset.center_time + time_buffer)
+
         req_datasets = dc.find_datasets(product=reference_product,
                                         geopolygon=geopolygon,
                                         time=time_span)
@@ -606,9 +606,10 @@ def drill(
     polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
 
     # Load the images.
-    resampling = "nearest"
     if hasattr(plugin, "resampling"):
         resampling = plugin.resampling
+    else:
+        resampling = "nearest"
 
     bands = {}
     for product, measurements in plugin.input_products.items():
@@ -617,7 +618,7 @@ def drill(
         query = dict(
             measurements=measurements,
             output_crs=output_crs,
-            resolution=getattr(plugin, "resolution", None),
+            resolution=resolution,
             resampling=resampling,
         )
         if not overedge:
