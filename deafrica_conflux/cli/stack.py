@@ -13,16 +13,16 @@ import deafrica_conflux.stack
     help="REQUIRED. Path to the Parquet directory.",
 )
 @click.option(
-    "--output",
+    "--pattern",
+    required=False,
+    default=".*\.pq", # noqa W605
+    help="Regular expression for filename matching.",
+)
+@click.option(
+    "--output-directory",
     type=click.Path(),
     required=False,
     help="Output directory for waterbodies-style stack",
-)
-@click.option(
-    "--pattern",
-    required=False,
-    default=".*",
-    help="Regular expression for filename matching.",
 )
 @click.option(
     "--mode",
@@ -39,7 +39,15 @@ import deafrica_conflux.stack
     default=True,
     help="Remove timeseries duplicated data if applicable. Default True",
 )
-def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_data):
+def stack(
+    parquet_path,
+    pattern,
+    output_directory,
+    mode,
+    verbose,
+    drop,
+    remove_duplicated_data
+):
     """
     Stack outputs of deafrica-conflux into other formats.
     """
@@ -54,7 +62,7 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_
 
     kwargs = {}
     if mode == "waterbodies" or mode == "wit_tooling":
-        kwargs["output_dir"] = output
+        kwargs["output_dir"] = output_directory
         kwargs["remove_duplicated_data"] = remove_duplicated_data
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
