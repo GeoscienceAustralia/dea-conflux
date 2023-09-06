@@ -288,23 +288,19 @@ def check_local_dir_exists(
     if error_if_exists:
         if os.path.exists(dir_path):
             if os.path.isdir(dir_path):
-                _log.error(f"Directory {dir_path} exists!")
                 raise FileExistsError(f"Directory {dir_path} exists!")
             else:
-                _log.error(f"{dir_path} is not a directory!")
                 raise NotADirectoryError(f"Directory {dir_path} is not a directory!")
         else:
-            _log.info(f"Directory {dir_path} does not exist.")
+            pass
 
     else:
         if os.path.exists(dir_path):
             if not os.path.isdir(dir_path):
-                _log.error(f"{dir_path} is not a directory!")
                 raise NotADirectoryError(f"{dir_path} is not a directory!")
             else:
-                _log.info(f"Directory {dir_path} exists.")
+                pass
         else:
-            _log.error(f"{dir_path} does not exist!")
             raise FileNotFoundError(f"Directory {dir_path} does not exist!")
 
 
@@ -325,23 +321,19 @@ def check_local_file_exists(
     if error_if_exists:
         if os.path.exists(file_path):
             if not os.path.isfile(file_path):
-                _log.error(f"{file_path} is not a file!")
                 raise ValueError(f"{file_path} is not a file!")
             else:
-                _log.error(f"File {file_path} exists!")
                 raise FileExistsError(f"File {file_path} exists!")
         else:
-            _log.info(f"{file_path} does not exist.")
+            pass
 
     else:
         if os.path.exists(file_path):
             if not os.path.isfile(file_path):
-                _log.error(f"{file_path} is not a file!")
-                raise ValueError(f"{file_path} exists is not a file!")
+                raise ValueError(f"{file_path} is not a file!")
             else:
-                _log.info(f"File {file_path} exists.")
+                pass
         else:
-            _log.error(f"{file_path} does not exist!")
             raise FileNotFoundError(f"{file_path} does not exist!")
 
 
@@ -356,21 +348,15 @@ def check_s3_bucket_exists(bucket_name: str):
     """
     s3_client = boto3.client("s3")
     try:
-        response = s3_client.head_bucket(Bucket=bucket_name)
-        _log.info("Bucket {bucket_name} exists.")
+        response = s3_client.head_bucket(Bucket=bucket_name) # noqa E501
     except ClientError as error:
-        _log.error(error)
-
         error_code = int(error.response['Error']['Code'])
 
         if error_code == 403:
-            _log.error(f"{bucket_name} is a private Bucket. Forbidden Access!")
             raise PermissionError(f"{bucket_name} is a private Bucket. Forbidden Access!")
         elif error_code == 404:
-            _log.error(f"Bucket {bucket_name} Does Not Exist!")
             raise FileNotFoundError(f"Bucket {bucket_name} Does Not Exist!")
-    except Exception as error:
-        _log.error(error)
+    except Exception:
         raise
 
 
@@ -399,56 +385,29 @@ def check_s3_object_exists(
     if error_if_exists:
         try:
             response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
-            _log.error(f"Object {s3_object_uri}  already exists!")
             raise FileExistsError(f"Object {s3_object_uri} already exists!")
         except ClientError as error:
-
             error_code = int(error.response['Error']['Code'])
 
             # Object exists but user does not have access.
             if error_code == 403:
-                _log.error(f"Object {s3_object_uri} already exists!")
-                raise FileExistsError(f"Object {s3_object_uri} already exists!")
+                raise FileExistsError(f"Object {s3_object_uri} already exists! Forbidden Access!")
             # Object does not exist.
             elif error_code == 404:
-                _log.info(f"Object {s3_object_uri} does not exist.")
-        except Exception as error:
-            _log.error(error)
+                pass
+        except Exception:
             raise
     else:
         try:
-            response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
-            _log.info(f"Object {s3_object_uri} exists!")
+            response = s3_client.head_object(Bucket=bucket_name, Key=object_key)  # noqa E501
         except ClientError as error:
-
             error_code = int(error.response['Error']['Code'])
 
-            # Object exists but user does not have access..
+            # Object exists but user does not have access.
             if error_code == 403:
-                _log.error(f"Object {s3_object_uri} exists, but forbidden access!")
-                raise PermissionError("Object exists, but forbidden access!")
+                raise PermissionError(f"Object {s3_object_uri} exists, but forbidden access!")
             # File does not exist.
             elif error_code == 404:
-                _log.error(f"Object {s3_object_uri} does not exist!")
                 raise FileNotFoundError(f"Object {s3_object_uri} does not exist!")
-        except Exception as error:
-            _log.error(error)
+        except Exception:
             raise
-
-
-def check_dir_exists(dir_path: str):
-    """
-    Checks if a directory path exists.
-
-    Parameters
-    ----------
-    dir_path : str
-        File URI or S3 URI of a directory.
-    """
-
-    is_s3_uri = check_if_s3_uri(dir_path)
-
-    if not is_s3_uri:
-        check_local_dir_exists(dir_path)
-    else:
-        check_s3_object_exists(dir_path, error_if_exists=False)
