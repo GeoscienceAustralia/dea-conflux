@@ -71,9 +71,9 @@ class WaterbodyObservation(WaterbodyBase):
     __tablename__ = "waterbody_observations"
     obs_id = Column(Integer, primary_key=True)
     wb_id = Column(Integer, ForeignKey("waterbodies.wb_id"), index=True)
-    px_wet = Column(Float)  # allows nan
-    pc_wet = Column(Float)
-    pc_missing = Column(Float)
+    wet_pixel_count = Column(Float)  # allows nan
+    wet_percentage = Column(Float)
+    invalid_percentage = Column(Float)
     platform = Column(String(3))
     date = Column(DateTime)
 
