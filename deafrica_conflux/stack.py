@@ -12,10 +12,8 @@ import concurrent.futures
 import datetime
 import enum
 import logging
-import multiprocessing
 import os
 import re
-from pathlib import Path
 
 import fsspec
 import geohash
@@ -193,8 +191,9 @@ def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_parquet_file(path):
-    """Load Parquet file from given path.
+def load_parquet_file(path) -> pd.DataFrame:
+    """
+    Load Parquet file from given path.
 
     Arguments
     ---------
@@ -202,8 +201,8 @@ def load_parquet_file(path):
         Path (s3 or local) to search for Parquet files.
     Returns
     -------
-    [pandas.DataFrame]
-        pandas.DataFrame
+    pandas.DataFrame
+        pandas DataFrame
     """
     df = deafrica_conflux.io.read_table_from_parquet(path)
     # the pq file will be empty if no polygon belongs to that scene
@@ -218,7 +217,7 @@ def save_df_as_csv(
         single_polygon_df: pd.DataFrame,
         feature_id: str,
         output_directory: str,
-        remove_duplicated_data: bool):
+        remove_duplicated_data: bool) -> str:
     """
     Save polygon base pandas.DataFrame as
     CSV file in output directory.
@@ -233,6 +232,11 @@ def save_df_as_csv(
         Directory (s3 or local) to save the CSV files to.
     remove_duplicated_data: bool
         Remove timeseries duplicated data or not.
+
+    Returns
+    -------
+    str
+        File path of the output csv file.
     """
     if remove_duplicated_data:
         # Remove the timeseries duplicated data
@@ -287,24 +291,27 @@ def stack_waterbodies_parquet_to_csv(
         for uid, series in df.iterrows():
             series.name = date
             id_to_series[uid].append(series)
-    outpath = output_dir
-    outpath = str(outpath)  # handle Path type
+
+    output_directory = str(output_directory)  # handle Path type
     _log.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
         if remove_duplicated_data:
-            df = remove_timeseries_with_duplicated(df)
+            df = remove_timeseries_duplicates(df)
         df.sort_index(inplace=True)
-        filename = f"{outpath}/{uid[:4]}/{uid}.csv"
-        _log.info(f"Writing {filename}")
-        if not outpath.startswith("s3://"):
-            os.makedirs(Path(filename).parent, exist_ok=True)
-        with fsspec.open(filename, "w") as f:
+
+        output_file_name = os.path.join(output_directory, f"{uid[:4]}", f"{uid}.csv")
+        _log.info(f"Writing {output_file_name}")
+        if not output_directory.startswith("s3://"):
+            os.makedirs(os.path.join(output_directory, f"{uid[:4]}"), exist_ok=True)
+        with fsspec.open(output_file_name, "w") as f:
             df.to_csv(f, index_label="date")
 
 
 def get_waterbody_key(uid: str, session: Session):
-    """Create or get a unique key from the database."""
+    """
+    Create or get a unique key from the database.
+    """
     # decode into a coordinate
     # uid format is gh_version
     gh = uid.split("_")[0]
@@ -321,17 +328,18 @@ def get_waterbody_key(uid: str, session: Session):
 
 
 def stack_waterbodies_db(
-    paths: [str],
+    parquet_file_paths: [str],
     verbose: bool = False,
     engine: Engine = None,
     uids: {str} = None,
     drop: bool = False,
 ):
-    """Stack Parquet files into the waterbodies interstitial DB.
+    """
+    Stack Parquet files into the waterbodies interstitial DB.
 
     Arguments
     ---------
-    paths : [str]
+    parquet_file_paths : [str]
         List of paths to Parquet files to stack.
 
     verbose : bool
@@ -348,7 +356,7 @@ def stack_waterbodies_db(
         Whether to drop the database. Default False.
     """
     if verbose:
-        paths = tqdm(paths)
+        parquet_file_paths = tqdm(parquet_file_paths)
 
     # connect to the db
     if not engine:
@@ -376,9 +384,9 @@ def stack_waterbodies_db(
         key = get_waterbody_key(uid, session)
         uid_to_key[uid] = key
 
-    for path in paths:
+    for pq_file_path in parquet_file_paths:
         # read the table in...
-        df = deafrica_conflux.io.read_table(path)
+        df = deafrica_conflux.io.read_table_from_parquet(pq_file_path)
         # parse the date...
         date = deafrica_conflux.io.string_to_date(df.attrs["date"])
         # df is ids x bands

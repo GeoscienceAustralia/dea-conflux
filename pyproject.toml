@@ -43,7 +43,7 @@ dependencies= [
     "python-geohash",
     "s3urls",
     "deafrica-tools>=2.0.1",
-    "boto3-stubs",
+    "boto3-stubs[s3,sqs]",
     # Code style
     "flake8",
     "black", 

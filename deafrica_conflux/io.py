@@ -15,6 +15,7 @@ import s3urls
 import boto3
 import botocore
 from botocore.exceptions import ClientError
+from mypy_boto3_s3.client import S3Client
 
 import pandas as pd
 import pyarrow
@@ -184,7 +185,8 @@ def write_table_to_parquet(
 
     Returns
     -------
-    Path written to.
+    str
+        Path written to.
     """
 
     # Convert the table to pyarrow.
@@ -246,7 +248,7 @@ def read_table_from_parquet(path: str) -> pd.DataFrame:
     return df
 
 
-def check_if_s3_uri(file_path: str):
+def check_if_s3_uri(file_path: str) -> bool:
     """
     Checks if a file path is an S3 URI.
 
@@ -352,7 +354,7 @@ def check_local_file_exists(
 
 def check_s3_bucket_exists(
         bucket_name: str,
-        s3_client: botocore.client.S3 = None):
+        s3_client: S3Client = None):
     """
     Check if a bucket exists and if the user has permission to access it.
 
@@ -360,7 +362,7 @@ def check_s3_bucket_exists(
     ----------
     bucket_name : str
         Name of s3 bucket to check.
-    s3_client : botocore.client.S3
+    s3_client : S3Client
         A low-level client representing Amazon Simple Storage Service (S3), by default None.
     
     """
@@ -385,7 +387,7 @@ def check_s3_bucket_exists(
 def check_s3_object_exists(
         s3_object_uri: str,
         error_if_exists=True,
-        s3_client: botocore.client.S3 = None):
+        s3_client: S3Client = None):
     """
     Check if an object in an S3 bucket exists.
     if error_if_exists is True, raises an error if the object exists.
@@ -399,7 +401,7 @@ def check_s3_object_exists(
         If True, raise an error if the object exists.
         If False, raise an error if the object does NOT exist.
         By default True.
-    s3_client : botocore.client.S3
+    s3_client : S3Client
         A low-level client representing Amazon Simple Storage Service (S3), by default None.
     """
     # Get the service client.
