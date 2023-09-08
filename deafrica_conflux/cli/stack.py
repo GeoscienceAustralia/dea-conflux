@@ -26,7 +26,7 @@ import deafrica_conflux.stack
 )
 @click.option(
     "--mode",
-    type=click.Choice(["waterbodies", "waterbodies_db", "wit_tooling"]),
+    type=click.Choice(["waterbodies", "waterbodies_db"]),
     default="waterbodies",
     required=False,
 )
@@ -57,23 +57,19 @@ def stack(
     mode_map = {
         "waterbodies": deafrica_conflux.stack.StackMode.WATERBODIES,
         "waterbodies_db": deafrica_conflux.stack.StackMode.WATERBODIES_DB,
-        "wit_tooling": deafrica_conflux.stack.StackMode.WITTOOLING,
     }
 
     kwargs = {}
-    if mode == "waterbodies" or mode == "wit_tooling":
-        kwargs["output_dir"] = output_directory
+    if mode == "waterbodies":
+        kwargs["output_directory"] = output_directory
         kwargs["remove_duplicated_data"] = remove_duplicated_data
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
-        kwargs["remove_duplicated_data"] = remove_duplicated_data
 
-    deafrica_conflux.stack.stack(
-        parquet_path,
-        pattern,
-        mode_map[mode],
-        verbose=verbose,
-        **kwargs,
-    )
+    deafrica_conflux.stack.stack_parquet(path=parquet_path,
+                                         pattern=pattern,
+                                         mode=mode_map[mode],
+                                         verbose=verbose,
+                                         **kwargs)
 
     return 0
