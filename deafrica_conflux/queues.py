@@ -111,8 +111,9 @@ def verify_queue_name(queue_name: str):
 def make_source_queue(
         queue_name: str,
         dead_letter_queue_name: str,
-        timeout: float = 2 * 60,
-        retries: float = 5,
+        timeout: int = 2 * 60,
+        retries: int = 5,
+        retention_period: int = 60,
         sqs_client: SQSClient = None):
     """
     Creates an Amazon SQS queue.
@@ -128,6 +129,8 @@ def make_source_queue(
         The visibility timeout for the queue, in seconds, by default 2*60
     retries : float, optional
         Maximum number of retry attempts, by default 5
+    retention_period: int, optional
+        The length of time, in seconds, for which Amazon SQS retains a message, by default 5
     sqs_client : SQSClient, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
 
