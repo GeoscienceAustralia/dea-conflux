@@ -37,7 +37,7 @@ def summarise(inputs: xr.Dataset) -> xr.Dataset:
     valid_and_wet_count = np.count_nonzero(inputs.water == 128)
    
     valid_and_wet_percentage = (valid_and_wet_count / pixel_count) * 100
-    valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100
+    valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100 # noqa F841
     invalid_percentage = (invalid_count / pixel_count) * 100
 
     return xr.Dataset({"wet_percentage": valid_and_wet_percentage,
