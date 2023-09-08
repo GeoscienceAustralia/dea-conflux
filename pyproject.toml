@@ -42,7 +42,8 @@ dependencies= [
     "SQLAlchemy",
     "python-geohash",
     "s3urls",
-    "deafrica-tools",
+    "deafrica-tools>=2.0.1",
+    "boto3-stubs",
     # Code style
     "flake8",
     "black", 
