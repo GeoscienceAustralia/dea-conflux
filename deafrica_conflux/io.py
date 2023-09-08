@@ -13,7 +13,6 @@ import fsspec
 import urllib
 import s3urls
 import boto3
-import botocore
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
