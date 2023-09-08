@@ -16,7 +16,7 @@ import deafrica_conflux.drill
 import deafrica_conflux.queues
 
 
-@click.command("run-from-queue",
+@click.command("run-from-sqs-queue",
                no_args_is_help=True,
                help="Run deafrica-conflux on dataset ids from an SQS queue.")
 @click.option(
@@ -77,7 +77,7 @@ import deafrica_conflux.queues
     default=True,
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
 )
-def run_from_queue(
+def run_from_sqs_queue(
     plugin_file,
     dataset_ids_queue,
     polygons_vector_file,
