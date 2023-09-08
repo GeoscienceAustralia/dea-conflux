@@ -22,8 +22,6 @@ import shapely.geometry
 import tqdm
 import xarray as xr
 
-from deafrica_conflux.types import CRS
-
 from deafrica_tools.spatial import xr_rasterize
 
 _log = logging.getLogger(__name__)
