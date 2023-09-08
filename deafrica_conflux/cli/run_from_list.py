@@ -96,12 +96,15 @@ def run_from_list(
     _log.info(f"Using plugin {plugin.__file__}")
     validate_plugin(plugin)
 
+    # Get the product name from the plugin.
+    product_name = plugin.product_name
+
     # Read the vector file.
     try:
         polygons_gdf = gpd.read_file(polygons_vector_file)
     except Exception as error:
-        _log.error(error)
-        raise
+        _log.exception(f"Could not read file {polygons_vector_file}")
+        raise error
     
     # Guess the ID field.
     id_field = guess_id_field(polygons_gdf, use_id)
@@ -109,24 +112,6 @@ def run_from_list(
 
     # Set the ID field as the index.
     polygons_gdf.set_index(id_field, inplace=True)
-
-    # Get the CRS.
-    if hasattr(plugin, "output_crs"):
-        crs = plugin.output_crs
-    else:
-        # If a CRS is not specified use the crs "EPSG:6933"
-        crs = "EPSG:6933"
-
-    _log.debug(f"Found CRS: {crs}")
-    # Reproject the polygons to the required CRS.
-    polygons_gdf = polygons_gdf.to_crs(crs)
-
-    # Get the output resolution from the plugin.
-    # TODO(MatthewJA): Make this optional by guessing
-    # the resolution, if at all possible.
-    # I think this is doable provided that everything
-    # is in native CRS.
-    resolution = plugin.resolution
 
     # Read dataset ids.
     dataset_ids = dataset_ids_list.split(" ")
@@ -139,6 +124,7 @@ def run_from_list(
     
     # Process each ID.
     # Loop through the scenes to produce parquet files.
+    failed_dataset_ids = []
     for i, id_ in enumerate(dataset_ids):
         success_flag = True
 
@@ -148,53 +134,57 @@ def run_from_list(
 
         if not overwrite:
             _log.info(f"Checking existence of {id_}")
-            exists = deafrica_conflux.io.table_exists(
-                plugin.product_name, id_, centre_date, output_directory
-            )
+            exists = deafrica_conflux.io.table_exists(product_name,
+                                                      id_,
+                                                      centre_date,
+                                                      output_directory)
 
-        # NameError should be impossible thanks to short-circuiting
         if overwrite or not exists:
             try:
-                table = deafrica_conflux.drill.drill(
-                    plugin,
-                    polygons_gdf,
-                    id_,
-                    crs,
-                    resolution,
-                    partial=partial,
-                    overedge=overedge,
-                    dc=dc,
-                )
+                table = deafrica_conflux.drill.drill(plugin,
+                                                     polygons_gdf,
+                                                     id_,
+                                                     partial=partial,
+                                                     overedge=overedge,
+                                                     dc=dc,)
 
                 # if always dump drill result, or drill result is not empty,
                 # dump that dataframe as PQ file
                 if (dump_empty_dataframe) or (not table.empty):
                     pq_filename = deafrica_conflux.io.write_table(
-                        plugin.product_name, id_, centre_date, table, output_directory
-                    )
+                        product_name,
+                        id_,
+                        centre_date,
+                        table,
+                        output_directory,)
                     if db:
                         _log.debug(f"Writing {pq_filename} to DB")
-                        deafrica_conflux.stack.stack_waterbodies_db(
-                            paths=[pq_filename],
+                        deafrica_conflux.stack.stack_waterbodies_parquet_to_db(
+                            parquet_file_paths=[pq_filename],
                             verbose=verbose,
                             engine=engine,
                             drop=False,
                         )
             except KeyError as keyerr:
-                _log.error(f"Found {id_} has KeyError: {str(keyerr)}")
+                _log.exception(f"Found {id_} has KeyError: {str(keyerr)}")
+                failed_dataset_ids.append(id_)
                 success_flag = False
             except TypeError as typeerr:
-                _log.error(f"Found {id_} has TypeError: {str(typeerr)}")
+                _log.exception(f"Found {id_} has TypeError: {str(typeerr)}")
+                failed_dataset_ids.append(id_)
                 success_flag = False
             except RasterioIOError as ioerror:
-                _log.error(f"Found {id_} has RasterioIOError: {str(ioerror)}")
+                _log.exception(f"Found {id_} has RasterioIOError: {str(ioerror)}")
+                failed_dataset_ids.append(id_)
                 success_flag = False
         else:
             _log.info(f"{id_} already exists, skipping")
 
         if success_flag:
-            _log.info(f"{id_} Successful")
+            _log.info(f"{id_} successful")
         else:
-            _log.info(f"{id_} Not successful")
+            _log.error(f"{id_} not successful")
 
+    _log.info(f"Failed dataset IDs {failed_dataset_ids}")
+    
     return 0
