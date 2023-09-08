@@ -102,12 +102,11 @@ def run_from_txt(
     # Get the product name from the plugin.
     product_name = plugin.product_name
 
-    # Read the polygons vector file.
     try:
         polygons_gdf = gpd.read_file(polygons_vector_file)
     except Exception as error:
-        _log.error(error)
-        raise
+        _log.exception(f"Could not read file {polygons_vector_file}")
+        raise error
 
     # Guess the ID field.
     id_field = guess_id_field(polygons_gdf, use_id)
