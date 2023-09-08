@@ -150,7 +150,8 @@ def make_source_queue(
         sqs_client.meta.config.retries = retry_config
 
     # Queue attributes.
-    queue_attributes = dict(VisibilityTimeout=str(timeout))
+    queue_attributes = dict(VisibilityTimeout=str(timeout),
+                            MessageRetentionPeriod=str(retention_period))
 
     if dead_letter_queue_name:
         # Get the Amazon Resource Name (ARN) of the dead-letter queue.
