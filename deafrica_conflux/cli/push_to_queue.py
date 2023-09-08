@@ -1,51 +1,31 @@
 import click
+import boto3
 import logging
-from .common import main, logging_setup
 
-import deafrica_conflux.queues
+from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.queues import push_to_queue_from_txt
 
 
-@main.command("push-to-queue", no_args_is_help=True)
+@click.command("push-to-sqs-queue", no_args_is_help=True)
 @click.option(
-    "--txt",
+    "--text-file-path",
     type=click.Path(),
     required=True,
-    help="REQUIRED. Path to TXT file to push to queue.",
+    help="REQUIRED. Path to text file to push to queue.",
 )
-@click.option("--queue", required=True, help="REQUIRED. Queue name to push to.")
+@click.option("--queue-name", required=True, help="REQUIRED. Queue name to push to.")
 @click.option("-v", "--verbose", count=True)
-def push_to_queue(txt, queue, verbose):
+def push_to_sqs_queue(text_file_path, queue_name, verbose):
     """
     Push lines of a text file to a SQS queue.
     """
     # Cribbed from datacube-alchemist
     logging_setup(verbose)
-    _log = logging.getLogger(__name__)
+    _log = logging.getLogger(__name__) # noqa F841
 
-    alive_queue = deafrica_conflux.queues.get_queue(queue)
+    # Create an sqs client.
+    sqs_client = boto3.client("sqs")
 
-    def post_messages(messages, count):
-        alive_queue.send_messages(Entries=messages)
-        _log.info(f"Added {count} messages...")
-        return []
-
-    count = 0
-    messages = []
-    _log.info("Adding messages...")
-    with open(txt) as file:
-        ids = [line.strip() for line in file]
-    _log.debug(f"Adding IDs {ids}")
-    for id_ in ids:
-        message = {
-            "Id": str(count),
-            "MessageBody": str(id_),
-        }
-        messages.append(message)
-
-        count += 1
-        if count % 10 == 0:
-            messages = post_messages(messages, count)
-
-    # Post the last messages if there are any
-    if len(messages) > 0:
-        post_messages(messages, count)
+    push_to_queue_from_txt(text_file_path=text_file_path,
+                           queue_name=queue_name,
+                           sqs_client=sqs_client)
