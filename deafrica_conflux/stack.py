@@ -25,7 +25,7 @@ from tqdm.auto import tqdm
 import deafrica_conflux.db
 import deafrica_conflux.io
 from deafrica_conflux.db import Engine
-from deafrica_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
+from deafrica_conflux.io import PARQUET_EXTENSIONS
 
 _log = logging.getLogger(__name__)
 
@@ -49,60 +49,6 @@ def stack_format_date(date: datetime.datetime) -> str:
     """
     # e.g. 1987-05-24T01:30:18Z
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def find_csv_files(
-        path: str,
-        pattern: str = ".*") -> [str]:
-    """
-    Find CSV files matching a pattern.
-
-    Arguments
-    ---------
-    path : str
-        Path (s3 or local) to search for CSV files.
-
-    pattern : str
-        Regex to match file names against.
-
-    Returns
-    -------
-    [str]
-        List of paths.
-    """
-    pattern = re.compile(pattern)
-
-    # "Support" pathlib Paths.
-    try:
-        path.startswith
-    except AttributeError:
-        path = str(path)
-
-    if path.startswith("s3://"):
-        # Find CSV files on S3.
-        file_system = fsspec.filesystem("s3")
-    else:
-        # Find CSV files localy.
-        file_system = fsspec.filesystem("file")
-
-    csv_file_paths = []
-
-    files = file_system.find(path)
-    for file in files:
-        _, file_extension = os.path.splitext(file)
-        if file_extension not in CSV_EXTENSIONS:
-            continue
-        else:
-            _, file_name = os.path.split(file)
-            if not pattern.match(file_name):
-                continue
-            else:
-                csv_file_paths.append(file)
-
-    if path.startswith("s3://"):
-        csv_file_paths = [f"s3://{file}" for file in csv_file_paths]
-
-    return csv_file_paths
 
 
 def find_parquet_files(
@@ -213,48 +159,6 @@ def load_parquet_file(path) -> pd.DataFrame:
     return df
 
 
-def save_df_as_csv(
-        single_polygon_df: pd.DataFrame,
-        feature_id: str,
-        output_directory: str,
-        remove_duplicated_data: bool) -> str:
-    """
-    Save polygon base pandas.DataFrame as
-    CSV file in output directory.
-
-    Arguments
-    ---------
-    single_polygon_df: pandas.Dataframe
-        The polygon base dea-conflux drill result.
-    feature_id: str
-        Polygon unique ID.
-    output_directory : str
-        Directory (s3 or local) to save the CSV files to.
-    remove_duplicated_data: bool
-        Remove timeseries duplicated data or not.
-
-    Returns
-    -------
-    str
-        File path of the output csv file.
-    """
-    if remove_duplicated_data:
-        # Remove the timeseries duplicated data
-        single_polygon_df = remove_timeseries_duplicates(single_polygon_df)
-
-    single_polygon_df["feature_id"] = single_polygon_df.index
-    single_polygon_df.reset_index(inplace=True)
-
-    if not output_directory.startswith("s3://"):
-        os.makedirs(output_directory, exist_ok=True)
-
-    output_file_path = os.path.join(output_directory, f"{feature_id}.csv")
-
-    with fsspec.open(output_file_path, "w") as f:
-        single_polygon_df.to_csv(f, index=False)
-    return output_file_path
-
-
 def stack_waterbodies_parquet_to_csv(
     parquet_file_paths: [str],
     output_directory: str,
@@ -327,7 +231,7 @@ def get_waterbody_key(uid: str, session: Session):
     return inst.wb_id
 
 
-def stack_waterbodies_db(
+def stack_waterbodies_parquet_to_db(
     parquet_file_paths: [str],
     verbose: bool = False,
     engine: Engine = None,
@@ -401,9 +305,9 @@ def stack_waterbodies_db(
             key = uid_to_key[uid]
             obs = deafrica_conflux.db.WaterbodyObservation(
                 wb_id=key,
-                px_wet=series.px_wet,
-                pc_wet=series.pc_wet,
-                pc_missing=series.pc_missing,
+                wet_pixel_count=series.wet_pixel_count,
+                wet_percentage=series.wet_percentage,
+                invalid_percentage=series.invalid_percentage,
                 platform="UNK",
                 date=date,
             )
@@ -415,7 +319,7 @@ def stack_waterbodies_db(
 
 
 def stack_waterbodies_db_to_csv(
-    out_path: str,
+    output_directory: str,
     verbose: bool = False,
     uids: {str} = None,
     remove_duplicated_data: bool = True,
@@ -424,11 +328,12 @@ def stack_waterbodies_db_to_csv(
     index_num: int = 0,
     split_num: int = 1,
 ):
-    """Write waterbodies CSVs out from the interstitial DB.
+    """
+    Write waterbodies CSVs out from the interstitial DB.
 
     Arguments
     ---------
-    out_path : str
+    output_directory : str
         Path to write CSVs to.
 
     verbose : bool
@@ -482,26 +387,25 @@ def stack_waterbodies_db_to_csv(
         rows = [
             {
                 "date": stack_format_date(ob.date),
-                "pc_wet": round(ob.pc_wet * 100, 2),
-                "px_wet": ob.px_wet,
-                "pc_missing": ob.pc_missing,
+                "wet_percentage": ob.wet_percentage,
+                "wet_pixel_count": ob.wet_pixel_count,
+                "invalid_percentage": ob.invalid_percentage,
             }
             for ob in obs
         ]
 
-        df = pd.DataFrame(rows, columns=["date", "pc_wet", "px_wet", "pc_missing"])
+        df = pd.DataFrame(rows, columns=["date", "wet_percentage", "wet_pixel_count", "invalid_percentage"])
         if remove_duplicated_data:
-            df = remove_timeseries_with_duplicated(df)
-            print(out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv")
+            df = remove_duplicated_data(df)
+
         # The pc_missing should not in final WaterBodies result
         df.drop(columns=["pc_missing"], inplace=True)
 
-        df.to_csv(
-            out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
-            header=True,
-            index=False,
-        )
-
+        output_file_name = os.path.join(output_directory, wb.wb_name[:4], wb.wb_name + ".csv")
+        print(output_file_name)
+        with fsspec.open(output_file_name, "w") as f:
+            df.to_csv(f, header=True, index=False)
+       
         Session.remove()
 
     session = Session()
@@ -531,22 +435,23 @@ def stack_waterbodies_db_to_csv(
     Session.remove()
 
 
-def stack(
+def stack_parquet(
     path: str,
     pattern: str = ".*",
     mode: StackMode = StackMode.WATERBODIES,
     verbose: bool = False,
     **kwargs,
 ):
-    """Stack Parquet files.
+    """
+    Stack Parquet files.
 
     Arguments
     ---------
     path : str
-        Path to search for Parquet files.
+        Path (s3 or local) to search for parquet files.
 
     pattern : str
-        Regex to match filenames against.
+        Regex to match file names against.
 
     mode : StackMode
         Method of stacking. Default is like DE Africa Waterbodies v1,
@@ -560,17 +465,14 @@ def stack(
     path = str(path)
 
     _log.info(f"Begin to query {path} with pattern {pattern}")
-
-    if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
-        paths = find_csv_files(path, pattern)
-    else:
-        paths = find_parquet_files(path, pattern)
+    
+    paths = find_parquet_files(path, pattern)
 
     if mode == StackMode.WATERBODIES:
-        return stack_waterbodies(paths, verbose=verbose, **kwargs)
+        return stack_waterbodies_parquet_to_csv(parquet_file_paths=paths,
+                                                verbose=verbose,
+                                                **kwargs)
     if mode == StackMode.WATERBODIES_DB:
-        return stack_waterbodies_db(paths, verbose=verbose, **kwargs)
-    if mode == StackMode.WITTOOLING:
-        return stack_wit_tooling(paths, verbose=verbose, **kwargs)
-    if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
-        return stack_wit_tooling_to_single_file(paths, verbose=verbose, **kwargs)
+        return stack_waterbodies_parquet_to_db(parquet_file_paths=paths,
+                                               verbose=verbose,
+                                               **kwargs)
