@@ -68,7 +68,7 @@ import deafrica_conflux.queues
 @click.option("-v", "--verbose", count=True)
 @click.option("--timeout",
               default=18 * 60,
-              help="The seconds of a received SQS msg is invisible.")
+              help="The duration in seconds that a received SQS msg is invisible.",)
 @click.option("--db/--no-db",
               default=True,
               help="Write to the Waterbodies database.")
