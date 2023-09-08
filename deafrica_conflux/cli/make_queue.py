@@ -1,63 +1,45 @@
 import click
-import boto3
-import json
-from botocore.config import Config
-
-from .common import main
 
 import deafrica_conflux.queues
 
 
-@main.command("make-queue", no_args_is_help=True)
-@click.argument("name")
-@click.option(
-    "--timeout", type=int, help="Visibility timeout in seconds", default=18 * 60
-)
+@click.command("make-sqs-queue",
+               no_args_is_help=True)
+@click.option("queue-name",
+              help="Name of the SQS queue to create.")
+@click.option("--timeout",
+              type=int,
+              help="Visibility timeout in seconds",
+              default=18 * 60)
 @click.option(
     "--retention-period",
     type=int,
-    help="The length of time, in seconds before retains a message.",
+    help="The length of time, in seconds, for which the queue S retains a message.",
     default=7 * 24 * 3600,
 )
-@click.option("--retries", type=int, help="Number of retries", default=5)
-def make_queue(name, timeout, retries, retention_period):
+@click.option("--retries",
+              type=int,
+              help="Number of retries",
+              default=5)
+def make_sqs_queue(
+    queue_name,
+    timeout,
+    retention_period,
+    retries
+):
     """
-    Make a queue.
+    Make an SQS queue.
     """
 
-    deafrica_conflux.queues.verify_name(name)
+    # Verify queue name.
+    deafrica_conflux.queues.verify_queue_name(queue_name)
 
-    deadletter = name + "_deadletter"
+    # Verify dead-letter queue name.
+    dead_letter_queue_name = queue_name + "_deadletter"
+    deafrica_conflux.queues.verify_queue_name(dead_letter_queue_name)
 
-    sqs_client = boto3.client(
-        "sqs",
-        config=Config(
-            retries={
-                "max_attempts": retries,
-            }
-        ),
-    )
-
-    # create deadletter queue
-    dl_queue_response = sqs_client.create_queue(QueueName=deadletter)
-
-    # Get ARN from deadletter queue name.
-    dl_attrs = sqs_client.get_queue_attributes(
-        QueueUrl=dl_queue_response["QueueUrl"], AttributeNames=["All"]
-    )
-
-    # create the queue attributes form
-    attributes = dict(VisibilityTimeout=str(timeout))
-    attributes["RedrivePolicy"] = json.dumps(
-        {
-            "deadLetterTargetArn": dl_attrs["Attributes"]["QueueArn"],
-            "maxReceiveCount": 10,
-        }
-    )
-
-    attributes["MessageRetentionPeriod"] = str(retention_period)
-
-    queue = sqs_client.create_queue(QueueName=name, Attributes=attributes)
-
-    assert queue
-    return 0
+    deafrica_conflux.queues.make_source_queue(queue_name=queue_name,
+                                              dead_letter_queue_name=dead_letter_queue_name,
+                                              timeout=timeout,
+                                              retries=retries,
+                                              retention_period=retention_period)
