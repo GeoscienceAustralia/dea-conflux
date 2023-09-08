@@ -80,7 +80,7 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame,
             if guess in input_gdf_columns:
                 guess_result.append(guess)
 
-        # If none of the possible_id_columns columns were found, 
+        # If none of the possible_id_columns columns were found,
         # let us try the lower case.
         if not guess_result:
             for guess in possible_id_columns:
