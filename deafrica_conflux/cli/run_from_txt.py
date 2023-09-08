@@ -1,3 +1,4 @@
+import os
 import click
 import datacube
 import logging
@@ -137,6 +138,7 @@ def run_from_txt(
     
     # Process each ID.
     # Loop through the scenes to produce parquet files.
+    failed_dataset_ids = []
     for i, id_ in enumerate(dataset_ids):
         success_flag = True
 
@@ -146,51 +148,66 @@ def run_from_txt(
 
         if not overwrite:
             _log.info(f"Checking existence of {id_}")
-            exists = deafrica_conflux.io.table_exists(
-                product_name, id_, centre_date, output_directory
-            )
+            exists = deafrica_conflux.io.table_exists(product_name,
+                                                      id_,
+                                                      centre_date,
+                                                      output_directory)
 
-        # NameError should be impossible thanks to short-circuiting
         if overwrite or not exists:
             try:
-                table = deafrica_conflux.drill.drill(
-                    plugin,
-                    polygons_gdf,
-                    id_,
-                    partial=partial,
-                    overedge=overedge,
-                    dc=dc,
-                )
+                table = deafrica_conflux.drill.drill(plugin,
+                                                     polygons_gdf,
+                                                     id_,
+                                                     partial=partial,
+                                                     overedge=overedge,
+                                                     dc=dc,)
 
                 # if always dump drill result, or drill result is not empty,
                 # dump that dataframe as PQ file
                 if (dump_empty_dataframe) or (not table.empty):
                     pq_filename = deafrica_conflux.io.write_table(
-                        product_name, id_, centre_date, table, output_directory
-                    )
+                        product_name,
+                        id_,
+                        centre_date,
+                        table,
+                        output_directory,)
                     if db:
                         _log.debug(f"Writing {pq_filename} to DB")
-                        deafrica_conflux.stack.stack_waterbodies_db(
-                            paths=[pq_filename],
+                        deafrica_conflux.stack.stack_waterbodies_parquet_to_db(
+                            parquet_file_paths=[pq_filename],
                             verbose=verbose,
                             engine=engine,
                             drop=False,
                         )
             except KeyError as keyerr:
-                _log.error(f"Found {id_} has KeyError: {str(keyerr)}")
+                _log.exception(f"Found {id_} has KeyError: {str(keyerr)}")
+                failed_dataset_ids.append(id_)
                 success_flag = False
             except TypeError as typeerr:
-                _log.error(f"Found {id_} has TypeError: {str(typeerr)}")
+                _log.exception(f"Found {id_} has TypeError: {str(typeerr)}")
+                failed_dataset_ids.append(id_)
                 success_flag = False
             except RasterioIOError as ioerror:
-                _log.error(f"Found {id_} has RasterioIOError: {str(ioerror)}")
+                _log.exception(f"Found {id_} has RasterioIOError: {str(ioerror)}")
+                failed_dataset_ids.append(id_)
                 success_flag = False
         else:
             _log.info(f"{id_} already exists, skipping")
 
         if success_flag:
-            _log.info(f"{id_} Successful")
+            _log.info(f"{id_} successful")
         else:
-            _log.info(f"{id_} Not successful")
+            _log.error(f"{id_} not successful")
 
+    # Write the failed dataset ids to a text file.
+    parent_folder, file_name = os.path.split(dataset_ids_file)
+    file, file_extension = os.path.splitext(file_name)
+    failed_datasets_text_file = os.path.join(parent_folder, file + "_failed_dataset_ids" + file_extension)
+
+    with fsspec.open(failed_datasets_text_file, "a") as file:
+        for dataset_id in failed_dataset_ids:
+            file.write("%s\n" % dataset_id)
+
+    _log.info(f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}.")
+    
     return 0
