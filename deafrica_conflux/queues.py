@@ -135,13 +135,13 @@ def make_source_queue(
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
 
     """
-    
+
     verify_queue_name(queue_name)
 
     # Retry configuration.
     retry_config = {'max_attempts': 10,
                     'mode': 'standard'}
-    
+
     # Create SQS client
     if sqs_client is None:
         sqs_client = boto3.client("sqs",
@@ -154,8 +154,17 @@ def make_source_queue(
                             MessageRetentionPeriod=str(retention_period))
 
     if dead_letter_queue_name:
-        # Get the Amazon Resource Name (ARN) of the dead-letter queue.
-        dead_letter_queue_arn = get_queue_attribute(dead_letter_queue_name, 'QueueArn', sqs_client)
+        try:
+            # Get the Amazon Resource Name (ARN) of the dead-letter queue.
+            dead_letter_queue_arn = get_queue_attribute(dead_letter_queue_name, 'QueueArn', sqs_client)
+        except Exception:
+            _log.info(f"Creating dead-letter queue {dead_letter_queue_name}")
+            verify_queue_name(dead_letter_queue_name)
+            # Create dead-letter queue.
+            response = sqs_client.create_queue(QueueName=dead_letter_queue_name)
+            # Get the Amazon Resource Name (ARN) of the dead-letter queue.
+            dead_letter_queue_arn = get_queue_attribute(dead_letter_queue_name, 'QueueArn', sqs_client)
+
         # Parameters for the dead-letter queue functionality of the source
         # queue as a JSON object.
         redrive_policy = {'deadLetterTargetArn': dead_letter_queue_arn,
@@ -171,7 +180,7 @@ def make_source_queue(
         raise error
     else:
         assert response
-    
+
     return 0
 
 
