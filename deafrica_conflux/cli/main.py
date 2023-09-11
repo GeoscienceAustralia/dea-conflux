@@ -11,6 +11,7 @@ from deafrica_conflux.cli.run_from_queue import run_from_sqs_queue
 from deafrica_conflux.cli.stack import stack
 from deafrica_conflux.cli.db_to_csv import db_to_csv
 from deafrica_conflux.cli.delete_queue import delete_sqs_queue
+from deafrica_conflux.cli.filter_from_queue import filter_from_queue
 
 
 @click.version_option(package_name="deafrica_conflux", version=deafrica_conflux.__version__)
@@ -28,3 +29,4 @@ main.add_command(run_from_sqs_queue)
 main.add_command(stack)
 main.add_command(db_to_csv)
 main.add_command(delete_sqs_queue)
+main.add_command(filter_from_queue)
