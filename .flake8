@@ -1,5 +1,5 @@
 [flake8]
-ignore = W293, W504, W503
+ignore = W293, W504, W503, E501
 
 max_line_length = 120
 per-file-ignores = cli.py:F401
