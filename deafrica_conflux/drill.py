@@ -22,12 +22,16 @@ import shapely.geometry
 import tqdm
 import xarray as xr
 
+from datacube.model import Dataset
+from datacube.utils.geometry import Geometry
 from deafrica_tools.spatial import xr_rasterize
 
 _log = logging.getLogger(__name__)
 
 
-def _get_directions(og_geom, int_geom):
+def _get_directions(
+        og_geom: shapely.geometry.Polygon,
+        int_geom: shapely.geometry.Polygon) -> set:
     """
     Helper to get direction of intersection between geometry, intersection.
 
@@ -111,7 +115,7 @@ def _get_directions(og_geom, int_geom):
 
 def get_intersections(
         polygons_gdf: gpd.GeoDataFrame,
-        ds_extent: datacube.utils.geometry.Geometry
+        ds_extent: Geometry
 ) -> pd.DataFrame:
     """
     Find which polygons intersect with a Dataset or DataArray extent
@@ -122,7 +126,7 @@ def get_intersections(
     polygons_gdf : gpd.GeoDataFrame
         Set of polygons.
 
-    ds_extent : datacube.utils.geometry.Geometry
+    ds_extent : Geometry
         Valid extent of a dataset to check intersection against.
 
     Returns
@@ -162,7 +166,7 @@ def find_datasets_for_plugin(
         plugin: ModuleType,
         scene_uuid: str,
         strict: bool = False
-) -> [datacube.model.Dataset]:
+) -> dict[str, Dataset]:
     """
     Find the datasets that a plugin requires given a related scene UUID.
 
@@ -179,8 +183,8 @@ def find_datasets_for_plugin(
 
     Returns
     -------
-    [Dataset]
-        List of datasets.
+    dict[str, Dataset]
+        Dataset for each of the input products in the plugin.
     """
     # Load the metadata of the specified scene.
     metadata = dc.index.datasets.get(scene_uuid)
@@ -230,16 +234,16 @@ def dataset_to_dict(ds: xr.Dataset) -> dict:
 
 def polygons_in_ds_extent(
         polygons_gdf: gpd.GeoDataFrame,
-        ds: datacube.model.Dataset
+        ds: Dataset
 ) -> gpd.GeoDataFrame:
     """
     Filter a set of polygons to only include polygons that intersect with
     the extent of a dataset.
 
-    Arguments
+    Parameters
     ---------
     polygons_gdf : gpd.GeoDataFrame
-    ds : datacube.model.Dataset
+    ds : Dataset
 
     Returns
     -------
@@ -262,7 +266,7 @@ def polygons_in_ds_extent(
 
 def polygons_centroids_in_ds_extent_bbox(
         polygons_gdf: gpd.GeoDataFrame,
-        ds: datacube.model.Dataset,
+        ds: Dataset,
         buffer=True
 ) -> gpd.GeoDataFrame:
     """
@@ -272,7 +276,7 @@ def polygons_centroids_in_ds_extent_bbox(
     Arguments
     ---------
     polygons_gdf : gpd.GeoDataFrame
-    ds : datacube.model.Dataset
+    ds : Dataset
     buffer : bool
         Optional (True).
         Extend the bounding box of the extent of a dataset by the
@@ -313,7 +317,7 @@ def polygons_centroids_in_ds_extent_bbox(
 
 def check_ds_near_polygons(
         polygons_gdf: gpd.GeoDataFrame,
-        ds: datacube.model.Dataset,
+        ds: Dataset,
 ):
     """
     Use the 'polygons_in_ds_extent' and 'polygons_centroids_in_ds_extent_bbox'
@@ -324,7 +328,7 @@ def check_ds_near_polygons(
     Parameters
     ----------
     polygons_gdf : gpd.GeoDataFrame
-    ds : datacube.model.Dataset
+    ds : Dataset
 
     Returns
     -------
@@ -340,7 +344,7 @@ def check_ds_near_polygons(
 
 
 def filter_datasets(
-        dss: [datacube.model.Dataset],
+        dss: list[Dataset],
         polygons_gdf: gpd.GeoDataFrame,
         worker_num: int = 1):
     """
@@ -349,7 +353,7 @@ def filter_datasets(
 
     Arguments
     ---------
-    dss : [datacube.model.Dataset]
+    dss : list[Dataset]
     polygons_gdf : gpd.GeoDataFrame
     worker_num : int
 
@@ -370,7 +374,7 @@ def filter_datasets(
 
 def polygons_in_tripled_ds_extent_bbox_boundary(
         polygons_gdf: gpd.GeoDataFrame,
-        ds: datacube.model.Dataset
+        ds: Dataset
 ) -> gpd.GeoDataFrame:
     """
     Filter a set of polygons to remove polygons that intersect with the
@@ -420,7 +424,7 @@ def drill(
         scene_uuid: str,
         partial=True,
         overedge=False,
-        dc: datacube.Datacube = None,
+        dc: datacube.Datacube | None = None,
         time_buffer=datetime.timedelta(hours=1),
 ) -> pd.DataFrame:
     """
@@ -557,8 +561,8 @@ def drill(
         # of the polygons.
         reference_product = reference_dataset.type.name
 
-        geopolygon = datacube.utils.geometry.Geometry(geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
-                                                      crs=filtered_polygons_gdf.crs)
+        geopolygon = Geometry(geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
+                              crs=filtered_polygons_gdf.crs)
         
         time_span = (reference_dataset.center_time - time_buffer, reference_dataset.center_time + time_buffer)
 
