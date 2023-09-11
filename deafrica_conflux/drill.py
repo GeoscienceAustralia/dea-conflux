@@ -346,7 +346,7 @@ def check_ds_near_polygons(
 def filter_datasets(
         dss: list[Dataset],
         polygons_gdf: gpd.GeoDataFrame,
-        worker_num: int = 1):
+        worker_num: int = 1) -> list[str]:
     """
     Filter out datasets that are not near a set of polygons, using a
     multi-process approach to run the check_ds_near_polygons function.
@@ -359,7 +359,8 @@ def filter_datasets(
 
     Returns
     -------
-    filtered_datasets: [str]
+    list[str]
+        List of dataset ids for datasets near the set of polygons.
     """
     with multiprocessing.Pool(processes=worker_num) as pool:
         filtered_datasets_ = list(
