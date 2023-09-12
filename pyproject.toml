@@ -28,22 +28,27 @@ classifiers=[
 ]
 requires-python = ">=3.6"
 dependencies= [
-    "click",
-    "coverage",
-    "geopandas",
-    "datacube",
     "boto3",
     "botocore",
-    "pyarrow",
+    "boto3-stubs[s3,sqs]",
+    "click",
+    "datacube",
     "fsspec",
+    "python-geohash",
+    "geopandas",
+    "numpy",
+    "pandas",
+    "rasterio",
+    "shapely",
+    "SQLAlchemy",
+    "s3urls",
+    "pyarrow",
+    "tqdm",
+    "xarray",
     "s3fs",
     "moto[s3]",
-    "tqdm",
-    "SQLAlchemy",
-    "python-geohash",
-    "s3urls",
+    "pyarrow",
     "deafrica-tools>=2.0.1",
-    "boto3-stubs[s3,sqs]",
     # Code style
     "flake8",
     "black", 
@@ -74,3 +79,4 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 
 [tool.pyright]
 reportTypedDictNotRequiredAccess = false
+reportOptionalMemberAccess = false
