@@ -1,7 +1,8 @@
 import datacube
 import pytest
+from datacube.ui.click import parse_expressions
 
-from dea_conflux.hopper import find_datasets
+from deafrica_conflux.hopper import find_datasets
 
 
 @pytest.fixture(scope="module")
@@ -10,8 +11,9 @@ def dc():
 
 
 def test_find_datasets(dc):
-    datasets = find_datasets(query={}, products=["ga_ls_wo_3"], dc=dc)
-    assert len(list(datasets)) == 4
+    query = parse_expressions("lon in [-10.002, -7.929] lat in [13.408, 15.496] time in 2023-06-12")
+    datasets = find_datasets(query=query, products=["wofs_ls"], dc=dc)
+    assert len(list(datasets)) == 3
 
 
 def test_find_no_datasets(dc):
