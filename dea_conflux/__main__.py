@@ -573,6 +573,278 @@ def filter_from_queue(
     default=True,
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
 )
+@click.option(
+    "--csv-output",
+    type=click.Path(),
+    required=True,
+    help="Output directory for Waterbodies-style CSVs",
+)
+@click.option(
+    "--jobs",
+    "-j",
+    default=8,
+    help="Number of workers",
+)
+@click.option(
+    "--index-num",
+    "-i",
+    type=click.INT,
+    default=0,
+    help="The waterbodies ID chunks index after split overall waterbodies ID list by split-num.",
+)
+@click.option(
+    "--split-num",
+    type=click.INT,
+    default=1,
+    help="Number of chunks after split overall waterbodies ID list.",
+)
+@click.option(
+    "--remove-duplicated-data/--no-remove-duplicated-data",
+    default=True,
+    help="Remove timeseries duplicated data if applicable. Default True",
+)
+def nrt_run_from_queue(
+    plugin,
+    queue,
+    shapefile,
+    use_id,
+    output,
+    partial,
+    overwrite,
+    overedge,
+    verbose,
+    timeout,
+    db,
+    dump_empty_dataframe,
+    csv_output,
+    jobs,
+    index_num,
+    split_num,
+    remove_duplicated_data,
+):
+    """
+    Run dea-conflux on a scene from a queue in Near Real Time pattern.
+    """
+    logging_setup(verbose)
+
+    # Read the plugin as a Python module.
+    plugin = run_plugin(plugin)
+    logger.info(f"Using plugin {plugin.__file__}")
+    validate_plugin(plugin)
+
+    # Get the CRS from the shapefile if one isn't specified.
+    if hasattr(plugin, "output_crs"):
+        crs = plugin.output_crs
+    else:
+        crs = get_crs(shapefile)
+    logger.debug(f"Found CRS: {crs}")
+
+    # Get the output resolution from the plugin.
+    # TODO(MatthewJA): Make this optional by guessing
+    # the resolution, if at all possible.
+    # I think this is doable provided that everything
+    # is in native CRS.
+    resolution = plugin.resolution
+
+    # Guess the ID field.
+    id_field = guess_id_field(shapefile, use_id)
+    logger.debug(f"Guessed ID field: {id_field}")
+
+    # Load and reproject the shapefile.
+    shapefile = load_and_reproject_shapefile(
+        shapefile,
+        id_field,
+        crs,
+    )
+
+    dl_queue_name = queue + "_deadletter"
+
+    # Read ID/s from the queue.
+    import boto3
+
+    sqs = boto3.resource("sqs")
+    queue = sqs.get_queue_by_name(QueueName=queue)
+    queue_url = queue.url
+
+    if db:
+        engine = dea_conflux.db.get_engine_waterbodies()
+
+    dc = datacube.Datacube(app="dea-conflux-drill")
+    message_retries = 10
+    while message_retries > 0:
+        response = queue.receive_messages(
+            AttributeNames=["All"],
+            MaxNumberOfMessages=1,
+            VisibilityTimeout=timeout,
+        )
+
+        messages = response
+
+        if len(messages) == 0:
+            logger.info("No messages received from queue")
+            message_retries -= 1
+            continue
+
+        message_retries = 10
+
+        entries = [
+            {"Id": msg.message_id, "ReceiptHandle": msg.receipt_handle}
+            for msg in messages
+        ]
+
+        # Process each ID.
+        ids = [e.body for e in messages]
+        logger.info(f"Read {ids} from queue")
+
+        # Loop through the scenes to produce parquet files.
+        for i, (entry, id_) in enumerate(zip(entries, ids)):
+
+            success_flag = True
+
+            logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
+
+            centre_date = dc.index.datasets.get(id_).center_time
+
+            if not overwrite:
+                logger.info(f"Checking existence of {id_}")
+                exists = dea_conflux.io.table_exists(
+                    plugin.product_name, id_, centre_date, output
+                )
+
+            # NameError should be impossible thanks to short-circuiting
+            if overwrite or not exists:
+                try:
+                    table = dea_conflux.drill.drill(
+                        plugin,
+                        shapefile,
+                        id_,
+                        crs,
+                        resolution,
+                        partial=partial,
+                        overedge=overedge,
+                        dc=dc,
+                    )
+
+                    # if always dump drill result, or drill result is not empty,
+                    # dump that dataframe as PQ file
+                    if (dump_empty_dataframe) or (not table.empty):
+                        pq_filename = dea_conflux.io.write_table(
+                            plugin.product_name, id_, centre_date, table, output
+                        )
+                        if db:
+                            logger.debug(f"Writing {pq_filename} to DB")
+                            dea_conflux.stack.stack_waterbodies_db(
+                                paths=[pq_filename],
+                                verbose=verbose,
+                                engine=engine,
+                                drop=False,
+                            )
+
+                        # because it is near-real-time pattern, so we generate the
+                        # polygon base result as CSV immediately
+
+                        polygon_ids = set(table.index)
+                        logger.info(
+                            f"Found {len(polygon_ids)} polygons in dataset: {str(id_)}"
+                        )
+
+                        dea_conflux.stack.stack_waterbodies_db_to_csv(
+                            out_path=csv_output,
+                            verbose=verbose > 0,
+                            uids=polygon_ids,
+                            n_workers=jobs,
+                            index_num=index_num,
+                            split_num=split_num,
+                            remove_duplicated_data=remove_duplicated_data,
+                        )
+
+                except KeyError as keyerr:
+                    logger.error(f"Found {id_} has KeyError: {str(keyerr)}")
+                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    success_flag = False
+                except TypeError as typeerr:
+                    logger.error(f"Found {id_} has TypeError: {str(typeerr)}")
+                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    success_flag = False
+                except RasterioIOError as ioerror:
+                    logger.error(f"Found {id_} has RasterioIOError: {str(ioerror)}")
+                    dea_conflux.queues.move_to_deadletter_queue(dl_queue_name, id_)
+                    success_flag = False
+            else:
+                logger.info(f"{id_} already exists, skipping")
+
+            # Delete from queue.
+            if success_flag:
+                logger.info(f"Successful, deleting {id_}")
+            else:
+                logger.info(f"Not successful, moved {id_} to DLQ")
+
+            resp = queue.delete_messages(
+                QueueUrl=queue_url,
+                Entries=[entry],
+            )
+
+            if len(resp["Successful"]) != 1:
+                raise RuntimeError(f"Failed to delete message: {entry}")
+
+    return 0
+
+
+@main.command(no_args_is_help=True)
+@click.option(
+    "--plugin",
+    "-p",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to Conflux plugin (.py).",
+)
+@click.option("--queue", "-q", help="Queue to read IDs from.")
+@click.option(
+    "--shapefile",
+    "-s",
+    type=click.Path(),
+    # Don't mandate existence since this might be s3://.
+    help="REQUIRED. Path to the polygon " "shapefile to run polygon drill on.",
+)
+@click.option(
+    "--use-id",
+    "-u",
+    type=str,
+    default=None,
+    help="Optional. Unique key id in shapefile.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default=None,
+    # Don't mandate existence since this might be s3://.
+    help="REQUIRED. Path to the output directory.",
+)
+@click.option(
+    "--partial/--no-partial",
+    default=True,
+    help="Include polygons that only partially intersect the scene.",
+)
+@click.option(
+    "--overedge/--no-overedge",
+    default=True,
+    help="Include data from over the scene boundary.",
+)
+@click.option(
+    "--overwrite/--no-overwrite",
+    default=False,
+    help="Rerun scenes that have already been processed.",
+)
+@click.option("-v", "--verbose", count=True)
+@click.option(
+    "--timeout", default=18 * 60, help="The seconds of a received SQS msg is invisible."
+)
+@click.option("--db/--no-db", default=True, help="Write to the Waterbodies database.")
+@click.option(
+    "--dump-empty-dataframe/--not-dump-empty-dataframe",
+    default=True,
+    help="Not matter DataFrame is empty or not, always as it as Parquet file.",
+)
 def run_from_queue(
     plugin,
     queue,
