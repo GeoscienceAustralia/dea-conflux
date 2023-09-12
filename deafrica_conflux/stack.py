@@ -19,13 +19,12 @@ import fsspec
 import geohash
 import numpy as np
 import pandas as pd
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from tqdm.auto import tqdm
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import deafrica_conflux.db
 import deafrica_conflux.io
 from deafrica_conflux.db import Engine
-from deafrica_conflux.io import PARQUET_EXTENSIONS
 
 _log = logging.getLogger(__name__)
 
@@ -90,7 +89,7 @@ def find_parquet_files(
     files = file_system.find(path)
     for file in files:
         _, file_extension = os.path.splitext(file)
-        if file_extension not in PARQUET_EXTENSIONS:
+        if file_extension not in deafrica_conflux.io.PARQUET_EXTENSIONS:
             continue
         else:
             _, file_name = os.path.split(file)

@@ -1,19 +1,19 @@
+import logging
+
 import click
 import boto3
 import datacube
-import logging
 import geopandas as gpd
 from rasterio.errors import RasterioIOError
-
-from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
-from deafrica_conflux.id_field import guess_id_field
 
 import deafrica_conflux.db
 import deafrica_conflux.io
 import deafrica_conflux.stack
 import deafrica_conflux.drill
 import deafrica_conflux.queues
+import deafrica_conflux.id_field
+from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
 
 
 @click.command("run-from-sqs-queue",
@@ -113,7 +113,7 @@ def run_from_sqs_queue(
         raise error
 
     # Guess the ID field.
-    id_field = guess_id_field(polygons_gdf, use_id)
+    id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
     _log.info(f"Guessed ID field: {id_field}")
 
     # Set the ID field as the index.

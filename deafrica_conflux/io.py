@@ -4,24 +4,22 @@ Matthew Alger
 Geoscience Australia
 2021
 """
-
-import datetime
-import json
-import logging
 import os
-import fsspec
+import json
 import urllib
-import s3urls
+import logging
+import datetime
+
 import boto3
+import fsspec
+import s3urls
+import pyarrow
+import pyarrow.parquet
+import pandas as pd
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.client import S3Client
 
-import pandas as pd
-import pyarrow
-import pyarrow.parquet
-
 _log = logging.getLogger(__name__)
-
 
 # File extensions to recognise as Parquet files.
 PARQUET_EXTENSIONS = {".pq", ".parquet"}

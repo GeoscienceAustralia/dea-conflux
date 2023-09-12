@@ -14,14 +14,13 @@ import warnings
 from functools import partial
 from types import ModuleType
 
+import tqdm
 import datacube
-import geopandas as gpd
+import shapely.geometry
+import xarray as xr
 import numpy as np
 import pandas as pd
-import shapely.geometry
-import tqdm
-import xarray as xr
-
+import geopandas as gpd
 from datacube.model import Dataset
 from datacube.utils.geometry import Geometry
 from deafrica_tools.spatial import xr_rasterize

@@ -1,8 +1,7 @@
 import click
 
-from deafrica_conflux.cli.logs import logging_setup
-
 import deafrica_conflux.stack
+from deafrica_conflux.cli.logs import logging_setup
 
 
 @click.command("db-to-csv", no_args_is_help=True)

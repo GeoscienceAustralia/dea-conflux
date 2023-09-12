@@ -5,16 +5,17 @@ Geoscience Australia
 2021
 """
 import json
+import time
+import logging
+
 import boto3
 import click
 import fsspec
-import logging
-import time
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from mypy_boto3_sqs.client import SQSClient
 
-from deafrica_conflux.io import check_if_s3_uri, check_s3_object_exists, check_local_file_exists
+import deafrica_conflux.io
 
 _log = logging.getLogger(__name__)
 
@@ -279,13 +280,13 @@ def push_to_queue_from_txt(
     """
 
     # Check if the text file exists.
-    is_s3_uri = check_if_s3_uri(text_file_path)
+    is_s3_uri = deafrica_conflux.io.check_if_s3_uri(text_file_path)
 
     try:
         if is_s3_uri:
-            check_s3_object_exists(text_file_path, error_if_exists=False)
+            deafrica_conflux.io.check_s3_object_exists(text_file_path, error_if_exists=False)
         else:
-            check_local_file_exists(text_file_path, error_if_exists=False)
+            deafrica_conflux.io.check_local_file_exists(text_file_path, error_if_exists=False)
     except FileNotFoundError as error:
         _log.exception(f"Could not find text file {text_file_path}!")
         raise error

@@ -1,20 +1,19 @@
 import os
-import click
-import datacube
 import logging
+
+import click
 import fsspec
+import datacube
 import geopandas as gpd
 from rasterio.errors import RasterioIOError
-
-from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
-from deafrica_conflux.id_field import guess_id_field
-from deafrica_conflux.io import check_if_s3_uri, check_local_file_exists, check_s3_object_exists
 
 import deafrica_conflux.db
 import deafrica_conflux.io
 import deafrica_conflux.stack
 import deafrica_conflux.drill
+import deafrica_conflux.id_field
+from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
 
 
 @click.command("run-from-txt",
@@ -110,7 +109,7 @@ def run_from_txt(
         raise error
 
     # Guess the ID field.
-    id_field = guess_id_field(polygons_gdf, use_id)
+    id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
     _log.debug(f"Guessed ID field: {id_field}")
 
     # Set the ID field as the index.
@@ -119,12 +118,12 @@ def run_from_txt(
     # Read dataset ids.
     # Check if the file exists.
     # Check if file is an s3 file.
-    is_s3_file = check_if_s3_uri(dataset_ids_file)
+    is_s3_file = deafrica_conflux.io.check_if_s3_uri(dataset_ids_file)
 
     if is_s3_file:
-        check_s3_object_exists(dataset_ids_file, error_if_exists=False)
+        deafrica_conflux.io.check_s3_object_exists(dataset_ids_file, error_if_exists=False)
     else:
-        check_local_file_exists(dataset_ids_file, error_if_exists=False)
+        deafrica_conflux.io.check_local_file_exists(dataset_ids_file, error_if_exists=False)
 
     # Read ID/s from the S3 URI or File URI.
     with fsspec.open(dataset_ids_file, "rb") as file:

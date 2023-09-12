@@ -1,8 +1,8 @@
-from click import Option, UsageError
+import click
 
 
 # From https://gist.github.com/jacobtolar/fb80d5552a9a9dfc32b12a829fa21c0c
-class MutuallyExclusiveOption(Option):
+class MutuallyExclusiveOption(click.Option):
     def __init__(self, *args, **kwargs):
         self.mutually_exclusive = set(kwargs.pop('mutually_exclusive', []))
         help = kwargs.get('help', '')
@@ -16,7 +16,7 @@ class MutuallyExclusiveOption(Option):
 
     def handle_parse_result(self, ctx, opts, args):
         if self.mutually_exclusive.intersection(opts) and self.name in opts:
-            raise UsageError(
+            raise click.UsageError(
                 "Illegal usage: `{}` is mutually exclusive with "
                 "arguments `{}`.".format(
                     self.name,

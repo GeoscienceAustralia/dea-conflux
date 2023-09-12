@@ -1,7 +1,6 @@
 import click
 
 import deafrica_conflux.__version__
-
 from deafrica_conflux.cli.get_dataset_ids import get_dataset_ids
 from deafrica_conflux.cli.run_from_list import run_from_list
 from deafrica_conflux.cli.run_from_txt import run_from_txt

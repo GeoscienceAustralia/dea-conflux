@@ -1,16 +1,16 @@
-import boto3
 import time
-import click
 import logging
+
+import boto3
+import click
 import datacube
 import geopandas as gpd
 
-from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.id_field import guess_id_field
-from deafrica_conflux.queues import send_batch_with_retry, delete_batch
-
+import deafrica_conflux.queues
+import deafrica_conflux.id_field
 import deafrica_conflux.drill
 import deafrica_conflux.queues
+from deafrica_conflux.cli.logs import logging_setup
 
 
 @click.command("filter-from-sqs-queue", no_args_is_help=True)
@@ -67,7 +67,7 @@ def filter_from_queue(
         raise error
     
     # Guess the ID field.
-    id_field = guess_id_field(polygons_gdf, use_id)
+    id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
     _log.debug(f"Guessed ID field: {id_field}")
 
     # Set the ID field as the index.
@@ -124,25 +124,25 @@ def filter_from_queue(
         for idx, filtered_dataset_id in enumerate(filtered_dataset_ids):
             messages_to_send.append(filtered_dataset_id)
             if (idx + 1) % 10 == 0:
-                successful, failed = send_batch_with_retry(queue_url=output_queue_url,
-                                                           messages=messages_to_send,
-                                                           max_retries=10,
-                                                           sqs_client=sqs_client)
+                successful, failed = deafrica_conflux.queues.send_batch_with_retry(queue_url=output_queue_url,
+                                                                                   messages=messages_to_send,
+                                                                                   max_retries=10,
+                                                                                   sqs_client=sqs_client)
                 # Delete the sucessfully sent messages from the input queue.
                 messages_to_delete = [retrieved_receipt_handles[dataset_ids.index(msg)] for msg in successful]
-                delete_batch(queue_url=input_queue_url,
-                             receipt_handles=messages_to_delete,
-                             sqs_client=sqs_client)
+                deafrica_conflux.queues.delete_batch(queue_url=input_queue_url,
+                                                     receipt_handles=messages_to_delete,
+                                                     sqs_client=sqs_client)
                 # Reset the messages to send list.
                 messages_to_send = []
         
         # Send the remaining messages if there are any.
-        successful, failed = send_batch_with_retry(queue_url=output_queue_url,
-                                                   messages=messages_to_send,
-                                                   max_retries=10,
-                                                   sqs_client=sqs_client)
+        successful, failed = deafrica_conflux.queues.send_batch_with_retry(queue_url=output_queue_url,
+                                                                           messages=messages_to_send,
+                                                                           max_retries=10,
+                                                                           sqs_client=sqs_client)
         # Delete the sucessfully sent messages from the input queue.
         messages_to_delete = [retrieved_receipt_handles[dataset_ids.index(msg)] for msg in successful]
-        delete_batch(queue_url=input_queue_url,
-                     receipt_handles=messages_to_delete,
-                     sqs_client=sqs_client)
+        deafrica_conflux.queues.delete_batch(queue_url=input_queue_url,
+                                             receipt_handles=messages_to_delete,
+                                             sqs_client=sqs_client)
