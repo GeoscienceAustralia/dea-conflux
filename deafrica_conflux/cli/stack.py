@@ -1,11 +1,11 @@
 import click
 
-from ._cli_common import main, logging_setup
+from deafrica_conflux.cli.logs import logging_setup
 
 import deafrica_conflux.stack
 
 
-@main.command("stack", no_args_is_help=True)
+@click.command("stack", no_args_is_help=True)
 @click.option(
     "--parquet-path",
     type=click.Path(),
@@ -13,20 +13,20 @@ import deafrica_conflux.stack
     help="REQUIRED. Path to the Parquet directory.",
 )
 @click.option(
-    "--output",
+    "--pattern",
+    required=False,
+    default=".*\.pq", # noqa W605
+    help="Regular expression for filename matching.",
+)
+@click.option(
+    "--output-directory",
     type=click.Path(),
     required=False,
     help="Output directory for waterbodies-style stack",
 )
 @click.option(
-    "--pattern",
-    required=False,
-    default=".*",
-    help="Regular expression for filename matching.",
-)
-@click.option(
     "--mode",
-    type=click.Choice(["waterbodies", "waterbodies_db", "wit_tooling"]),
+    type=click.Choice(["waterbodies", "waterbodies_db"]),
     default="waterbodies",
     required=False,
 )
@@ -39,7 +39,15 @@ import deafrica_conflux.stack
     default=True,
     help="Remove timeseries duplicated data if applicable. Default True",
 )
-def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_data):
+def stack(
+    parquet_path,
+    pattern,
+    output_directory,
+    mode,
+    verbose,
+    drop,
+    remove_duplicated_data
+):
     """
     Stack outputs of deafrica-conflux into other formats.
     """
@@ -49,23 +57,19 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_
     mode_map = {
         "waterbodies": deafrica_conflux.stack.StackMode.WATERBODIES,
         "waterbodies_db": deafrica_conflux.stack.StackMode.WATERBODIES_DB,
-        "wit_tooling": deafrica_conflux.stack.StackMode.WITTOOLING,
     }
 
     kwargs = {}
-    if mode == "waterbodies" or mode == "wit_tooling":
-        kwargs["output_dir"] = output
+    if mode == "waterbodies":
+        kwargs["output_directory"] = output_directory
         kwargs["remove_duplicated_data"] = remove_duplicated_data
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
-        kwargs["remove_duplicated_data"] = remove_duplicated_data
 
-    deafrica_conflux.stack.stack(
-        parquet_path,
-        pattern,
-        mode_map[mode],
-        verbose=verbose,
-        **kwargs,
-    )
+    deafrica_conflux.stack.stack_parquet(path=parquet_path,
+                                         pattern=pattern,
+                                         mode=mode_map[mode],
+                                         verbose=verbose,
+                                         **kwargs)
 
     return 0

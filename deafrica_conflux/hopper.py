@@ -17,7 +17,8 @@ _log = logging.getLogger(__name__)
 def find_datasets(
     query: Dict[str, str], products: [str], limit: int = None, dc: Datacube = None
 ) -> Iterable[Dataset]:
-    """Find datasets with a Datacube query.
+    """
+    Find datasets with a Datacube query.
 
     Heavily based on datacube_alchemist.worker._find_datsets.
 
@@ -56,10 +57,10 @@ def find_datasets(
                 count += 1
                 if limit is not None and count >= limit:
                     return
-        except ValueError as e:
+        except ValueError as error:
             _log.warning(
                 f"Error searching for datasets. "
                 f"Maybe none were returned? "
-                f"Error was {e}"
+                f"Error was {error}"
             )
             continue

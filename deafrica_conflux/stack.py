@@ -12,23 +12,20 @@ import concurrent.futures
 import datetime
 import enum
 import logging
-import multiprocessing
 import os
 import re
-from pathlib import Path
 
 import fsspec
 import geohash
 import numpy as np
 import pandas as pd
-import s3fs
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from tqdm.auto import tqdm
 
 import deafrica_conflux.db
 import deafrica_conflux.io
 from deafrica_conflux.db import Engine
-from deafrica_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
+from deafrica_conflux.io import PARQUET_EXTENSIONS
 
 _log = logging.getLogger(__name__)
 
@@ -36,12 +33,11 @@ _log = logging.getLogger(__name__)
 class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
     WATERBODIES_DB = "waterbodies_db"
-    WITTOOLING = "wit_tooling"
-    WITTOOLING_SINGLE_FILE_DELIVERY = "wit_tooling_single_file_delivery"
 
 
 def stack_format_date(date: datetime.datetime) -> str:
-    """Format a date to match DE Africa conflux products datetime.
+    """
+    Format a date to match DE Africa conflux products datetime.
 
     Arguments
     ---------
@@ -55,66 +51,11 @@ def stack_format_date(date: datetime.datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_csv_files(path: str, pattern: str = ".*") -> [str]:
-    """Find CSV files matching a pattern.
-
-    Arguments
-    ---------
-    path : str
-        Path (s3 or local) to search for CSV files.
-
-    pattern : str
-        Regex to match filenames against.
-
-    Returns
-    -------
-    [str]
-        List of paths.
+def find_parquet_files(
+        path: str,
+        pattern: str = ".*") -> [str]:
     """
-    pattern = re.compile(pattern)
-    all_paths = []
-
-    # "Support" pathlib Paths
-    try:
-        path.startswith
-    except AttributeError:
-        path = str(path)
-
-    # Frankly, load CSV and load PQ should be a same method
-    # but no plan to touch the existing waterbodies pipeline code
-    # before I finish the waterbodies run test.
-    if path.startswith("s3://"):
-        # Find CSV files on S3.
-        fs = s3fs.S3FileSystem(anon=True)
-        files = fs.find(path)
-        for file in files:
-            _, ext = os.path.splitext(file)
-            if ext not in CSV_EXTENSIONS:
-                continue
-
-            _, filename = os.path.split(file)
-            if not pattern.match(filename):
-                continue
-
-            all_paths.append(f"s3://{file}")
-    else:
-        # Find CSV files locally.
-        for root, dir_, files in os.walk(path):
-            paths = [Path(root) / file for file in files]
-            for path_ in paths:
-                if path_.suffix not in CSV_EXTENSIONS:
-                    continue
-
-                if not pattern.match(path_.name):
-                    continue
-
-                all_paths.append(path_)
-
-    return all_paths
-
-
-def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
-    """Find Parquet files matching a pattern.
+    Find Parquet files matching a pattern.
 
     Arguments
     ---------
@@ -122,7 +63,7 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
         Path (s3 or local) to search for Parquet files.
 
     pattern : str
-        Regex to match filenames against.
+        Regex to match file names against.
 
     Returns
     -------
@@ -130,9 +71,8 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
         List of paths.
     """
     pattern = re.compile(pattern)
-    all_paths = []
 
-    # "Support" pathlib Paths
+    # "Support" pathlib Paths.
     try:
         path.startswith
     except AttributeError:
@@ -140,36 +80,34 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
 
     if path.startswith("s3://"):
         # Find Parquet files on S3.
-        fs = s3fs.S3FileSystem(anon=True)
-        files = fs.find(path)
-        for file in files:
-            _, ext = os.path.splitext(file)
-            if ext not in PARQUET_EXTENSIONS:
-                continue
-
-            _, filename = os.path.split(file)
-            if not pattern.match(filename):
-                continue
-
-            all_paths.append(f"s3://{file}")
+        file_system = fsspec.filesystem("s3")
     else:
-        # Find Parquet files locally.
-        for root, dir_, files in os.walk(path):
-            paths = [Path(root) / file for file in files]
-            for path_ in paths:
-                if path_.suffix not in PARQUET_EXTENSIONS:
-                    continue
+        # Find Parquet files localy.
+        file_system = fsspec.filesystem("file")
 
-                if not pattern.match(path_.name):
-                    continue
+    pq_file_paths = []
 
-                all_paths.append(path_)
+    files = file_system.find(path)
+    for file in files:
+        _, file_extension = os.path.splitext(file)
+        if file_extension not in PARQUET_EXTENSIONS:
+            continue
+        else:
+            _, file_name = os.path.split(file)
+            if not pattern.match(file_name):
+                continue
+            else:
+                pq_file_paths.append(file)
 
-    return all_paths
+    if path.startswith("s3://"):
+        pq_file_paths = [f"s3://{file}" for file in pq_file_paths]
+
+    return pq_file_paths
 
 
-def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
-    """Removed the timeseries duplicated (same day) data in DataFrame.
+def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove duplicated (same day) data in the timeseries DataFrame.
 
     Arguments
     ---------
@@ -188,16 +126,20 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
 
-    df = df.sort_values(["DAY", "pc_missing"], ascending=True)
-    # The pc_missing the less the better, so we only keep the first one
-    df = df.drop_duplicates("DAY", keep="first")
+    df.sort_values(["DAY", "invalid_percentage"], ascending=True, inplace=True)
+    # For the invalid_percentage, the less the better.
+    # So we only keep the first one.
+    df.drop_duplicates("DAY", keep="first", inplace=True)
 
-    # Remember to remove the temp column day in result_df
-    return df.drop(columns=["DAY"])
+    # Remember to remove the temp column DAY.
+    df.drop(columns=["DAY"], inplace=True)
+
+    return df
 
 
-def load_pq_file(path):
-    """Load Parquet file from given path.
+def load_parquet_file(path) -> pd.DataFrame:
+    """
+    Load Parquet file from given path.
 
     Arguments
     ---------
@@ -205,10 +147,10 @@ def load_pq_file(path):
         Path (s3 or local) to search for Parquet files.
     Returns
     -------
-    [pandas.DataFrame]
-        pandas.DataFrame
+    pandas.DataFrame
+        pandas DataFrame
     """
-    df = deafrica_conflux.io.read_table(path)
+    df = deafrica_conflux.io.read_table_from_parquet(path)
     # the pq file will be empty if no polygon belongs to that scene
     if df.empty is not True:
         date = deafrica_conflux.io.string_to_date(df.attrs["date"])
@@ -217,232 +159,21 @@ def load_pq_file(path):
     return df
 
 
-def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_data):
-    """Save polygon base pandas.DataFrame as
-    CSV file in output folder.
-
-    Arguments
-    ---------
-    single_polygon_df: pandas.Dataframe
-        The polygon base dea-conflux drill result.
-    feature_id: str
-        Polygon unique ID.
-    outpath : str
-        Path (s3 or local) to save the CSV files.
-    remove_duplicated_data: bool
-        Remove timeseries duplicated data or not
-    """
-    # feature_id, single_polygon_df = item
-    filename = f"{outpath}/{feature_id}.csv"
-
-    if remove_duplicated_data:
-        # Remove the timeseries duplicated data
-        single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
-
-    single_polygon_df["feature_id"] = single_polygon_df.index
-    single_polygon_df.reset_index(inplace=True)
-
-    # WIT Normalise Step
-
-    # 1. compute the expected vegetation area total size: 1 - water (%) - wet (%)
-    single_polygon_df["veg_areas"] = (
-        1 - single_polygon_df["water"] - single_polygon_df["wet"]
-    )
-
-    # 2. normalse the vegetation values based on vegetation size (to handle FC values more than 100 issue)
-    # WARNNING: Not touch the water and wet, cause they are pixel classification result
-    single_polygon_df["overall_veg_num"] = (
-        single_polygon_df["pv"] + single_polygon_df["npv"] + single_polygon_df["bs"]
-    )
-
-    # 3. if the overall_veg_num is 0, no need to normalize veg area
-    norm_veg_index = single_polygon_df["overall_veg_num"] != 0
-
-    # the normlized values will be saved as norm_bs/norm_pv/norm_npv
-    for band in ["pv", "npv", "bs"]:
-
-        # assign pv/npv/bs values to norm_pv/norm_npv/norm_bs firstly
-        single_polygon_df.loc[:, "norm_" + band] = single_polygon_df.loc[:, band]
-
-        # only modify the norm_pv/npv/bs which overall_ver_num is not 0
-        single_polygon_df.loc[norm_veg_index, "norm_" + band] = (
-            single_polygon_df.loc[norm_veg_index, band]
-            / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
-            * single_polygon_df.loc[norm_veg_index, "veg_areas"]
-        )
-
-    # remove the temp column
-    single_polygon_df.drop(
-        ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
-    )
-
-    if not outpath.startswith("s3://"):
-        os.makedirs(Path(filename).parent, exist_ok=True)
-    with fsspec.open(filename, "w") as f:
-        single_polygon_df.to_csv(f, index=False)
-    return filename
-
-
-def stack_wit_tooling_to_single_file(
-    paths: [str], output_dir: str, precision: int, verbose: bool = False
-):
-    """This method aims to handle the request from QLD
-    team. It will loading all polygon base result (CSV files),
-    then concat the pandas.DataFrame, and create a single
-    CSV and parquet file.
-
-    Arguments
-    ---------
-    paths : [str]
-        List of paths to Parquet files to stack.
-    output_dir : str
-        Path to output directory.
-
-    verbose : bool
-    """
-    polygon_df_list = []
-    _log.info("Reading...")
-
-    # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
-    # then we assume they already had the norm_pv, norm_npv, norm_bs there.
-    with tqdm(total=len(paths)) as bar:
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=multiprocessing.cpu_count() * 16
-        ) as executor:
-            polygon_df_list = []
-            futures = {executor.submit(pd.read_csv, path): path for path in paths}
-            for future in concurrent.futures.as_completed(futures):
-                polygon_df_list.append(future.result())
-                bar.update(1)
-
-    if len(polygon_df_list) == 0:
-        _log.warning("Cannot find any available WIT result.")
-        return 0
-    else:
-        _log.info("Concat WIT result...")
-        overall_result = pd.concat(polygon_df_list)
-
-    _log.info("Writing overall result...")
-    overall_pq_filename = f"{output_dir}/overall.pq"
-    overall_csv_filename = f"{output_dir}/overall.csv"
-    if not output_dir.startswith("s3://"):
-        os.makedirs(Path(overall_pq_filename).parent, exist_ok=True)
-
-    column_names = [
-        "bs",
-        "npv",
-        "pc_missing",
-        "pv",
-        "water",
-        "wet",
-        "norm_pv",
-        "norm_npv",
-        "norm_bs",
-    ]
-
-    _log.info(f"Begin to reduce the precision of the data to {str(precision)}")
-
-    for column_name in column_names:
-        overall_result[column_name] = overall_result[column_name].round(
-            decimals=precision
-        )
-
-    # Add normalise method section
-    # 1) compute vegetation_area_size (1 - water - wet)
-    # 2) normlise pv/npv/bs by vegetation_area_size
-
-    overall_result.to_parquet(overall_pq_filename, index=False)
-    overall_result.to_csv(overall_csv_filename, index=False)
-
-
-def stack_wit_tooling(
-    paths: [str],
-    output_dir: str,
+def stack_waterbodies_parquet_to_csv(
+    parquet_file_paths: [str],
+    output_directory: str,
     remove_duplicated_data: bool = True,
     verbose: bool = False,
 ):
-    """Stack wit tooling parquet result files into CSVs.
-
-    Arguments
-    ---------
-    paths : [str]
-        List of paths to Parquet files to stack.
-    output_dir : str
-        Path to output directory.
-    remove_duplicated_data: bool
-        Remove timeseries duplicated data
-
-    verbose : bool
     """
-    wit_df_list = []
-    _log.info("Reading...")
-
-    with tqdm(total=len(paths)) as bar:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-            wit_df_list = []
-            futures = {executor.submit(load_pq_file, path): path for path in paths}
-            for future in concurrent.futures.as_completed(futures):
-                wit_df_list.append(future.result())
-                bar.update(1)
-
-    if len(wit_df_list) == 0:
-        _log.warning("Cannot find any available WIT result.")
-        return 0
-    else:
-        _log.info("Concat WIT result...")
-        wit_result = pd.concat(wit_df_list)
-
-    # delete the temp result to release RAM
-    del wit_df_list
-
-    _log.info("Writing overall result...")
-    overall_filename = f"{output_dir}/overall.pq"
-
-    if not output_dir.startswith("s3://"):
-        os.makedirs(Path(overall_filename).parent, exist_ok=True)
-    wit_result.to_parquet(overall_filename)
-
-    _log.info("Writing polygon base result...")
-
-    polygon_groups = wit_result.groupby(wit_result.index)
-    feature_ids = wit_result.index.unique()
-
-    # delete the temp result to release RAM
-    del wit_result
-
-    with tqdm(total=len(feature_ids)) as bar:
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=multiprocessing.cpu_count()
-        ) as executor:
-            futures = {
-                executor.submit(
-                    save_df_as_csv,
-                    polygon_groups.get_group(feature_id),
-                    feature_id,
-                    output_dir,
-                    remove_duplicated_data,
-                ): feature_id
-                for feature_id in feature_ids
-            }
-            for future in concurrent.futures.as_completed(futures):
-                _ = future.result()
-                bar.update(1)
-
-
-def stack_waterbodies(
-    paths: [str],
-    output_dir: str,
-    remove_duplicated_data: bool = True,
-    verbose: bool = False,
-):
-    """Stack Parquet files into CSVs like DE Africa Waterbodies does.
+    Stack Parquet files into CSVs like DE Africa Waterbodies does.
 
     Arguments
     ---------
-    paths : [str]
+    parquet_file_paths : [str]
         List of paths to Parquet files to stack.
 
-    output_dir : str
+    output_directory : str
         Path to output directory.
 
     remove_duplicated_data: bool
@@ -454,9 +185,9 @@ def stack_waterbodies(
     id_to_series = collections.defaultdict(list)
     _log.info("Reading...")
     if verbose:
-        paths = tqdm(paths)
-    for path in paths:
-        df = deafrica_conflux.io.read_table(path)
+        parquet_file_paths = tqdm(parquet_file_paths)
+    for pq_file_path in parquet_file_paths:
+        df = deafrica_conflux.io.read_table_from_parquet(pq_file_path)
         date = deafrica_conflux.io.string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         # df is ids x bands
@@ -464,24 +195,27 @@ def stack_waterbodies(
         for uid, series in df.iterrows():
             series.name = date
             id_to_series[uid].append(series)
-    outpath = output_dir
-    outpath = str(outpath)  # handle Path type
+
+    output_directory = str(output_directory)  # handle Path type
     _log.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
         if remove_duplicated_data:
-            df = remove_timeseries_with_duplicated(df)
+            df = remove_timeseries_duplicates(df)
         df.sort_index(inplace=True)
-        filename = f"{outpath}/{uid[:4]}/{uid}.csv"
-        _log.info(f"Writing {filename}")
-        if not outpath.startswith("s3://"):
-            os.makedirs(Path(filename).parent, exist_ok=True)
-        with fsspec.open(filename, "w") as f:
+
+        output_file_name = os.path.join(output_directory, f"{uid[:4]}", f"{uid}.csv")
+        _log.info(f"Writing {output_file_name}")
+        if not output_directory.startswith("s3://"):
+            os.makedirs(os.path.join(output_directory, f"{uid[:4]}"), exist_ok=True)
+        with fsspec.open(output_file_name, "w") as f:
             df.to_csv(f, index_label="date")
 
 
 def get_waterbody_key(uid: str, session: Session):
-    """Create or get a unique key from the database."""
+    """
+    Create or get a unique key from the database.
+    """
     # decode into a coordinate
     # uid format is gh_version
     gh = uid.split("_")[0]
@@ -497,18 +231,19 @@ def get_waterbody_key(uid: str, session: Session):
     return inst.wb_id
 
 
-def stack_waterbodies_db(
-    paths: [str],
+def stack_waterbodies_parquet_to_db(
+    parquet_file_paths: [str],
     verbose: bool = False,
     engine: Engine = None,
     uids: {str} = None,
     drop: bool = False,
 ):
-    """Stack Parquet files into the waterbodies interstitial DB.
+    """
+    Stack Parquet files into the waterbodies interstitial DB.
 
     Arguments
     ---------
-    paths : [str]
+    parquet_file_paths : [str]
         List of paths to Parquet files to stack.
 
     verbose : bool
@@ -525,7 +260,7 @@ def stack_waterbodies_db(
         Whether to drop the database. Default False.
     """
     if verbose:
-        paths = tqdm(paths)
+        parquet_file_paths = tqdm(parquet_file_paths)
 
     # connect to the db
     if not engine:
@@ -553,9 +288,9 @@ def stack_waterbodies_db(
         key = get_waterbody_key(uid, session)
         uid_to_key[uid] = key
 
-    for path in paths:
+    for pq_file_path in parquet_file_paths:
         # read the table in...
-        df = deafrica_conflux.io.read_table(path)
+        df = deafrica_conflux.io.read_table_from_parquet(pq_file_path)
         # parse the date...
         date = deafrica_conflux.io.string_to_date(df.attrs["date"])
         # df is ids x bands
@@ -570,9 +305,9 @@ def stack_waterbodies_db(
             key = uid_to_key[uid]
             obs = deafrica_conflux.db.WaterbodyObservation(
                 wb_id=key,
-                px_wet=series.px_wet,
-                pc_wet=series.pc_wet,
-                pc_missing=series.pc_missing,
+                wet_pixel_count=series.wet_pixel_count,
+                wet_percentage=series.wet_percentage,
+                invalid_percentage=series.invalid_percentage,
                 platform="UNK",
                 date=date,
             )
@@ -584,7 +319,7 @@ def stack_waterbodies_db(
 
 
 def stack_waterbodies_db_to_csv(
-    out_path: str,
+    output_directory: str,
     verbose: bool = False,
     uids: {str} = None,
     remove_duplicated_data: bool = True,
@@ -593,11 +328,12 @@ def stack_waterbodies_db_to_csv(
     index_num: int = 0,
     split_num: int = 1,
 ):
-    """Write waterbodies CSVs out from the interstitial DB.
+    """
+    Write waterbodies CSVs out from the interstitial DB.
 
     Arguments
     ---------
-    out_path : str
+    output_directory : str
         Path to write CSVs to.
 
     verbose : bool
@@ -651,26 +387,25 @@ def stack_waterbodies_db_to_csv(
         rows = [
             {
                 "date": stack_format_date(ob.date),
-                "pc_wet": round(ob.pc_wet * 100, 2),
-                "px_wet": ob.px_wet,
-                "pc_missing": ob.pc_missing,
+                "wet_percentage": ob.wet_percentage,
+                "wet_pixel_count": ob.wet_pixel_count,
+                "invalid_percentage": ob.invalid_percentage,
             }
             for ob in obs
         ]
 
-        df = pd.DataFrame(rows, columns=["date", "pc_wet", "px_wet", "pc_missing"])
+        df = pd.DataFrame(rows, columns=["date", "wet_percentage", "wet_pixel_count", "invalid_percentage"])
         if remove_duplicated_data:
-            df = remove_timeseries_with_duplicated(df)
-            print(out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv")
+            df = remove_duplicated_data(df)
+
         # The pc_missing should not in final WaterBodies result
         df.drop(columns=["pc_missing"], inplace=True)
 
-        df.to_csv(
-            out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
-            header=True,
-            index=False,
-        )
-
+        output_file_name = os.path.join(output_directory, wb.wb_name[:4], wb.wb_name + ".csv")
+        print(output_file_name)
+        with fsspec.open(output_file_name, "w") as f:
+            df.to_csv(f, header=True, index=False)
+       
         Session.remove()
 
     session = Session()
@@ -700,22 +435,23 @@ def stack_waterbodies_db_to_csv(
     Session.remove()
 
 
-def stack(
+def stack_parquet(
     path: str,
     pattern: str = ".*",
     mode: StackMode = StackMode.WATERBODIES,
     verbose: bool = False,
     **kwargs,
 ):
-    """Stack Parquet files.
+    """
+    Stack Parquet files.
 
     Arguments
     ---------
     path : str
-        Path to search for Parquet files.
+        Path (s3 or local) to search for parquet files.
 
     pattern : str
-        Regex to match filenames against.
+        Regex to match file names against.
 
     mode : StackMode
         Method of stacking. Default is like DE Africa Waterbodies v1,
@@ -729,17 +465,14 @@ def stack(
     path = str(path)
 
     _log.info(f"Begin to query {path} with pattern {pattern}")
-
-    if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
-        paths = find_csv_files(path, pattern)
-    else:
-        paths = find_parquet_files(path, pattern)
+    
+    paths = find_parquet_files(path, pattern)
 
     if mode == StackMode.WATERBODIES:
-        return stack_waterbodies(paths, verbose=verbose, **kwargs)
+        return stack_waterbodies_parquet_to_csv(parquet_file_paths=paths,
+                                                verbose=verbose,
+                                                **kwargs)
     if mode == StackMode.WATERBODIES_DB:
-        return stack_waterbodies_db(paths, verbose=verbose, **kwargs)
-    if mode == StackMode.WITTOOLING:
-        return stack_wit_tooling(paths, verbose=verbose, **kwargs)
-    if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
-        return stack_wit_tooling_to_single_file(paths, verbose=verbose, **kwargs)
+        return stack_waterbodies_parquet_to_db(parquet_file_paths=paths,
+                                               verbose=verbose,
+                                               **kwargs)

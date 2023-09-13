@@ -4,3 +4,4 @@ pyproj==3.2.1
 python-geohash==0.8.5
 s3fs==0.4.2
 SQLAlchemy>=1.4.27
+boto3-stubs[s3,sqs]
