@@ -1,5 +1,5 @@
-import xarray as xr
 import numpy as np
+import xarray as xr
 
 product_name = "waterbodies"
 version = "0.0.1"
@@ -15,8 +15,8 @@ input_products = {
 def transform(inputs: xr.Dataset) -> xr.Dataset:
     wofl = inputs.water
 
-    clear_and_wet = (wofl == 128)
-    clear_and_dry = (wofl == 0)
+    clear_and_wet = wofl == 128
+    clear_and_dry = wofl == 0
 
     clear = clear_and_wet | clear_and_dry
 
@@ -35,11 +35,15 @@ def summarise(inputs: xr.Dataset) -> xr.Dataset:
 
     valid_and_dry_count = np.count_nonzero(inputs.water == 0)
     valid_and_wet_count = np.count_nonzero(inputs.water == 128)
-   
+
     valid_and_wet_percentage = (valid_and_wet_count / pixel_count) * 100
-    valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100 # noqa F841
+    valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100  # noqa F841
     invalid_percentage = (invalid_count / pixel_count) * 100
 
-    return xr.Dataset({"wet_percentage": valid_and_wet_percentage,
-                       "wet_pixel_count": valid_and_wet_count,
-                       "invalid_percentage": invalid_percentage, })
+    return xr.Dataset(
+        {
+            "wet_percentage": valid_and_wet_percentage,
+            "wet_pixel_count": valid_and_wet_count,
+            "invalid_percentage": invalid_percentage,
+        }
+    )
