@@ -19,8 +19,8 @@ import fsspec
 import geohash
 import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from tqdm.auto import tqdm
 
 import deafrica_conflux.db
 import deafrica_conflux.io
@@ -50,9 +50,7 @@ def stack_format_date(date: datetime.datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_parquet_files(
-        path: str,
-        pattern: str = ".*") -> [str]:
+def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     """
     Find Parquet files matching a pattern.
 
@@ -393,7 +391,9 @@ def stack_waterbodies_db_to_csv(
             for ob in obs
         ]
 
-        df = pd.DataFrame(rows, columns=["date", "wet_percentage", "wet_pixel_count", "invalid_percentage"])
+        df = pd.DataFrame(
+            rows, columns=["date", "wet_percentage", "wet_pixel_count", "invalid_percentage"]
+        )
         if remove_duplicated_data:
             df = remove_duplicated_data(df)
 
@@ -404,7 +404,7 @@ def stack_waterbodies_db_to_csv(
         print(output_file_name)
         with fsspec.open(output_file_name, "w") as f:
             df.to_csv(f, header=True, index=False)
-       
+
         Session.remove()
 
     session = Session()
@@ -464,14 +464,10 @@ def stack_parquet(
     path = str(path)
 
     _log.info(f"Begin to query {path} with pattern {pattern}")
-    
+
     paths = find_parquet_files(path, pattern)
 
     if mode == StackMode.WATERBODIES:
-        return stack_waterbodies_parquet_to_csv(parquet_file_paths=paths,
-                                                verbose=verbose,
-                                                **kwargs)
+        return stack_waterbodies_parquet_to_csv(parquet_file_paths=paths, verbose=verbose, **kwargs)
     if mode == StackMode.WATERBODIES_DB:
-        return stack_waterbodies_parquet_to_db(parquet_file_paths=paths,
-                                               verbose=verbose,
-                                               **kwargs)
+        return stack_waterbodies_parquet_to_db(parquet_file_paths=paths, verbose=verbose, **kwargs)
