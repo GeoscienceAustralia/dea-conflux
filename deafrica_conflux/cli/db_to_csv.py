@@ -36,14 +36,7 @@ from deafrica_conflux.cli.logs import logging_setup
     default=True,
     help="Remove timeseries duplicated data if applicable. Default True",
 )
-def db_to_csv(
-    output_directory,
-    verbose,
-    jobs,
-    index_num,
-    split_num,
-    remove_duplicated_data
-):
+def db_to_csv(output_directory, verbose, jobs, index_num, split_num, remove_duplicated_data):
     """
     Output Waterbodies-style CSVs from a database.
     """
@@ -56,5 +49,4 @@ def db_to_csv(
         n_workers=jobs,
         index_num=index_num,
         split_num=split_num,
-
     )

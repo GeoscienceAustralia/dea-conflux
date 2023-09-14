@@ -1,22 +1,24 @@
+import logging
 import os
 import sys
 import urllib
-import logging
 
 import click
 import fsspec
 import geopandas as gpd
 from datacube.ui import click as ui
 
-import deafrica_conflux.id_field
-import deafrica_conflux.hopper
 import deafrica_conflux.drill
+import deafrica_conflux.hopper
+import deafrica_conflux.id_field
 import deafrica_conflux.io
 from deafrica_conflux.cli.logs import logging_setup
 
 
-@click.command("get-dataset-ids",
-               no_args_is_help=True,)
+@click.command(
+    "get-dataset-ids",
+    no_args_is_help=True,
+)
 @click.argument("product", type=str)
 @ui.parsed_search_expressions
 @click.option("-v", "--verbose", count=True)
@@ -35,7 +37,8 @@ from deafrica_conflux.cli.logs import logging_setup
 @click.option(
     "--output-file-path",
     type=click.Path(),
-    help="File URI or S3 URI of the text file to write the dataset ids to.")
+    help="File URI or S3 URI of the text file to write the dataset ids to.",
+)
 @click.option(
     "--num-worker",
     type=int,
@@ -51,7 +54,6 @@ def get_dataset_ids(
     output_file_path,
     num_worker,
 ):
-    
     """
     Get dataset IDs based on an expression.
     """
@@ -62,14 +64,13 @@ def get_dataset_ids(
     dss = deafrica_conflux.hopper.find_datasets(expressions, [product])
 
     if polygons_vector_file:
-
         # Read the vector file.
         try:
             polygons_gdf = gpd.read_file(polygons_vector_file)
         except Exception as error:
             _log.exception(f"Could not read the file {polygons_vector_file}")
             raise error
-        
+
         # Guess the ID field.
         id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
         _log.debug(f"Guessed ID field: {id_field}")
@@ -83,12 +84,14 @@ def get_dataset_ids(
         # when using filter_datasets when polygons are in "EPSG:4326" crs.
         polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
 
-        dataset_ids = deafrica_conflux.drill.filter_datasets(dss, polygons_gdf, worker_num=num_worker)
+        dataset_ids = deafrica_conflux.drill.filter_datasets(
+            dss, polygons_gdf, worker_num=num_worker
+        )
     else:
         dataset_ids = [str(ds.id) for ds in dss]
 
     _log.info(f"Found {len(dataset_ids)} datasets.")
-    
+
     # Check if file is an s3 file.
     is_s3_file = deafrica_conflux.io.check_if_s3_uri(output_file_path)
 
@@ -111,5 +114,5 @@ def get_dataset_ids(
             file.write("%s\n" % dataset_id)
 
     _log.info(f"Dataset IDs written to: {output_file_path}.")
-    
+
     return 0
