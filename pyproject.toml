@@ -33,7 +33,7 @@ dependencies= [
     "botocore",
     "click",
     "datacube",
-    #"deafrica-tools>=2.1.1",
+    "deafrica-tools>=2.1.1",
     "fsspec",
     "geopandas",
     "numpy",

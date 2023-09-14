@@ -4,9 +4,9 @@ channels:
 dependencies:
   - python = 3.10.6 
   - gdal = 3.6.3 
+  - pip-tools
   - pip:
     - --extra-index-url="https://packages.dea.ga.gov.au"
-    - pip-tools
     - boto3
     - botocore
     - boto3-stubs[s3,sqs]
@@ -26,7 +26,7 @@ dependencies:
     - xarray
     - s3fs
     - pyarrow
-    - deafrica-tools>=2.0.1
+    - deafrica-tools>=2.1.1
     # Code style
     - flake8
     - black
