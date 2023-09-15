@@ -36,7 +36,7 @@ RUN ./aws/install
 
 # Copy requirements.txt and install python packages from requirements.txt.
 RUN mkdir -p /conf
-COPY docker/requirements.txt /conf/
+COPY requirements.txt /conf/
 RUN pip install -r /conf/requirements.txt
 
 # Copy source code.
