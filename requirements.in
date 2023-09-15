@@ -14,7 +14,7 @@ python-geohash
 rasterio
 s3urls
 shapely
-SQLAlchemy
+SQLAlchemy<2.0
 tqdm
 xarray
 black
