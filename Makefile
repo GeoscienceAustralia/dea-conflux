@@ -21,24 +21,23 @@ up: ## 1. Bring up your Docker environment.
 	docker compose up -d conflux
 	docker compose up -d index
 
-init: ## 2. Prepare the database.
+init: ## 2. Prepare the database, initialise the database schema.
 	docker compose exec -T index datacube -v system init --no-default-types --no-init-users
 
-metadata: ## 3. Setup metadata types.
+metadata: ## 3. Add metadata types.
 	docker compose exec -T index datacube -v metadata add https://raw.githubusercontent.com/digitalearthafrica/config/master/metadata/eo3_deafrica.odc-type.yaml
 	docker compose exec -T index datacube -v metadata add https://raw.githubusercontent.com/digitalearthafrica/config/master/metadata/eo3_landsat_ard.odc-type.yaml
 
-products: ## 3. Add the wofs_ls product for testing.
+products: ## 3. Add the wofs_ls product definition for testing.
 	docker compose exec -T index datacube -v product add https://raw.githubusercontent.com/digitalearthafrica/config/master/products/wofs_ls.odc-product.yaml
 
-index: ## 4. Index test data.
+index: ## 4. Index the test data.
 	cat index_tiles.sh | docker compose exec -T index bash
 
 install-conflux: ## 5. Install deafrica-conflux
 	docker compose exec -T conflux bash -c "pip install -e ."
 
 test-env: init metadata products index install-conflux
-
 
 down: ## Bring down the system
 	docker compose down
