@@ -21,7 +21,7 @@ black
 flake8
 isort
 pytest
-
+coverage
 # Required by index_tiles.sh
 odc-apps-dc-tools --extra-index-url="https://packages.dea.ga.gov.au"
 
