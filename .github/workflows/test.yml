@@ -1,6 +1,8 @@
 name: Test
 
-on: [push]
+#on: [push]
+on:
+  pull_request
 
 env:
   ORG: digitalearthafrica
@@ -16,7 +18,7 @@ jobs:
       uses: actions/checkout@v4.0.0
 
     - name: Pre-pull layers
-      run: docker-compose pull
+      run: docker compose pull
 
     - name: Activate Docker cache
       uses: satackey/action-docker-layer-caching@v0.0.11  
@@ -38,7 +40,7 @@ jobs:
           docker-compose exec -T conflux bash -c "coverage report -m"
           docker-compose exec -T conflux bash -c "coverage xml"
           docker-compose exec -T conflux bash -c "coverage html"
-          docker-compose down
+          make down
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
