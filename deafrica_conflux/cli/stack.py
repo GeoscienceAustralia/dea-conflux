@@ -1,8 +1,7 @@
 import click
 
-from deafrica_conflux.cli.logs import logging_setup
-
 import deafrica_conflux.stack
+from deafrica_conflux.cli.logs import logging_setup
 
 
 @click.command("stack", no_args_is_help=True)
@@ -15,7 +14,7 @@ import deafrica_conflux.stack
 @click.option(
     "--pattern",
     required=False,
-    default=".*\.pq", # noqa W605
+    default=".*\.pq",  # noqa W605
     help="Regular expression for filename matching.",
 )
 @click.option(
@@ -31,23 +30,13 @@ import deafrica_conflux.stack
     required=False,
 )
 @click.option("-v", "--verbose", count=True)
-@click.option(
-    "--drop/--no-drop", default=False, help="Drop database if applicable. Default False"
-)
+@click.option("--drop/--no-drop", default=False, help="Drop database if applicable. Default False")
 @click.option(
     "--remove-duplicated-data/--no-remove-duplicated-data",
     default=True,
     help="Remove timeseries duplicated data if applicable. Default True",
 )
-def stack(
-    parquet_path,
-    pattern,
-    output_directory,
-    mode,
-    verbose,
-    drop,
-    remove_duplicated_data
-):
+def stack(parquet_path, pattern, output_directory, mode, verbose, drop, remove_duplicated_data):
     """
     Stack outputs of deafrica-conflux into other formats.
     """
@@ -66,10 +55,8 @@ def stack(
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
 
-    deafrica_conflux.stack.stack_parquet(path=parquet_path,
-                                         pattern=pattern,
-                                         mode=mode_map[mode],
-                                         verbose=verbose,
-                                         **kwargs)
+    deafrica_conflux.stack.stack_parquet(
+        path=parquet_path, pattern=pattern, mode=mode_map[mode], verbose=verbose, **kwargs
+    )
 
     return 0

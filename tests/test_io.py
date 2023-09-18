@@ -2,27 +2,13 @@ import datetime
 import logging
 import random
 import sys
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
-import dea_conflux.io as io
+import deafrica_conflux.io
 
 logging.basicConfig(level=logging.INFO)
-
-# Test directory.
-HERE = Path(__file__).parent.resolve()
-
-# Path to Canberra test shapefile.
-TEST_SHP = HERE / "data" / "waterbodies_canberra.shp"
-
-TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
-TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
-TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
-
-TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
-TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
 
 
 def setup_module(module):
@@ -43,16 +29,20 @@ def conflux_table():
 
 def test_write_table(conflux_table, tmp_path):
     test_date = datetime.datetime(2018, 1, 1)
-    io.write_table("name", "uuid", test_date, conflux_table, tmp_path / "outdir")
+    deafrica_conflux.io.write_table_to_parquet(
+        "name", "uuid", test_date, conflux_table, tmp_path / "outdir"
+    )
     outpath = tmp_path / "outdir" / "20180101" / "name_uuid_20180101-000000-000000.pq"
     assert outpath.exists()
 
 
 def test_read_write_table(conflux_table, tmp_path):
     test_date = datetime.datetime(2018, 1, 1)
-    io.write_table("name", "uuid", test_date, conflux_table, tmp_path / "outdir")
+    deafrica_conflux.io.write_table_to_parquet(
+        "name", "uuid", test_date, conflux_table, tmp_path / "outdir"
+    )
     outpath = tmp_path / "outdir" / "20180101" / "name_uuid_20180101-000000-000000.pq"
-    table = io.read_table(outpath)
+    table = deafrica_conflux.io.read_table_from_parquet(outpath)
     assert len(table) == 3
     assert len(table.columns) == 2
     assert table.attrs["date"] == "20180101-000000-000000"
@@ -64,4 +54,4 @@ def test_string_date():
     for _ in range(100):
         d = random.randrange(1, 1628000000)  # from the beginning of time...
         d = datetime.datetime.fromtimestamp(d)
-        assert io.string_to_date(io.date_to_string(d)) == d
+        assert deafrica_conflux.io.string_to_date(deafrica_conflux.io.date_to_string(d)) == d

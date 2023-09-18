@@ -1,22 +1,24 @@
+import logging
+
 import click
 import datacube
-import logging
 import geopandas as gpd
 from rasterio.errors import RasterioIOError
 
-from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
-from deafrica_conflux.id_field import guess_id_field
-
 import deafrica_conflux.db
+import deafrica_conflux.drill
+import deafrica_conflux.id_field
 import deafrica_conflux.io
 import deafrica_conflux.stack
-import deafrica_conflux.drill
+from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
 
 
-@click.command("run-from-list",
-               no_args_is_help=True,
-               help="Run deafrica-conflux on a list of dataset ids passed as a string.")
+@click.command(
+    "run-from-list",
+    no_args_is_help=True,
+    help="Run deafrica-conflux on a list of dataset ids passed as a string.",
+)
 @click.option(
     "--plugin-file",
     "-p",
@@ -24,14 +26,13 @@ import deafrica_conflux.drill
     help="Path to Conflux plugin (.py).",
 )
 @click.option(
-    "-dataset-ids-list",
-    type=str,
-    help="A list of dataset IDs to run deafrica-conflux on.")
+    "-dataset-ids-list", type=str, help="A list of dataset IDs to run deafrica-conflux on."
+)
 @click.option(
     "--polygons-vector-file",
     type=click.Path(),
     # Don't mandate existence since this might be s3://.
-    help="Path to the vector file defining the polygon(s) to run polygon drill on."
+    help="Path to the vector file defining the polygon(s) to run polygon drill on.",
 )
 @click.option(
     "--use-id",
@@ -64,9 +65,7 @@ import deafrica_conflux.drill
     help="Rerun scenes that have already been processed.",
 )
 @click.option("-v", "--verbose", count=True)
-@click.option("--db/--no-db",
-              default=True,
-              help="Write to the Waterbodies database.")
+@click.option("--db/--no-db", default=True, help="Write to the Waterbodies database.")
 @click.option(
     "--dump-empty-dataframe/--not-dump-empty-dataframe",
     default=True,
@@ -105,9 +104,9 @@ def run_from_list(
     except Exception as error:
         _log.exception(f"Could not read file {polygons_vector_file}")
         raise error
-    
+
     # Guess the ID field.
-    id_field = guess_id_field(polygons_gdf, use_id)
+    id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
     _log.debug(f"Guessed ID field: {id_field}")
 
     # Set the ID field as the index.
@@ -116,12 +115,12 @@ def run_from_list(
     # Read dataset ids.
     dataset_ids = dataset_ids_list.split(" ")
     _log.info(f"Read {dataset_ids} from list.")
-  
+
     if db:
         engine = deafrica_conflux.db.get_engine_waterbodies()
 
     dc = datacube.Datacube(app="deafrica-conflux-drill")
-    
+
     # Process each ID.
     # Loop through the scenes to produce parquet files.
     failed_dataset_ids = []
@@ -134,19 +133,20 @@ def run_from_list(
 
         if not overwrite:
             _log.info(f"Checking existence of {id_}")
-            exists = deafrica_conflux.io.table_exists(product_name,
-                                                      id_,
-                                                      centre_date,
-                                                      output_directory)
+            exists = deafrica_conflux.io.table_exists(
+                product_name, id_, centre_date, output_directory
+            )
 
         if overwrite or not exists:
             try:
-                table = deafrica_conflux.drill.drill(plugin,
-                                                     polygons_gdf,
-                                                     id_,
-                                                     partial=partial,
-                                                     overedge=overedge,
-                                                     dc=dc,)
+                table = deafrica_conflux.drill.drill(
+                    plugin,
+                    polygons_gdf,
+                    id_,
+                    partial=partial,
+                    overedge=overedge,
+                    dc=dc,
+                )
 
                 # if always dump drill result, or drill result is not empty,
                 # dump that dataframe as PQ file
@@ -156,7 +156,8 @@ def run_from_list(
                         id_,
                         centre_date,
                         table,
-                        output_directory,)
+                        output_directory,
+                    )
                     if db:
                         _log.debug(f"Writing {pq_filename} to DB")
                         deafrica_conflux.stack.stack_waterbodies_parquet_to_db(
@@ -186,5 +187,5 @@ def run_from_list(
             _log.error(f"{id_} not successful")
 
     _log.info(f"Failed dataset IDs {failed_dataset_ids}")
-    
+
     return 0

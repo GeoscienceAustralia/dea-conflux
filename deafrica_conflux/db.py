@@ -7,15 +7,7 @@ Geoscience Australia
 
 import os
 
-from sqlalchemy import (
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    create_engine,
-)
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, create_engine
 from sqlalchemy.future import Engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.expression import ClauseElement

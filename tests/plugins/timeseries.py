@@ -1,11 +1,11 @@
 import numpy as np
 import xarray as xr
 
-product_name = "waterbodies"
+product_name = "waterbodies_timeseries"
 version = "0.0.1"
-resampling = "nearest"
-output_crs = "EPSG:6933"
 resolution = (-30, 30)
+output_crs = "EPSG:6933"
+resampling = "nearest"
 
 input_products = {
     "wofs_ls": ["water"],
