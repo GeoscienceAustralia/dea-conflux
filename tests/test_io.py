@@ -2,7 +2,6 @@ import datetime
 import logging
 import random
 import sys
-from pathlib import Path
 
 import pandas as pd
 import pytest
