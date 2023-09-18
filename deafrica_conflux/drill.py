@@ -278,25 +278,25 @@ def polygons_centroids_in_ds_extent_bbox(
     # Reproject the extent of the dataset to match the set of polygons.
     ds_extent = ds_extent.to_crs(polygons_gdf.crs)
 
-    # Get the bounding box of the extent of the dataset.
+    # Get the buffered bounding box of the extent of the dataset.
     bbox = ds_extent.boundingbox
     left, bottom, right, top = bbox
-
-    centroids = polygons_gdf.centroid
 
     width = height = 0
     if buffer:
         width = right - left
         height = top - bottom
 
-    included = (
-        (centroids.x > (left - width))
-        & (centroids.x < (right + width))
-        & (centroids.y < (top + height))
-        & (centroids.y > (bottom - height))
-    )
+    buffered_bbox_geom = shapely.geometry.box(left - width,
+                                              bottom - height,
+                                              right + width,
+                                              top + height)
+    
+    # Get the centroids of the polygons.
+    centroids = polygons_gdf.centroid
 
-    filtered_polygons_gdf = polygons_gdf[included]
+    # Filter the polygons.
+    filtered_polygons_gdf = polygons_gdf[centroids.intersects(buffered_bbox_geom)]
 
     return filtered_polygons_gdf
 
