@@ -1,9 +1,10 @@
-import click
-import boto3
 import logging
 
+import boto3
+import click
+
+import deafrica_conflux.queues
 from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.queues import push_to_queue_from_txt
 
 
 @click.command("push-to-sqs-queue", no_args_is_help=True)
@@ -21,11 +22,11 @@ def push_to_sqs_queue(text_file_path, queue_name, verbose):
     """
     # Cribbed from datacube-alchemist
     logging_setup(verbose)
-    _log = logging.getLogger(__name__) # noqa F841
+    _log = logging.getLogger(__name__)  # noqa F841
 
     # Create an sqs client.
     sqs_client = boto3.client("sqs")
 
-    push_to_queue_from_txt(text_file_path=text_file_path,
-                           queue_name=queue_name,
-                           sqs_client=sqs_client)
+    deafrica_conflux.queues.push_to_queue_from_txt(
+        text_file_path=text_file_path, queue_name=queue_name, sqs_client=sqs_client
+    )

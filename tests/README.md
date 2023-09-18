@@ -1,4 +1,4 @@
-# DEA Conflux testing readme
+# DE Africa Conflux testing readme
 
 ## Setting up Docker for testing
 - we use `docker-compose` to manage the test infrastructure (packages and environment)

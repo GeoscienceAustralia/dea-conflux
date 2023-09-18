@@ -1,7 +1,7 @@
 import datacube
 import pytest
 
-from dea_conflux.hopper import find_datasets
+from deafrica_conflux.hopper import find_datasets
 
 
 @pytest.fixture(scope="module")
@@ -10,10 +10,12 @@ def dc():
 
 
 def test_find_datasets(dc):
-    datasets = find_datasets(query={}, products=["ga_ls_wo_3"], dc=dc)
-    assert len(list(datasets)) == 4
+    datasets = find_datasets(query={}, products=["wofs_ls"], dc=dc)
+    dss = list(datasets)
+    assert len(dss) == 24
 
 
 def test_find_no_datasets(dc):
     datasets = find_datasets(query={}, products=["not_exist_product"], dc=dc)
-    assert len(list(datasets)) == 0
+    dss = list(datasets)
+    assert len(dss) == 0
