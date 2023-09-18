@@ -17,21 +17,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4.0.0
 
-    - name: Pre-pull layers
-      run: docker compose pull
-
     - name: Activate Docker cache
       uses: satackey/action-docker-layer-caching@v0.0.11  
       # Ignore the failure of a step and avoid terminating the job.
       continue-on-error: true
 
-    - name: Build deafrica-conflux image
-      run: |
-        make build
-
     - name: Setup deafrica-conflux test environment
       run: |
-          make up
           make test-env
 
     - name: Run deafrica-conflux test

@@ -24,6 +24,7 @@ services:
       - DB_PASSWORD=opendatacubepassword
       - DB_DATABASE=postgres
       - AWS_DEFAULT_REGION=af-south-1
+      - AWS_S3_ENDPOINT=s3.af-south-1.amazonaws.com
       - AWS_ACCESS_KEY_ID=fake_id
       - AWS_SECRET_ACCESS_KEY=fake_key
       - AWS_NO_SIGN_REQUEST=YES
