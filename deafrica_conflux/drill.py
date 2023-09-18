@@ -74,8 +74,8 @@ def _get_directions(og_geom: shapely.geometry.Polygon, int_geom: shapely.geometr
             # Find corresponding southernmost/northernmost point
             # in intersection
             try:
-                ys_poly = [c[1] for g in int_geom.boundary for c in g.coords]
-            except TypeError:
+                ys_poly = [c[1] for g in list(int_geom.boundary.geoms) for c in g.coords]
+            except AttributeError:
                 ys_poly = [c[1] for c in int_geom.boundary.coords]
             southern_coord_poly = min(ys_poly)
             northern_coord_poly = max(ys_poly)
@@ -95,8 +95,8 @@ def _get_directions(og_geom: shapely.geometry.Polygon, int_geom: shapely.geometr
             # Find corresponding southernmost/northernmost point
             # in intersection
             try:
-                xs_poly = [c[0] for g in int_geom.boundary for c in g.coords]
-            except TypeError:
+                xs_poly = [c[0] for g in list(int_geom.boundary.geoms) for c in g.coords]
+            except AttributeError:
                 xs_poly = [c[0] for c in int_geom.boundary.coords]
             western_coord_poly = min(xs_poly)
             eastern_coord_poly = max(xs_poly)
