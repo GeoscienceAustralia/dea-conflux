@@ -30,14 +30,18 @@ def conflux_table():
 
 def test_write_table(conflux_table, tmp_path):
     test_date = datetime.datetime(2018, 1, 1)
-    deafrica_conflux.io.write_table_to_parquet("name", "uuid", test_date, conflux_table, tmp_path / "outdir")
+    deafrica_conflux.io.write_table_to_parquet(
+        "name", "uuid", test_date, conflux_table, tmp_path / "outdir"
+    )
     outpath = tmp_path / "outdir" / "20180101" / "name_uuid_20180101-000000-000000.pq"
     assert outpath.exists()
 
 
 def test_read_write_table(conflux_table, tmp_path):
     test_date = datetime.datetime(2018, 1, 1)
-    deafrica_conflux.io.write_table_to_parquet("name", "uuid", test_date, conflux_table, tmp_path / "outdir")
+    deafrica_conflux.io.write_table_to_parquet(
+        "name", "uuid", test_date, conflux_table, tmp_path / "outdir"
+    )
     outpath = tmp_path / "outdir" / "20180101" / "name_uuid_20180101-000000-000000.pq"
     table = deafrica_conflux.io.read_table_from_parquet(outpath)
     assert len(table) == 3

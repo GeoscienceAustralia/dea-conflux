@@ -38,11 +38,7 @@ def test_drill_integration(dc):
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
 
-    drill_result = deafrica_conflux.drill.drill(plugin,
-                                                polygons_gdf,
-                                                uuid,
-                                                partial=True,
-                                                dc=dc)
+    drill_result = deafrica_conflux.drill.drill(plugin, polygons_gdf, uuid, partial=True, dc=dc)
     assert len(drill_result) == pytest.approx(86, 1)
     # 7 columns, 3 output and 4 directions
     assert len(drill_result.columns) == 7
@@ -52,12 +48,14 @@ def test_drill_integration(dc):
 def test_get_directions(dc):
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
     polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
-    
+
     ds_extent = dc.index.datasets.get(uuid).extent.to_crs(polygons_gdf.crs)
     ds_extent_geom = ds_extent.geom
 
     intersection = polygons_gdf.geometry.intersection(ds_extent_geom)
-    dirs = deafrica_conflux.drill._get_directions(polygons_gdf.geometry[0], intersection.geometry[0])
+    dirs = deafrica_conflux.drill._get_directions(
+        polygons_gdf.geometry[0], intersection.geometry[0]
+    )
     assert dirs == {"South"}
 
 
@@ -69,12 +67,9 @@ def test_south_overedge(dc):
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
 
-    drill_result = deafrica_conflux.drill.drill(plugin,
-                                                polygons_gdf,
-                                                uuid,
-                                                partial=True,
-                                                overedge=True,
-                                                dc=dc)
+    drill_result = deafrica_conflux.drill.drill(
+        plugin, polygons_gdf, uuid, partial=True, overedge=True, dc=dc
+    )
     assert len(drill_result) == 1
     assert drill_result["wet_percentage"].iloc[0] == 42.39275304214028
 
