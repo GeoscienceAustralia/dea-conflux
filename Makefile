@@ -4,7 +4,6 @@ SHELL := /bin/bash
 
 .PHONY: help setup up down clean test
 
-METADATA_CATALOG = "https://raw.githubusercontent.com/digitalearthafrica/config/master/metadata/eo3_landsat_ard.odc-type.yaml" 
 PRODUCT_CATALOG = "https://raw.githubusercontent.com/digitalearthafrica/config/master/prod/products_prod.csv"
 
 help: ## Print this help
@@ -17,9 +16,10 @@ build: ## 0. Build the base image
 	docker compose build
 
 up: ## 1. Bring up your Docker environment.
-	docker compose up -d postgres
-	docker compose up -d conflux
-	docker compose up -d index
+	docker compose up -d 
+##	docker compose up -d postgres
+##	docker compose up -d conflux
+##	docker compose up -d index
 
 init: ## 2. Prepare the database, initialise the database schema.
 	docker compose exec -T index datacube -v system init --no-default-types --no-init-users
@@ -37,13 +37,16 @@ index: ## 4. Index the test data.
 install-conflux: ## 5. Install deafrica-conflux
 	docker compose exec -T conflux bash -c "pip install -e ."
 
-test-env: init metadata products index install-conflux
+sleep:
+	sleep 1m
+
+test-env: build up sleep init metadata products index install-conflux
 
 down: ## Bring down the system
 	docker compose down
 
 shell: ## Start an interactive shell
-	docker compose exec index bash
+	docker compose exec conflux bash
 
 clean: ## Delete everything
 	docker compose down --rmi all -v
