@@ -46,9 +46,10 @@ def _get_directions(og_geom: shapely.geometry.Polygon, int_geom: shapely.geometr
     """
     boundary_intersections = int_geom.boundary.difference(og_geom.boundary)
     try:
-        boundary_intersection_lines = list(boundary_intersections)
-    except TypeError:
-        # Not a multiline
+        # Is a MultiLineString.
+        boundary_intersection_lines = list(boundary_intersections.geoms)
+    except AttributeError:
+        # Is not a MultiLineString.
         boundary_intersection_lines = [boundary_intersections]
     # Split up multilines.
     boundary_intersection_lines_ = []
