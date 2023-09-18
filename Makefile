@@ -42,6 +42,12 @@ sleep:
 
 test-env: build up sleep init metadata products index install-conflux
 
+run-tests:
+	docker compose exec -T conflux bash -c "coverage run -m pytest ."
+	docker compose exec -T conflux bash -c "coverage report -m"
+	docker compose exec -T conflux bash -c "coverage xml"
+	docker compose exec -T conflux bash -c "coverage html"
+
 down: ## Bring down the system
 	docker compose down
 
