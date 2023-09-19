@@ -1,5 +1,7 @@
 import logging
+import os
 import sys
+from pathlib import Path
 
 import datacube
 import geopandas as gpd
@@ -11,7 +13,10 @@ from deafrica_conflux.plugins.utils import run_plugin
 
 logging.basicConfig(level=logging.INFO)
 
-TEST_PLUGIN = "../deafrica_conflux/plugins/waterbodies_timeseries.py"
+# Test directory.
+HERE = Path(__name__).parent.resolve()
+MAIN_DIR = Path(HERE).parent.resolve()
+TEST_PLUGIN = os.path.join(MAIN_DIR,"deafrica_conflux/plugins/waterbodies_timeseries.py")
 
 
 def setup_module(module):
