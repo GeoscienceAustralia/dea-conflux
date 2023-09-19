@@ -40,8 +40,8 @@ def test_drill_integration(dc):
 
     drill_result = deafrica_conflux.drill.drill(plugin, polygons_gdf, uuid, partial=True, dc=dc)
     assert len(drill_result) == pytest.approx(86, 1)
-    # 7 columns, 3 output and 4 directions
-    assert len(drill_result.columns) == 7
+    # 13 columns, 9 output and 4 directions
+    assert len(drill_result.columns) == 13
     assert "conflux_n" in drill_result.columns
 
 
