@@ -1,9 +1,8 @@
-import numpy as np
 import geopandas as gpd
+import numpy as np
 
 
-def id_field_values_is_unique(input_gdf: gpd.geopandas.GeoDataFrame,
-                              id_field: str) -> bool:
+def id_field_values_is_unique(input_gdf: gpd.geopandas.GeoDataFrame, id_field: str) -> bool:
     """
     Check values of id_field are unique or not in GeoDataFrame.
 
@@ -25,8 +24,7 @@ def id_field_values_is_unique(input_gdf: gpd.geopandas.GeoDataFrame,
     return no_of_gdf_rows == no_of_unique_id
 
 
-def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame,
-                   use_id: str = "") -> str:
+def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame, use_id: str = "") -> str:
     """
     Guess the name of the ID column in the GeoDataFrame if no column name is
     passed to the 'use_id' parameter. If a column name is passed to 'use_id',
@@ -45,20 +43,20 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame,
         ID column name
 
     """
-    
+
     input_gdf_columns = list(input_gdf.columns)
 
     # Check if values in passed use_id column are unique.
     if use_id:
         if use_id not in input_gdf_columns:
-            raise ValueError(f"Couldn't find ID column '{use_id}' in the vector file columns: {input_gdf_columns}.")
+            raise ValueError(
+                f"Couldn't find ID column '{use_id}' in the vector file columns: {input_gdf_columns}."
+            )
         else:
             if id_field_values_is_unique(input_gdf, use_id):
                 return use_id
             else:
-                raise ValueError(
-                    f"Values in the {use_id} column are not unique."
-                )
+                raise ValueError(f"Values in the {use_id} column are not unique.")
 
     # Guess ID column to use.
     else:
@@ -89,13 +87,17 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame,
                     guess_result.append(guess)
 
         if not guess_result:
-            raise ValueError(f"Couldn't find any ID column {possible_id_columns} in the vector file columns: {input_gdf_columns}.")
+            raise ValueError(
+                f"Couldn't find any ID column {possible_id_columns} in the vector file columns: {input_gdf_columns}."
+            )
         else:
             for list_index, list_item in enumerate(guess_result):
                 if id_field_values_is_unique(input_gdf, list_item):
                     return list_item
                 else:
                     if list_index + 1 == len(guess_result):
-                        raise ValueError(f"ID values in the column(s) {guess_result} are not unique.")
+                        raise ValueError(
+                            f"ID values in the column(s) {guess_result} are not unique."
+                        )
                     else:
                         continue

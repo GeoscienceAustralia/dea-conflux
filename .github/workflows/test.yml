@@ -1,12 +1,13 @@
 name: Test
 
-on: [push]
+on:
+  workflow_dispatch:
+  pull_request:
 
 env:
-  ORG: geoscienceaustralia
-  IMAGE: dea-conflux
-  METADATA_CATALOG: https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/a4f39b485b33608a016032d9987251881fec4b6f/workspaces/sandbox-metadata.yaml
-  PRODUCT_CATALOG: https://raw.githubusercontent.com/GeoscienceAustralia/dea-config/87ca056fa62900596cbf05612da9033fc763009c/workspaces/sandbox-products.csv
+  ORG: digitalearthafrica
+  IMAGE: deafrica-conflux
+  PRODUCT_CATALOG: https://raw.githubusercontent.com/digitalearthafrica/config/master/prod/products_prod.csv
 
 jobs:
   test:
@@ -14,40 +15,31 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
-
-    - name: Pre-pull layers
-      run: docker-compose pull
+      uses: actions/checkout@v4.0.0
 
     - name: Activate Docker cache
-      uses: satackey/action-docker-layer-caching@v0.0.8
+      uses: satackey/action-docker-layer-caching@v0.0.11  
       # Ignore the failure of a step and avoid terminating the job.
       continue-on-error: true
 
-    - name: Build dea-conflux image
+    - name: Setup deafrica-conflux test environment
       run: |
-        docker-compose build
+          make test-env
 
-    - name: Setup dea-conflux test environment
-      run: |
-          docker-compose up -d
-          ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "pip install -e ."
-
-    - name: Run dea-conflux test
+    - name: Run deafrica-conflux test
       run: |
           docker-compose exec -T conflux bash -c "coverage run -m pytest ."
           docker-compose exec -T conflux bash -c "coverage report -m"
           docker-compose exec -T conflux bash -c "coverage xml"
           docker-compose exec -T conflux bash -c "coverage html"
-          docker-compose down
+          make down
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         fail_ci_if_error: false
 
-    - name: Clean dea-conflux image
+    - name: Clean deafrica-conflux image
       run: |
           (echo y) | docker container prune
           (echo y) | docker image prune

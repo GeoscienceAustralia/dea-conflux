@@ -1,4 +1,3 @@
-import numpy as np
 import xarray as xr
 
 product_name = "waterbodies"
@@ -35,7 +34,6 @@ def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
         0 = dry
         null = invalid (not wet or dry)
     """
-
     # Area of one pixel in metres squared
     # Use absolute value to remove any negative sign from resolution tuple
     px_area = abs(resolution[0] * resolution[1])

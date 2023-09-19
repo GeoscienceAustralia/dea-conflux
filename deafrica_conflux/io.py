@@ -4,24 +4,22 @@ Matthew Alger
 Geoscience Australia
 2021
 """
-
 import datetime
 import json
 import logging
 import os
-import fsspec
 import urllib
-import s3urls
-import boto3
-from botocore.exceptions import ClientError
-from mypy_boto3_s3.client import S3Client
 
+import boto3
+import fsspec
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
+import s3urls
+from botocore.exceptions import ClientError
+from mypy_boto3_s3.client import S3Client
 
 _log = logging.getLogger(__name__)
-
 
 # File extensions to recognise as Parquet files.
 PARQUET_EXTENSIONS = {".pq", ".parquet"}
@@ -82,10 +80,7 @@ def string_to_date(date: str) -> datetime.datetime:
     return datetime.datetime.strptime(date, DATE_FORMAT)
 
 
-def make_parquet_file_name(
-        drill_name: str,
-        uuid: str,
-        centre_date: datetime.datetime) -> str:
+def make_parquet_file_name(drill_name: str, uuid: str, centre_date: datetime.datetime) -> str:
     """
     Make filename for Parquet.
 
@@ -113,10 +108,7 @@ def make_parquet_file_name(
 
 
 def table_exists(
-    drill_name: str,
-    uuid: str,
-    centre_date: datetime.datetime,
-    output_directory: str
+    drill_name: str, uuid: str, centre_date: datetime.datetime, output_directory: str
 ) -> bool:
     """
     Check whether a table already exists.
@@ -151,7 +143,7 @@ def table_exists(
         file_system = fsspec.filesystem("s3")
     else:
         file_system = fsspec.filesystem("file")
-    
+
     return file_system.exists(path)
 
 
@@ -215,7 +207,7 @@ def write_table_to_parquet(
     folder_name = date_to_string_day(centre_date)
     file_name = make_parquet_file_name(drill_name, uuid, centre_date)
     output_file_path = os.path.join(output_directory, folder_name, file_name)
-    
+
     if not output_directory.startswith("s3://"):
         os.makedirs(os.path.join(output_directory, folder_name), exist_ok=True)
 
@@ -278,9 +270,7 @@ def check_if_s3_uri(file_path: str) -> bool:
         return False
 
 
-def check_local_dir_exists(
-        dir_path: str,
-        error_if_exists=True):
+def check_local_dir_exists(dir_path: str, error_if_exists=True):
     """
     Checks if a specified path is an existing directory.
     if `error_if_exists == True`, raises an error if the directory exists.
@@ -314,9 +304,7 @@ def check_local_dir_exists(
             raise FileNotFoundError(f"Directory {dir_path} does not exist!")
 
 
-def check_local_file_exists(
-        file_path: str,
-        error_if_exists=True):
+def check_local_file_exists(file_path: str, error_if_exists=True):
     """
     Checks if a specified path is an existing file.
     if `error_if_exists == True`, raises an error if the file exists.
@@ -351,9 +339,7 @@ def check_local_file_exists(
     return 0
 
 
-def check_s3_bucket_exists(
-        bucket_name: str,
-        s3_client: S3Client = None):
+def check_s3_bucket_exists(bucket_name: str, s3_client: S3Client = None):
     """
     Check if a bucket exists and if the user has permission to access it.
 
@@ -363,16 +349,16 @@ def check_s3_bucket_exists(
         Name of s3 bucket to check.
     s3_client : S3Client
         A low-level client representing Amazon Simple Storage Service (S3), by default None.
-    
+
     """
     # Get the service client.
     if s3_client is None:
         s3_client = boto3.client("s3")
-        
+
     try:
-        response = s3_client.head_bucket(Bucket=bucket_name) # noqa E501
+        response = s3_client.head_bucket(Bucket=bucket_name)  # noqa E501
     except ClientError as error:
-        error_code = int(error.response['Error']['Code'])
+        error_code = int(error.response["Error"]["Code"])
 
         if error_code == 403:
             raise PermissionError(f"{bucket_name} is a private Bucket. Forbidden Access!")
@@ -383,10 +369,7 @@ def check_s3_bucket_exists(
         raise error
 
 
-def check_s3_object_exists(
-        s3_object_uri: str,
-        error_if_exists=True,
-        s3_client: S3Client = None):
+def check_s3_object_exists(s3_object_uri: str, error_if_exists=True, s3_client: S3Client = None):
     """
     Check if an object in an S3 bucket exists.
     if error_if_exists is True, raises an error if the object exists.
@@ -418,7 +401,7 @@ def check_s3_object_exists(
             response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
             raise FileExistsError(f"Object {s3_object_uri} already exists!")
         except ClientError as error:
-            error_code = int(error.response['Error']['Code'])
+            error_code = int(error.response["Error"]["Code"])
 
             # Object exists but user does not have access.
             if error_code == 403:
@@ -433,7 +416,7 @@ def check_s3_object_exists(
         try:
             response = s3_client.head_object(Bucket=bucket_name, Key=object_key)  # noqa E501
         except ClientError as error:
-            error_code = int(error.response['Error']['Code'])
+            error_code = int(error.response["Error"]["Code"])
 
             # Object exists but user does not have access.
             if error_code == 403:

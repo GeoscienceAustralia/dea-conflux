@@ -25,7 +25,6 @@ from tqdm.auto import tqdm
 import deafrica_conflux.db
 import deafrica_conflux.io
 from deafrica_conflux.db import Engine
-from deafrica_conflux.io import PARQUET_EXTENSIONS
 
 _log = logging.getLogger(__name__)
 
@@ -51,9 +50,7 @@ def stack_format_date(date: datetime.datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_parquet_files(
-        path: str,
-        pattern: str = ".*") -> [str]:
+def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     """
     Find Parquet files matching a pattern.
 
@@ -90,7 +87,7 @@ def find_parquet_files(
     files = file_system.find(path)
     for file in files:
         _, file_extension = os.path.splitext(file)
-        if file_extension not in PARQUET_EXTENSIONS:
+        if file_extension not in deafrica_conflux.io.PARQUET_EXTENSIONS:
             continue
         else:
             _, file_name = os.path.split(file)
@@ -394,7 +391,9 @@ def stack_waterbodies_db_to_csv(
             for ob in obs
         ]
 
-        df = pd.DataFrame(rows, columns=["date", "wet_percentage", "wet_pixel_count", "invalid_percentage"])
+        df = pd.DataFrame(
+            rows, columns=["date", "wet_percentage", "wet_pixel_count", "invalid_percentage"]
+        )
         if remove_duplicated_data:
             df = remove_duplicated_data(df)
 
@@ -405,7 +404,7 @@ def stack_waterbodies_db_to_csv(
         print(output_file_name)
         with fsspec.open(output_file_name, "w") as f:
             df.to_csv(f, header=True, index=False)
-       
+
         Session.remove()
 
     session = Session()
@@ -465,14 +464,10 @@ def stack_parquet(
     path = str(path)
 
     _log.info(f"Begin to query {path} with pattern {pattern}")
-    
+
     paths = find_parquet_files(path, pattern)
 
     if mode == StackMode.WATERBODIES:
-        return stack_waterbodies_parquet_to_csv(parquet_file_paths=paths,
-                                                verbose=verbose,
-                                                **kwargs)
+        return stack_waterbodies_parquet_to_csv(parquet_file_paths=paths, verbose=verbose, **kwargs)
     if mode == StackMode.WATERBODIES_DB:
-        return stack_waterbodies_parquet_to_db(parquet_file_paths=paths,
-                                               verbose=verbose,
-                                               **kwargs)
+        return stack_waterbodies_parquet_to_db(parquet_file_paths=paths, verbose=verbose, **kwargs)

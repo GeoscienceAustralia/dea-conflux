@@ -1,12 +1,12 @@
 name: Push
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - 'dea_conflux/**'
-      - 'examples/**'
+      - 'deafrica_conflux/**'
       - '.github/workflows/push.yml'
       - 'Dockerfile'
 
@@ -14,14 +14,14 @@ on:
     types: [created, edited]
 
 env:
-  IMAGE_NAME: geoscienceaustralia/dea-conflux
+  IMAGE_NAME: digitalearthafrica/deafrica-conflux
 
 jobs:
   push:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -30,12 +30,12 @@ jobs:
       run: |
         echo "RELEASE=${GITHUB_REF/refs\/tags\/}" >> $GITHUB_ENV
     - name: Build and Push semver tagged Docker Image for Release
-      uses: whoan/docker-build-with-cache-action@v4
+      uses: whoan/docker-build-with-cache-action@v6
       if: github.event_name == 'release'
       with:
         image_name: ${{ env.IMAGE_NAME }}
         username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        password: ${{ secrets.DEAFRICA_DOCKER_PASSWORD}}
         image_tag: ${{ env.RELEASE }}
     - name: Get git commit hash for push to main
       if: github.event_name != 'release'
@@ -43,10 +43,10 @@ jobs:
         git fetch --all --tags
         echo "RELEASE=$(git describe --tags)" >> $GITHUB_ENV
     - name: Build and Push unstable Docker Image for push to main
-      uses: whoan/docker-build-with-cache-action@v4
+      uses: whoan/docker-build-with-cache-action@v6
       if: github.event_name != 'release'
       with:
         image_name: ${{ env.IMAGE_NAME }}
         username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        password: ${{ secrets.DEAFRICA_DOCKER_PASSWORD}}
         image_tag: latest,${{ env.RELEASE }}
