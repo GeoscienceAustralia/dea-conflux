@@ -14,7 +14,7 @@ on:
     types: [created, edited]
 
 env:
-  IMAGE_NAME: victorianeema/deafrica-conflux
+  IMAGE_NAME: digitalearthafrica/deafrica-conflux
 
 jobs:
   push:
@@ -35,7 +35,7 @@ jobs:
       with:
         image_name: ${{ env.IMAGE_NAME }}
         username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        password: ${{ secrets.DEAFRICA_DOCKER_PASSWORD}}
         image_tag: ${{ env.RELEASE }}
     - name: Get git commit hash for push to main
       if: github.event_name != 'release'
@@ -48,5 +48,5 @@ jobs:
       with:
         image_name: ${{ env.IMAGE_NAME }}
         username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        password: ${{ secrets.DEAFRICA_DOCKER_PASSWORD}}
         image_tag: latest,${{ env.RELEASE }}

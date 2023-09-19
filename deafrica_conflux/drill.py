@@ -669,7 +669,7 @@ def drill(
         # Force warnings to raise exceptions.
         with warnings.catch_warnings():
             warnings.filterwarnings("error")
-            summary = plugin.summarise(values)
+            summary = plugin.summarise(values, resolution)
         # Convert that summary (a 0d dataset) into a dict.
         summary = dataset_to_dict(summary)
         summaries[oid] = summary
