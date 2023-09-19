@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 # Test directory.
 HERE = Path(__name__).parent.resolve()
 MAIN_DIR = Path(HERE).parent.resolve()
-TEST_PLUGIN = os.path.join(MAIN_DIR,"deafrica_conflux/plugins/waterbodies_timeseries.py")
+TEST_PLUGIN = os.path.join(MAIN_DIR, "deafrica_conflux/plugins/waterbodies_timeseries.py")
 
 
 def setup_module(module):
