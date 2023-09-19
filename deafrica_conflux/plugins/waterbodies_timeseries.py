@@ -35,7 +35,6 @@ def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
         0 = dry
         null = invalid (not wet or dry)
     """
-
     # Area of one pixel in metres squared
     # Use absolute value to remove any negative sign from resolution tuple
     px_area = abs(resolution[0] * resolution[1])
@@ -46,20 +45,6 @@ def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
     pc_invalid = (px_invalid / px_total) * 100.0
     ar_invalid = px_invalid * px_area
 
-<<<<<<< HEAD
-    valid_and_dry_count = np.count_nonzero(inputs.water == 0)
-    valid_and_wet_count = np.count_nonzero(inputs.water == 128)
-
-    valid_and_wet_percentage = (valid_and_wet_count / pixel_count) * 100
-    valid_and_dry_percentage = (valid_and_dry_count / pixel_count) * 100  # noqa F841
-    invalid_percentage = (invalid_count / pixel_count) * 100
-
-    return xr.Dataset(
-        {
-            "wet_percentage": valid_and_wet_percentage,
-            "wet_pixel_count": valid_and_wet_count,
-            "invalid_percentage": invalid_percentage,
-=======
     # Set wet and dry values to nan, which will be used if insufficient pixels are observed
     px_wet = float("nan")
     pc_wet = float("nan")
@@ -90,6 +75,5 @@ def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
             "pc_invalid": pc_invalid,
             "px_invalid": px_invalid,
             "area_invalid_m2": ar_invalid,
->>>>>>> 56a84ba1f69dc0d5e0b3090909a118d6235f6fbb
         }
     )
