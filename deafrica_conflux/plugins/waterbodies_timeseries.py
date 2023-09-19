@@ -1,4 +1,3 @@
-import numpy as np
 import xarray as xr
 
 product_name = "waterbodies"
