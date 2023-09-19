@@ -12,6 +12,7 @@ pandas
 pyarrow
 python-geohash
 rasterio
+s3fs
 s3urls
 shapely
 SQLAlchemy<2.0
