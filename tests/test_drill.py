@@ -11,6 +11,8 @@ from deafrica_conflux.plugins.utils import run_plugin
 
 logging.basicConfig(level=logging.INFO)
 
+TEST_PLUGIN = "../deafrica_conflux/plugins/waterbodies_timeseries.py"
+
 
 def setup_module(module):
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -23,7 +25,7 @@ def dc():
 
 
 def test_find_datasets_for_plugin(dc):
-    plugin = run_plugin("plugins/sum_wet.py")
+    plugin = run_plugin(TEST_PLUGIN)
     uuid = "6d1d62de-5edd-5892-9dcc-9e1616251411"
     datasets = deafrica_conflux.drill.find_datasets_for_plugin(dc, plugin, uuid)
     assert len(datasets) == 1
@@ -31,7 +33,7 @@ def test_find_datasets_for_plugin(dc):
 
 
 def test_drill_integration(dc):
-    plugin = run_plugin("plugins/timeseries.py")
+    plugin = run_plugin(TEST_PLUGIN)
     uuid = "d15407ff-3fe5-55ec-a713-d4cc9399e6b3"
     polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
 
@@ -60,7 +62,7 @@ def test_get_directions(dc):
 
 
 def test_south_overedge(dc):
-    plugin = run_plugin("plugins/timeseries.py")
+    plugin = run_plugin(TEST_PLUGIN)
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
     polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
 
@@ -71,7 +73,7 @@ def test_south_overedge(dc):
         plugin, polygons_gdf, uuid, partial=True, overedge=True, dc=dc
     )
     assert len(drill_result) == 1
-    assert drill_result["wet_percentage"].iloc[0] == 42.39275304214028
+    assert drill_result["pc_wet"].iloc[0] == 42.39275304214028
 
 
 # TODO: Find waterbody polygon with nothern overlap and test.
