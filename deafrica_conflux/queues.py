@@ -359,7 +359,7 @@ def send_batch_with_retry(
         sucessful_msgs, messages = send_batch(
             queue_url=queue_url, messages=messages, sqs_client=sqs_client
         )
-        sucessful.extend[sucessful_msgs]
+        sucessful.extend(sucessful_msgs)
         if messages is None:
             break
         else:
