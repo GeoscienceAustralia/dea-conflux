@@ -42,7 +42,7 @@ def test_get_dataset_ids_with_existing_ids_file():
     runner = CliRunner(echo_stdin=True)
     product = "wofs_ls"
     expressions = "time in [2023-01-01, 2023-01-30]"
-    polygons_vector_file = "data/edumesbb2.geojson"
+    polygons_vector_file = TEST_WATERBODY
     use_id = "UID"
     output_file_path = TEST_CONFLUX_IDS_TXT
     num_worker = 8
