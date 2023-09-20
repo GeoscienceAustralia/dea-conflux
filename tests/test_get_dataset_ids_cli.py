@@ -1,9 +1,8 @@
-# TODO: Add tests for the command line tools.
 from pathlib import Path
+
 from click.testing import CliRunner
 
 from deafrica_conflux.cli.get_dataset_ids import get_dataset_ids
-
 
 # Test directory.
 HERE = Path(__file__).parent.resolve()
