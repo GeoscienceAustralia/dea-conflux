@@ -354,18 +354,18 @@ def send_batch_with_retry(
     assert len(messages) <= 10
 
     retries = 0
-    sucessful_msg_list = []
+    sucessful = []
     while retries <= max_retries:
         sucessful_msgs, messages = send_batch(
             queue_url=queue_url, messages=messages, sqs_client=sqs_client
         )
-        sucessful_msg_list.extend[sucessful_msgs]
+        sucessful.extend[sucessful_msgs]
         if messages is None:
             break
         else:
             retries += 1
 
-    return sucessful_msg_list, messages
+    return sucessful, messages
 
 
 def send_batch(
