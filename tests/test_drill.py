@@ -1,5 +1,6 @@
 import logging
 import sys
+from pathlib import Path
 
 import datacube
 import geopandas as gpd
@@ -14,6 +15,10 @@ logging.basicConfig(level=logging.INFO)
 
 # Plugin file path.
 TEST_PLUGIN = waterbodies_timeseries.__file__
+
+# Test directory.
+HERE = Path(__file__).parent.resolve()
+TEST_WATERBODY = HERE / "data" / "edumesbb2.geojson"
 
 
 def setup_module(module):
@@ -37,7 +42,7 @@ def test_find_datasets_for_plugin(dc):
 def test_drill_integration(dc):
     plugin = run_plugin(TEST_PLUGIN)
     uuid = "d15407ff-3fe5-55ec-a713-d4cc9399e6b3"
-    polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
+    polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
@@ -51,7 +56,7 @@ def test_drill_integration(dc):
 
 def test_get_directions(dc):
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
-    polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
+    polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     ds_extent = dc.index.datasets.get(uuid).extent.to_crs(polygons_gdf.crs)
     ds_extent_geom = ds_extent.geom
@@ -66,7 +71,7 @@ def test_get_directions(dc):
 def test_south_overedge(dc):
     plugin = run_plugin(TEST_PLUGIN)
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
-    polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
+    polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
