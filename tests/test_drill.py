@@ -1,5 +1,4 @@
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -9,14 +8,17 @@ import pytest
 
 import deafrica_conflux.drill
 from deafrica_conflux.id_field import guess_id_field
+from deafrica_conflux.plugins import waterbodies_timeseries
 from deafrica_conflux.plugins.utils import run_plugin
 
 logging.basicConfig(level=logging.INFO)
 
+# Plugin file path.
+TEST_PLUGIN = waterbodies_timeseries.__file__
+
 # Test directory.
-HERE = Path(__name__).parent.resolve()
-MAIN_DIR = Path(HERE).parent.resolve()
-TEST_PLUGIN = os.path.join(MAIN_DIR, "deafrica_conflux/plugins/waterbodies_timeseries.py")
+HERE = Path(__file__).parent.resolve()
+TEST_WATERBODY = HERE / "data" / "edumesbb2.geojson"
 
 
 def setup_module(module):
@@ -40,7 +42,7 @@ def test_find_datasets_for_plugin(dc):
 def test_drill_integration(dc):
     plugin = run_plugin(TEST_PLUGIN)
     uuid = "d15407ff-3fe5-55ec-a713-d4cc9399e6b3"
-    polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
+    polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
@@ -54,7 +56,7 @@ def test_drill_integration(dc):
 
 def test_get_directions(dc):
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
-    polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
+    polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     ds_extent = dc.index.datasets.get(uuid).extent.to_crs(polygons_gdf.crs)
     ds_extent_geom = ds_extent.geom
@@ -69,7 +71,7 @@ def test_get_directions(dc):
 def test_south_overedge(dc):
     plugin = run_plugin(TEST_PLUGIN)
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
-    polygons_gdf = gpd.read_file("data/edumesbb2.geojson")
+    polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
