@@ -1,16 +1,23 @@
 # TODO: Add tests for the command line tools.
+from pathlib import Path
 from click.testing import CliRunner
 
 from deafrica_conflux.cli.get_dataset_ids import get_dataset_ids
+
+
+# Test directory.
+HERE = Path(__file__).parent.resolve()
+TEST_WATERBODY = HERE / "data" / "edumesbb2.geojson"
+TEST_CONFLUX_IDS_TXT = HERE / "data" / "edumesbb2_conflux_ids.txt"
 
 
 def test_get_dataset_ids_cli():
     runner = CliRunner(echo_stdin=True)
     product = "wofs_ls"
     expressions = "time in [2023-01-01, 2023-01-15]"
-    polygons_vector_file = "data/edumesbb2.geojson"
+    polygons_vector_file = TEST_WATERBODY
     use_id = "UID"
-    output_file_path = "data/edumesbb2_conflux_ids.txt"
+    output_file_path = TEST_CONFLUX_IDS_TXT
     num_worker = 8
     cmd = f"{product} {expressions} --verbose --polygons-vector-file={polygons_vector_file} --use-id={use_id} --output-file-path={output_file_path} --num-worker={num_worker}"
     result = runner.invoke(get_dataset_ids, cmd)
@@ -37,7 +44,7 @@ def test_get_dataset_ids_with_existing_ids_file():
     expressions = "time in [2023-01-01, 2023-01-30]"
     polygons_vector_file = "data/edumesbb2.geojson"
     use_id = "UID"
-    output_file_path = "data/edumesbb2_conflux_ids.txt"
+    output_file_path = TEST_CONFLUX_IDS_TXT
     num_worker = 8
     cmd = f"{product} {expressions} --verbose --polygons-vector-file={polygons_vector_file} --use-id={use_id} --output-file-path={output_file_path} --num-worker={num_worker}"
     result = runner.invoke(get_dataset_ids, cmd)
