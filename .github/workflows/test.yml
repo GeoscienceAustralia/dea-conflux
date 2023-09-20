@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  ORG: digitalearthafrica
+  ORG: victorianeema
   IMAGE: deafrica-conflux
   PRODUCT_CATALOG: https://raw.githubusercontent.com/digitalearthafrica/config/master/prod/products_prod.csv
 
