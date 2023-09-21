@@ -335,20 +335,8 @@ def check_s3_bucket_exists(bucket_name: str, s3_client: S3Client = None) -> bool
 
     try:
         response = s3_client.head_bucket(Bucket=bucket_name)  # noqa E501
-    except ClientError as error:
-        error_code = int(error.response["Error"]["Code"])
-        # Bucket exists but user does not have access.
-        if error_code == 403:
-            return True
-        # Bucket does not exist.
-        elif error_code == 404:
-            return False
-        else:
-            _log.exception(error)
-            raise error
-    except Exception as error:
-        _log.exception(error)
-        raise error
+    except ClientError:
+        return False
     else:
         return True
 
@@ -378,17 +366,9 @@ def check_s3_object_exists(s3_object_uri: str, s3_client: S3Client = None):
     if check_s3_bucket_exists(bucket_name, s3_client) is True:
         try:
             response = s3_client.head_object(Bucket=bucket_name, Key=object_key)  # noqa
-        except ClientError as error:
-            error_code = int(error.response["Error"]["Code"])
-
-            # Object exists but user does not have access.
-            if error_code == 403:
-                return False
-            # Object does not exist.
-            elif error_code == 404:
-                return False
-        except Exception as error:
-            _log.exception(error)
-            raise error
+        except ClientError:
+            return False
         else:
             return True
+    else:
+        return False
