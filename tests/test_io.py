@@ -147,8 +147,8 @@ def test_check_s3_objects_exists_true(s3_client):
     file_fp = "dummy.txt"
 
     # Create bucket.
-    response = s3_client.create_bucket(
-        Bucket=bucket_name,  # noqa F841
+    response = s3_client.create_bucket( # noqa F841
+        Bucket=bucket_name,
         CreateBucketConfiguration={"LocationConstraint": "af-south-1"},
     )
 
@@ -176,8 +176,8 @@ def test_check_s3_objects_exists_false(s3_client):
     object_url = f"s3://{bucket_name}/{object_name}"
 
     # Create bucket.
-    response = s3_client.create_bucket(
-        Bucket=bucket_name,  # noqa F841
+    response = s3_client.create_bucket(  # noqa F841
+        Bucket=bucket_name,
         CreateBucketConfiguration={"LocationConstraint": "af-south-1"},
     )
 
