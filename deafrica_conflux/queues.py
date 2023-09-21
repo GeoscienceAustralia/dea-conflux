@@ -419,9 +419,11 @@ def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: in
     if deafrica_conflux.io.check_if_s3_uri(text_file_path):
         if not deafrica_conflux.io.check_s3_object_exists(s3_object_uri=text_file_path,
                                                           sqs_client=sqs_client):
+            _log.error(f"Could not find text file {text_file_path}!")
             raise FileNotFoundError(f"Could not find text file {text_file_path}!")
     else:
         if not deafrica_conflux.io.check_local_file_exists(text_file_path):
+            _log.error(f"Could not find text file {text_file_path}!")
             raise FileNotFoundError(f"Could not find text file {text_file_path}!")
 
     # Read the text file.
