@@ -94,20 +94,6 @@ def get_queue_attribute(queue_name: str, attribute_name: str, sqs_client: SQSCli
         return queue_attribute_value
 
 
-def verify_queue_name(queue_name: str):
-    """
-    Validate the name of an SQS queue.
-
-    Parameters
-    ----------
-    queue_name : str
-        Name of the SQS queue to validate.
-    """
-    if not queue_name.startswith("waterbodies_"):
-        _log.error(f"Queue name {queue_name} does not start with waterbodies_", exc_info=True)
-        raise click.ClickException("DE Africa conflux queues must start with waterbodies_")
-
-
 def make_source_queue(
     queue_name: str,
     dead_letter_queue_name: str,
