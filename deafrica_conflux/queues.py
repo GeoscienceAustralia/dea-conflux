@@ -411,31 +411,25 @@ def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: in
     sqs_client : SQSClient, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
     """
+    # Get the service client.
+    if sqs_client is None:
+        sqs_client = boto3.client("sqs")
 
     # Check if the text file exists.
-    is_s3_uri = deafrica_conflux.io.check_if_s3_uri(text_file_path)
-
-    try:
-        if is_s3_uri:
-            deafrica_conflux.io.check_s3_object_exists(text_file_path, error_if_exists=False)
-        else:
-            deafrica_conflux.io.check_local_file_exists(text_file_path, error_if_exists=False)
-    except FileNotFoundError as error:
-        _log.exception(f"Could not find text file {text_file_path}!")
-        raise error
-    except PermissionError as error:
-        _log.exception(f"You do not have sufficient permissions to access {text_file_path}!")
-        raise error
+    if deafrica_conflux.io.check_if_s3_uri(text_file_path):
+        if not deafrica_conflux.io.check_s3_object_exists(s3_object_uri=text_file_path):
+            _log.error(f"Could not find text file {text_file_path}!")
+            raise FileNotFoundError(f"Could not find text file {text_file_path}!")
+    else:
+        if not deafrica_conflux.io.check_local_file_exists(text_file_path):
+            _log.error(f"Could not find text file {text_file_path}!")
+            raise FileNotFoundError(f"Could not find text file {text_file_path}!")
 
     # Read the text file.
     with fsspec.open(text_file_path, "rb") as file:
         dataset_ids = [line.decode().strip() for line in file]
 
     verify_queue_name(queue_name)
-
-    # Get the service client.
-    if sqs_client is None:
-        sqs_client = boto3.client("sqs")
 
     # Get the queue url.
     queue_url = get_queue_url(queue_name, sqs_client)

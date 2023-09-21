@@ -92,13 +92,17 @@ def get_dataset_ids(
 
     _log.info(f"Found {len(dataset_ids)} datasets.")
 
-    # Check if file is an s3 file.
-    is_s3_file = deafrica_conflux.io.check_if_s3_uri(output_file_path)
-
-    if is_s3_file:
-        deafrica_conflux.io.check_s3_object_exists(output_file_path, error_if_exists=True)
+    # Check if file exists.
+    if deafrica_conflux.io.check_if_s3_uri(output_file_path):
+        if deafrica_conflux.io.check_s3_object_exists(s3_object_uri=output_file_path):
+            _log.error(f"{output_file_path} exists!")
+            raise FileExistsError(f"{output_file_path} exists!")
     else:
-        deafrica_conflux.io.check_local_file_exists(output_file_path, error_if_exists=True)
+        if deafrica_conflux.io.check_local_file_exists(output_file_path):
+            _log.error(f"{output_file_path} exists!")
+            raise FileExistsError(f"{output_file_path} exists!")
+
+    if not deafrica_conflux.io.check_if_s3_uri(output_file_path):
         _log.info("Dataset ids will be saved to a local text file")
         parsed_output_fp = urllib.parse.urlparse(output_file_path).path
         absolute_output_fp = os.path.abspath(parsed_output_fp)
@@ -109,7 +113,7 @@ def get_dataset_ids(
                 os.makedirs(path_head)
                 _log.info(f"Local folder {path_head} created.")
 
-    with fsspec.open(output_file_path, "a") as file:
+    with fsspec.open(output_file_path, "wt") as file:
         for dataset_id in dataset_ids:
             file.write("%s\n" % dataset_id)
 
