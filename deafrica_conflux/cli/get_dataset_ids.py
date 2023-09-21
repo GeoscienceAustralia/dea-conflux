@@ -113,7 +113,7 @@ def get_dataset_ids(
                 os.makedirs(path_head)
                 _log.info(f"Local folder {path_head} created.")
 
-    with fsspec.open(output_file_path, "a") as file:
+    with fsspec.open(output_file_path, "wt") as file:
         for dataset_id in dataset_ids:
             file.write("%s\n" % dataset_id)
 
