@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -19,6 +20,10 @@ def test_get_dataset_ids_cli():
     output_file_path = TEST_CONFLUX_IDS_TXT
     num_worker = 8
     cmd = f"{product} {expressions} --verbose --polygons-vector-file={polygons_vector_file} --use-id={use_id} --output-file-path={output_file_path} --num-worker={num_worker}"
+    
+    if os.path.exists(output_file_path):
+        os.remove(output_file_path)
+    
     result = runner.invoke(get_dataset_ids, cmd)
     assert result.exit_code == 0
 
@@ -39,5 +44,8 @@ def test_get_dataset_ids_with_existing_ids_file():
     num_worker = 8
     cmd = f"{product} {expressions} --verbose --polygons-vector-file={polygons_vector_file} --use-id={use_id} --output-file-path={output_file_path} --num-worker={num_worker}"
     result = runner.invoke(get_dataset_ids, cmd)
-
+    
+    if os.path.exists(output_file_path):
+        os.remove(output_file_path)
+    
     assert type(result.exception) is FileExistsError
