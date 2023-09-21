@@ -1,3 +1,4 @@
+import json
 import os
 
 import boto3
@@ -43,7 +44,7 @@ def test_get_queue_url_with_not_existing_queue(sqs_client):
     queue_name = "test_queue"
     # Get queue url.
     try:
-        queue_url = deafrica_conflux.queues.get_queue_url( # noqa F841
+        queue_url = deafrica_conflux.queues.get_queue_url(  # noqa F841
             queue_name=queue_name, sqs_client=sqs_client
         )
     except sqs_client.exceptions.QueueDoesNotExist:
@@ -57,7 +58,7 @@ def test_get_queue_attribute(sqs_client):
     # Create the queue.
     queue_name = "test_queue"
     queue_attributes = {"VisibilityTimeout": "43200"}
-    response = sqs_client.create_queue( # noqa F841
+    response = sqs_client.create_queue(  # noqa F841
         QueueName=queue_name, Attributes=queue_attributes
     )
     # Get attribute from the queue.
@@ -92,7 +93,9 @@ def test_verify_queue_name_with_incorrect_queue_name():
 
 
 @mock_sqs
-def test_make_source_queue_with_existing_deadletter_queue(sqs_client):
+def test_make_source_queue_with_existing_deadletter_queue(aws_credentials):
+    sqs_client = boto3.client("sqs", region_name="af-south-1")
+
     source_queue_name = "waterbodies_conflux_test_queue"
     deadletter_queue_name = "waterbodies_conflux_test_queue_deadletter"
 
@@ -111,11 +114,13 @@ def test_make_source_queue_with_existing_deadletter_queue(sqs_client):
         source_queue_url = deafrica_conflux.queues.get_queue_url(
             queue_name=source_queue_name, sqs_client=sqs_client
         )
-        dead_letter_queue_arn = deafrica_conflux.queues.get_queue_attribute(
-            queue_name=source_queue_name, attribute_name="QueueArn", sqs_client=sqs_client
+        redrive_policy_attribute = deafrica_conflux.queues.get_queue_attribute(
+            queue_name=source_queue_name, attribute_name="RedrivePolicy", sqs_client=sqs_client
         )
+        redrive_policy_attribute = json.loads(redrive_policy_attribute)
+
+        assert deadletter_queue_name in redrive_policy_attribute["deadLetterTargetArn"]
         assert source_queue_name in source_queue_url
-        assert deadletter_queue_name in dead_letter_queue_arn
 
 
 @mock_sqs
@@ -156,7 +161,7 @@ def test_delete_empty_sqs_queue(sqs_client):
         assert False
     else:
         try:
-            queue_url = deafrica_conflux.queues.get_queue_url( # noqa F841
+            queue_url = deafrica_conflux.queues.get_queue_url(  # noqa F841
                 queue_name=queue, sqs_client=sqs_client
             )
         except sqs_client.exceptions.QueueDoesNotExist:
