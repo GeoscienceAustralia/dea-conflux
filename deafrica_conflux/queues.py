@@ -10,7 +10,6 @@ import time
 import math
 
 import boto3
-import click
 import fsspec
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -122,9 +121,6 @@ def make_source_queue(
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
 
     """
-
-    verify_queue_name(queue_name)
-
     # Retry configuration.
     retry_config = {"max_attempts": 10, "mode": "standard"}
 
@@ -148,7 +144,6 @@ def make_source_queue(
         except Exception:
             _log.exception(f"Failed to get ARN for dead-letter queue {dead_letter_queue_name}.")
             _log.info(f"Creating dead-letter queue {dead_letter_queue_name}")
-            verify_queue_name(dead_letter_queue_name)
             # Create dead-letter queue.
             try:
                 response = sqs_client.create_queue(QueueName=dead_letter_queue_name)
@@ -187,9 +182,6 @@ def delete_queue(queue_name: str, sqs_client: SQSClient = None):
     sqs_client : botocore.client.SQS, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
     """
-
-    verify_queue_name(queue_name)
-
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
@@ -224,9 +216,6 @@ def move_to_deadletter_queue(
     sqs_client : SQSClient, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
     """
-
-    verify_queue_name(deadletter_queue_name)
-
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
@@ -414,8 +403,6 @@ def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: in
     # Read the text file.
     with fsspec.open(text_file_path, "rb") as file:
         dataset_ids = [line.decode().strip() for line in file]
-
-    verify_queue_name(queue_name)
 
     # Get the queue url.
     queue_url = get_queue_url(queue_name, sqs_client)

@@ -10,9 +10,7 @@ def delete_sqs_queue(queue_name):
     """
     Delete a SQS queue.
     """
-
-    deafrica_conflux.queues.verify_queue_name(queue_name)
-
+    
     sqs_client = boto3.client("sqs")
 
     # Get the Amazon Resource Name (ARN) of the source queue.
