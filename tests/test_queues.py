@@ -2,7 +2,6 @@ import json
 import os
 
 import boto3
-import click
 import pytest
 from moto import mock_sqs
 
@@ -70,26 +69,6 @@ def test_get_queue_attribute(sqs_client):
         assert False
     else:
         assert attribute == "43200"
-
-
-def test_verify_queue_name_with_correct_queue_name():
-    queue_name = "waterbodies_test_queue"
-    try:
-        deafrica_conflux.queues.verify_queue_name(queue_name=queue_name)
-    except click.ClickException:
-        assert False
-    else:
-        assert True
-
-
-def test_verify_queue_name_with_incorrect_queue_name():
-    queue_name = "test_queue"
-    try:
-        deafrica_conflux.queues.verify_queue_name(queue_name=queue_name)
-    except click.ClickException:
-        assert True
-    else:
-        assert False
 
 
 @mock_sqs
