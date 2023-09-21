@@ -125,8 +125,8 @@ def test_check_if_s3_uri_using_local_file():
 def test_check_s3_bucket_exists_true(s3_client):
     bucket_name = "my-mock-bucket"
     # Create the test bucket.
-    response = s3_client.create_bucket(
-        Bucket=bucket_name,  # noqa F841
+    response = s3_client.create_bucket( # noqa F841
+        Bucket=bucket_name,
         CreateBucketConfiguration={"LocationConstraint": "af-south-1"},
     )
 
