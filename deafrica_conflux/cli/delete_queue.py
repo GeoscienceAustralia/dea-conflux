@@ -10,7 +10,7 @@ def delete_sqs_queue(queue_name):
     """
     Delete a SQS queue.
     """
-    
+
     sqs_client = boto3.client("sqs")
 
     # Get the Amazon Resource Name (ARN) of the source queue.

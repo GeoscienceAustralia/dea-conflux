@@ -6,8 +6,8 @@ Geoscience Australia
 """
 import json
 import logging
-import time
 import math
+import time
 
 import boto3
 import fsspec
@@ -236,8 +236,7 @@ def move_to_deadletter_queue(
 
 
 # From https://stackoverflow.com/a/312464
-def batch_messages(messages: list,
-                   n: int = 10):
+def batch_messages(messages: list, n: int = 10):
     """
     Helper function to group a list of messages into batches of n messages.
 
@@ -253,7 +252,7 @@ def batch_messages(messages: list,
     list[list, list]
         A list of lists containing the batched messages.
     """
-    batched_messages = [messages[i:i + n] for i in range(0, len(messages), n)]
+    batched_messages = [messages[i : i + n] for i in range(0, len(messages), n)]
 
     assert len(batched_messages) == math.ceil(len(messages) / n)
 
@@ -261,9 +260,7 @@ def batch_messages(messages: list,
 
 
 def send_batch(
-    queue_url: str,
-    messages: list[str],
-    sqs_client: SQSClient | None = None
+    queue_url: str, messages: list[str], sqs_client: SQSClient | None = None
 ) -> tuple[list | None, list | None]:
     """
     Sends a batch of messages in a single request to an SQS queue.
@@ -325,7 +322,7 @@ def send_batch(
                 failed_messages = None
 
     return successful_messages_list, failed_messages_list
-    
+
 
 def send_batch_with_retry(
     queue_url: str, messages: list[str], max_retries: int = 10, sqs_client: SQSClient | None = None
@@ -370,7 +367,9 @@ def send_batch_with_retry(
     return sucessful, messages
 
 
-def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None):
+def push_to_queue_from_txt(
+    text_file_path: str, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None
+):
     """
     Push lines of a text file to a SQS queue.
 
@@ -407,21 +406,22 @@ def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: in
 
     failed_to_send_list = []
     for batch in messages_to_send:
-        successfully_sent, failed_to_send = send_batch_with_retry(queue_url=queue_url,
-                                                                  messages=batch,
-                                                                  max_retries=max_retries,
-                                                                  sqs_client=sqs_client)
+        successfully_sent, failed_to_send = send_batch_with_retry(
+            queue_url=queue_url, messages=batch, max_retries=max_retries, sqs_client=sqs_client
+        )
         if failed_to_send is not None:
             failed_to_send_list.extend(failed_to_send)
-    
+
     if failed_to_send_list:
         _log.error(f"Failed to send {failed_to_send_list} to queue {queue_url}")
 
 
-def receive_batch(queue_url: str,
-                  max_retries: int = 10,
-                  visibility_timeout: int = 3600,  # 1 hour
-                  sqs_client: SQSClient | None = None) -> tuple[list | None, list | None]:
+def receive_batch(
+    queue_url: str,
+    max_retries: int = 10,
+    visibility_timeout: int = 3600,  # 1 hour
+    sqs_client: SQSClient | None = None,
+) -> tuple[list | None, list | None]:
     """
     Receive all messages from an SQS Queue.
 
@@ -440,7 +440,7 @@ def receive_batch(queue_url: str,
     list
         A list of messages from the queue.
     """
-    
+
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
@@ -450,10 +450,12 @@ def receive_batch(queue_url: str,
 
     retries = 0
     while retries <= max_retries:
-        receive_response = sqs_client.receive_message(QueueUrl=queue_url,
-                                                      AttributeNames=["All"],
-                                                      MaxNumberOfMessages=10,
-                                                      VisibilityTimeout=visibility_timeout)
+        receive_response = sqs_client.receive_message(
+            QueueUrl=queue_url,
+            AttributeNames=["All"],
+            MaxNumberOfMessages=10,
+            VisibilityTimeout=visibility_timeout,
+        )
         received_messages = receive_response.get("Messages", None)
         if received_messages is not None:
             received_messages_list.extend(received_messages)
@@ -464,7 +466,12 @@ def receive_batch(queue_url: str,
     return received_messages_list
 
 
-def delete_batch(queue_url: str, receipt_handles: list[str], max_retries: int = 10, sqs_client: SQSClient | None = None):
+def delete_batch(
+    queue_url: str,
+    receipt_handles: list[str],
+    max_retries: int = 10,
+    sqs_client: SQSClient | None = None,
+):
     """
     Deletes a batch of messages in a single request to an SQS queue.
 
@@ -513,7 +520,7 @@ def delete_batch(queue_url: str, receipt_handles: list[str], max_retries: int = 
 
                 if successful is not None:
                     batch_success.extend(successful)
-                
+
                 if failed is not None:
                     retries += 1
                 else:
@@ -521,7 +528,7 @@ def delete_batch(queue_url: str, receipt_handles: list[str], max_retries: int = 
 
         if batch_success:
             successful_entries_list.extend(batch_success)
-        
+
         if failed:
             failed_entries_list.extend(failed)
 

@@ -116,16 +116,11 @@ def run_from_txt(
     polygons_gdf.set_index(id_field, inplace=True)
 
     # Read dataset ids.
-    
+
     # Check if the text file exists.
-    if deafrica_conflux.io.check_if_s3_uri(dataset_ids_file):
-        if not deafrica_conflux.io.check_s3_object_exists(s3_object_uri=dataset_ids_file):
-            _log.error(f"Could not find text file {dataset_ids_file}!")
-            raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
-    else:
-        if not deafrica_conflux.io.check_local_file_exists(dataset_ids_file):
-            _log.error(f"Could not find text file {dataset_ids_file}!")
-            raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
+    if not deafrica_conflux.io.check_file_exists(dataset_ids_file):
+        _log.error(f"Could not find text file {dataset_ids_file}!")
+        raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
 
     # Read ID/s from the S3 URI or File URI.
     with fsspec.open(dataset_ids_file, "rb") as file:

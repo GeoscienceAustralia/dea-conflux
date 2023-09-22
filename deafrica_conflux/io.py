@@ -299,6 +299,12 @@ def check_file_exists(file_path: str) -> bool:
     ----------
     file_path : str
         Path to check.
+
+    Returns
+    -------
+    bool
+        True if the path exists and is a file.
+        False if the path does not exists or if the path exists and it is not a file.
     """
     if check_if_s3_uri(file_path):
         fs = fsspec.filesystem("s3")
