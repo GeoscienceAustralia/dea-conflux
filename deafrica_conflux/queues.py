@@ -394,7 +394,7 @@ def push_to_queue_from_txt(
     text_file_path = str(text_file_path)
 
     # Check if the text file exists.
-    if deafrica_conflux.io.check_file_exists(text_file_path):
+    if not deafrica_conflux.io.check_file_exists(text_file_path):
         _log.error(f"Could not find text file {text_file_path}!")
         raise FileNotFoundError(f"Could not find text file {text_file_path}!")
 
