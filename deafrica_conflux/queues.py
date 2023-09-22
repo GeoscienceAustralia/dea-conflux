@@ -8,6 +8,7 @@ import json
 import logging
 import math
 import time
+from pathlib import Path
 
 import boto3
 import fsspec
@@ -368,14 +369,14 @@ def send_batch_with_retry(
 
 
 def push_to_queue_from_txt(
-    text_file_path: str, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None
+    text_file_path: str | Path, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None
 ):
     """
     Push lines of a text file to a SQS queue.
 
     Parameters
     ----------
-    text_file_path : str
+    text_file_path : str | Path
         File path (s3 or local) of the text file to push to the specified
         SQS queue.
     queue_name : str
@@ -389,14 +390,22 @@ def push_to_queue_from_txt(
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
 
+    # "Support" pathlib Paths.
+    text_file_path = str(text_file_path)
+
     # Check if the text file exists.
-    if not deafrica_conflux.io.check_file_exists(text_file_path):
+    if deafrica_conflux.io.check_file_exists(text_file_path):
         _log.error(f"Could not find text file {text_file_path}!")
         raise FileNotFoundError(f"Could not find text file {text_file_path}!")
 
+    if deafrica_conflux.io.check_if_s3_uri(text_file_path):
+        fs = fsspec.filesystem("s3")
+    else:
+        fs = fsspec.filesystem("file")
+
     # Read the text file.
-    with fsspec.open(text_file_path, "rb") as file:
-        dataset_ids = [line.decode().strip() for line in file]
+    with fs.open(text_file_path, "r") as file:
+        dataset_ids = [line.strip() for line in file]
 
     # Get the queue url.
     queue_url = get_queue_url(queue_name, sqs_client)

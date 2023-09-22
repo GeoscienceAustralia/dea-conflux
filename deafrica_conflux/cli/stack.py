@@ -58,5 +58,3 @@ def stack(parquet_path, pattern, output_directory, mode, verbose, drop, remove_d
     deafrica_conflux.stack.stack_parquet(
         path=parquet_path, pattern=pattern, mode=mode_map[mode], verbose=verbose, **kwargs
     )
-
-    return 0

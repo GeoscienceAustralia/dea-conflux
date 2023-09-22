@@ -15,6 +15,7 @@ import logging
 import os
 import re
 from pathlib import Path
+
 import fsspec
 import geohash
 import numpy as np
@@ -50,8 +51,7 @@ def stack_format_date(date: datetime.datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_parquet_files(path: str | Path,
-                       pattern: str = ".*") -> [str]:
+def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
     """
     Find Parquet files matching a pattern.
 
@@ -212,7 +212,7 @@ def stack_waterbodies_parquet_to_csv(
         else:
             fs = fsspec.filesystem("file")
             fs.mkdirs(os.path.join(output_directory, f"{uid[:4]}"), exist_ok=True)
-            
+
         with fs.open(output_file_name, "w") as f:
             df.to_csv(f, index_label="date")
 

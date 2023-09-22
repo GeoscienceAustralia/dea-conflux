@@ -234,5 +234,3 @@ def run_from_sqs_queue(
                 _log.info(
                     f"Not successful, moved {id_} to dead letter queue {dead_letter_queue_name}"
                 )
-
-    return 0

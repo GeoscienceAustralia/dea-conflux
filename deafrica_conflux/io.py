@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import urllib
+from pathlib import Path
 
 import fsspec
 import pandas as pd
@@ -103,13 +104,13 @@ def make_parquet_file_name(drill_name: str, uuid: str, centre_date: datetime.dat
     return parquet_file_name
 
 
-def check_if_s3_uri(file_path: str) -> bool:
+def check_if_s3_uri(file_path: str | Path) -> bool:
     """
     Checks if a file path is an S3 URI.
 
     Parameters
     ----------
-    file_path : str
+    file_path : str | Path
         File path to check
 
     Returns
@@ -117,6 +118,9 @@ def check_if_s3_uri(file_path: str) -> bool:
     bool
         True if the file path is an S3 URI.
     """
+    # "Support" pathlib Paths.
+    file_path = str(file_path)
+
     file_scheme = urllib.parse.urlparse(file_path).scheme
 
     valid_s3_schemes = ["s3"]
@@ -154,6 +158,9 @@ def table_exists(
     -------
     bool
     """
+    # "Support" pathlib Paths.
+    output_directory = str(output_directory)
+
     if check_if_s3_uri(output_directory):
         fs = fsspec.filesystem("s3")
     else:
@@ -172,7 +179,7 @@ def write_table_to_parquet(
     uuid: str,
     centre_date: datetime.datetime,
     table: pd.DataFrame,
-    output_directory: str,
+    output_directory: str | Path,
 ) -> str:
     """
     Write a table to Parquet.
@@ -191,7 +198,7 @@ def write_table_to_parquet(
     table : pd.DataFrame
         Dataframe with index polygons and columns bands.
 
-    output_directory : str
+    output_directory : str | Path
         Path to output directory.
 
     Returns
@@ -199,6 +206,8 @@ def write_table_to_parquet(
     str
         Path written to.
     """
+    # "Support" pathlib Paths.
+    output_directory = str(output_directory)
 
     # Convert the table to pyarrow.
     table_pa = pyarrow.Table.from_pandas(table)
@@ -239,13 +248,13 @@ def write_table_to_parquet(
     return output_file_path
 
 
-def read_table_from_parquet(path: str) -> pd.DataFrame:
+def read_table_from_parquet(path: str | Path) -> pd.DataFrame:
     """
     Read a Parquet file with Conflux metadata.
 
     Arguments
     ---------
-    path : str
+    path : str | Path
         Path to Parquet file.
 
     Returns
@@ -253,6 +262,9 @@ def read_table_from_parquet(path: str) -> pd.DataFrame:
     pd.DataFrame
         DataFrame with attrs set.
     """
+    # "Support" pathlib Paths.
+    path = str(path)
+
     table = pyarrow.parquet.read_table(path)
     df = table.to_pandas()
     meta_json = table.schema.metadata[PARQUET_META_KEY]
@@ -262,13 +274,13 @@ def read_table_from_parquet(path: str) -> pd.DataFrame:
     return df
 
 
-def check_dir_exists(dir_path: str):
+def check_dir_exists(dir_path: str | Path):
     """
     Checks if a specified path is an existing directory.
 
     Parameters
     ----------
-    dir_path : str
+    dir_path : str | Path
         Path to check.
 
     Returns
@@ -277,6 +289,9 @@ def check_dir_exists(dir_path: str):
         True if the path exists and is a directory.
         False if the path does not exists or if the path exists and it is not a directory.
     """
+    # "Support" pathlib Paths.
+    dir_path = str(dir_path)
+
     if check_if_s3_uri(dir_path):
         fs = fsspec.filesystem("s3")
     else:
@@ -291,13 +306,13 @@ def check_dir_exists(dir_path: str):
         return False
 
 
-def check_file_exists(file_path: str) -> bool:
+def check_file_exists(file_path: str | Path) -> bool:
     """
     Checks if a specified path is an existing file.
 
     Parameters
     ----------
-    file_path : str
+    file_path : str | Path
         Path to check.
 
     Returns
@@ -306,6 +321,9 @@ def check_file_exists(file_path: str) -> bool:
         True if the path exists and is a file.
         False if the path does not exists or if the path exists and it is not a file.
     """
+    # "Support" pathlib Paths.
+    file_path = str(file_path)
+
     if check_if_s3_uri(file_path):
         fs = fsspec.filesystem("s3")
     else:
