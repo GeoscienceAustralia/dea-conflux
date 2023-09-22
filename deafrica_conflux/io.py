@@ -237,13 +237,16 @@ def write_table_to_parquet(
 
     if check_if_s3_uri(output_directory):
         output_file_path = os.path.join(output_directory, folder_name, file_name)
+        fs = fsspec.filesystem("s3")
     else:
         parent_folder = os.path.join(output_directory, folder_name)
         fs = fsspec.filesystem("file")
         fs.makedirs(parent_folder, exist_ok=True)
         output_file_path = os.path.join(parent_folder, file_name)
 
-    pyarrow.parquet.write_table(table_pa, output_file_path, compression="GZIP")
+    pyarrow.parquet.write_table(table=table_pa,
+                                where=output_file_path,
+                                compression="GZIP")
 
     return output_file_path
 
