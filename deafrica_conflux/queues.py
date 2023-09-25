@@ -6,11 +6,11 @@ Geoscience Australia
 """
 import json
 import logging
-import time
 import math
+import time
+from pathlib import Path
 
 import boto3
-import click
 import fsspec
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -94,20 +94,6 @@ def get_queue_attribute(queue_name: str, attribute_name: str, sqs_client: SQSCli
         return queue_attribute_value
 
 
-def verify_queue_name(queue_name: str):
-    """
-    Validate the name of an SQS queue.
-
-    Parameters
-    ----------
-    queue_name : str
-        Name of the SQS queue to validate.
-    """
-    if not queue_name.startswith("waterbodies_"):
-        _log.error(f"Queue name {queue_name} does not start with waterbodies_", exc_info=True)
-        raise click.ClickException("DE Africa conflux queues must start with waterbodies_")
-
-
 def make_source_queue(
     queue_name: str,
     dead_letter_queue_name: str,
@@ -136,9 +122,6 @@ def make_source_queue(
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
 
     """
-
-    verify_queue_name(queue_name)
-
     # Retry configuration.
     retry_config = {"max_attempts": 10, "mode": "standard"}
 
@@ -162,7 +145,6 @@ def make_source_queue(
         except Exception:
             _log.exception(f"Failed to get ARN for dead-letter queue {dead_letter_queue_name}.")
             _log.info(f"Creating dead-letter queue {dead_letter_queue_name}")
-            verify_queue_name(dead_letter_queue_name)
             # Create dead-letter queue.
             try:
                 response = sqs_client.create_queue(QueueName=dead_letter_queue_name)
@@ -201,9 +183,6 @@ def delete_queue(queue_name: str, sqs_client: SQSClient = None):
     sqs_client : botocore.client.SQS, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
     """
-
-    verify_queue_name(queue_name)
-
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
@@ -238,9 +217,6 @@ def move_to_deadletter_queue(
     sqs_client : SQSClient, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
     """
-
-    verify_queue_name(deadletter_queue_name)
-
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
@@ -261,8 +237,7 @@ def move_to_deadletter_queue(
 
 
 # From https://stackoverflow.com/a/312464
-def batch_messages(messages: list,
-                   n: int = 10):
+def batch_messages(messages: list, n: int = 10):
     """
     Helper function to group a list of messages into batches of n messages.
 
@@ -278,7 +253,7 @@ def batch_messages(messages: list,
     list[list, list]
         A list of lists containing the batched messages.
     """
-    batched_messages = [messages[i:i + n] for i in range(0, len(messages), n)]
+    batched_messages = [messages[i : i + n] for i in range(0, len(messages), n)]
 
     assert len(batched_messages) == math.ceil(len(messages) / n)
 
@@ -286,9 +261,7 @@ def batch_messages(messages: list,
 
 
 def send_batch(
-    queue_url: str,
-    messages: list[str],
-    sqs_client: SQSClient | None = None
+    queue_url: str, messages: list[str], sqs_client: SQSClient | None = None
 ) -> tuple[list | None, list | None]:
     """
     Sends a batch of messages in a single request to an SQS queue.
@@ -350,7 +323,7 @@ def send_batch(
                 failed_messages = None
 
     return successful_messages_list, failed_messages_list
-    
+
 
 def send_batch_with_retry(
     queue_url: str, messages: list[str], max_retries: int = 10, sqs_client: SQSClient | None = None
@@ -395,13 +368,15 @@ def send_batch_with_retry(
     return sucessful, messages
 
 
-def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None):
+def push_to_queue_from_txt(
+    text_file_path: str | Path, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None
+):
     """
     Push lines of a text file to a SQS queue.
 
     Parameters
     ----------
-    text_file_path : str
+    text_file_path : str | Path
         File path (s3 or local) of the text file to push to the specified
         SQS queue.
     queue_name : str
@@ -415,21 +390,22 @@ def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: in
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
 
+    # "Support" pathlib Paths.
+    text_file_path = str(text_file_path)
+
     # Check if the text file exists.
+    if not deafrica_conflux.io.check_file_exists(text_file_path):
+        _log.error(f"Could not find text file {text_file_path}!")
+        raise FileNotFoundError(f"Could not find text file {text_file_path}!")
+
     if deafrica_conflux.io.check_if_s3_uri(text_file_path):
-        if not deafrica_conflux.io.check_s3_object_exists(s3_object_uri=text_file_path):
-            _log.error(f"Could not find text file {text_file_path}!")
-            raise FileNotFoundError(f"Could not find text file {text_file_path}!")
+        fs = fsspec.filesystem("s3")
     else:
-        if not deafrica_conflux.io.check_local_file_exists(text_file_path):
-            _log.error(f"Could not find text file {text_file_path}!")
-            raise FileNotFoundError(f"Could not find text file {text_file_path}!")
+        fs = fsspec.filesystem("file")
 
     # Read the text file.
-    with fsspec.open(text_file_path, "rb") as file:
-        dataset_ids = [line.decode().strip() for line in file]
-
-    verify_queue_name(queue_name)
+    with fs.open(text_file_path, "r") as file:
+        dataset_ids = [line.strip() for line in file]
 
     # Get the queue url.
     queue_url = get_queue_url(queue_name, sqs_client)
@@ -439,21 +415,22 @@ def push_to_queue_from_txt(text_file_path: str, queue_name: str, max_retries: in
 
     failed_to_send_list = []
     for batch in messages_to_send:
-        successfully_sent, failed_to_send = send_batch_with_retry(queue_url=queue_url,
-                                                                  messages=batch,
-                                                                  max_retries=max_retries,
-                                                                  sqs_client=sqs_client)
+        successfully_sent, failed_to_send = send_batch_with_retry(
+            queue_url=queue_url, messages=batch, max_retries=max_retries, sqs_client=sqs_client
+        )
         if failed_to_send is not None:
             failed_to_send_list.extend(failed_to_send)
-    
+
     if failed_to_send_list:
         _log.error(f"Failed to send {failed_to_send_list} to queue {queue_url}")
 
 
-def receive_batch(queue_url: str,
-                  max_retries: int = 10,
-                  visibility_timeout: int = 3600,  # 1 hour
-                  sqs_client: SQSClient | None = None) -> tuple[list | None, list | None]:
+def receive_batch(
+    queue_url: str,
+    max_retries: int = 10,
+    visibility_timeout: int = 3600,  # 1 hour
+    sqs_client: SQSClient | None = None,
+) -> tuple[list | None, list | None]:
     """
     Receive all messages from an SQS Queue.
 
@@ -472,7 +449,7 @@ def receive_batch(queue_url: str,
     list
         A list of messages from the queue.
     """
-    
+
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
@@ -482,10 +459,12 @@ def receive_batch(queue_url: str,
 
     retries = 0
     while retries <= max_retries:
-        receive_response = sqs_client.receive_message(QueueUrl=queue_url,
-                                                      AttributeNames=["All"],
-                                                      MaxNumberOfMessages=10,
-                                                      VisibilityTimeout=visibility_timeout)
+        receive_response = sqs_client.receive_message(
+            QueueUrl=queue_url,
+            AttributeNames=["All"],
+            MaxNumberOfMessages=10,
+            VisibilityTimeout=visibility_timeout,
+        )
         received_messages = receive_response.get("Messages", None)
         if received_messages is not None:
             received_messages_list.extend(received_messages)
@@ -496,7 +475,12 @@ def receive_batch(queue_url: str,
     return received_messages_list
 
 
-def delete_batch(queue_url: str, receipt_handles: list[str], max_retries: int = 10, sqs_client: SQSClient | None = None):
+def delete_batch(
+    queue_url: str,
+    receipt_handles: list[str],
+    max_retries: int = 10,
+    sqs_client: SQSClient | None = None,
+):
     """
     Deletes a batch of messages in a single request to an SQS queue.
 
@@ -545,7 +529,7 @@ def delete_batch(queue_url: str, receipt_handles: list[str], max_retries: int = 
 
                 if successful is not None:
                     batch_success.extend(successful)
-                
+
                 if failed is not None:
                     retries += 1
                 else:
@@ -553,7 +537,7 @@ def delete_batch(queue_url: str, receipt_handles: list[str], max_retries: int = 
 
         if batch_success:
             successful_entries_list.extend(batch_success)
-        
+
         if failed:
             failed_entries_list.extend(failed)
 

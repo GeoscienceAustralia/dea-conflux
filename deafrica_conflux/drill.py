@@ -288,11 +288,10 @@ def polygons_centroids_in_ds_extent_bbox(
         width = right - left
         height = top - bottom
 
-    buffered_bbox_geom = shapely.geometry.box(left - width,
-                                              bottom - height,
-                                              right + width,
-                                              top + height)
-    
+    buffered_bbox_geom = shapely.geometry.box(
+        left - width, bottom - height, right + width, top + height
+    )
+
     # Get the centroids of the polygons.
     centroids = polygons_gdf.centroid
 

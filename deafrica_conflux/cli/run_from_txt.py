@@ -91,6 +91,9 @@ def run_from_txt(
     """
     Run deafrica-conflux on dataset ids from a text file.
     """
+    # "Support" pathlib Paths.
+    dataset_ids_file = str(dataset_ids_file)
+
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
@@ -116,20 +119,20 @@ def run_from_txt(
     polygons_gdf.set_index(id_field, inplace=True)
 
     # Read dataset ids.
-    
+
     # Check if the text file exists.
-    if deafrica_conflux.io.check_if_s3_uri(dataset_ids_file):
-        if not deafrica_conflux.io.check_s3_object_exists(s3_object_uri=dataset_ids_file):
-            _log.error(f"Could not find text file {dataset_ids_file}!")
-            raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
-    else:
-        if not deafrica_conflux.io.check_local_file_exists(dataset_ids_file):
-            _log.error(f"Could not find text file {dataset_ids_file}!")
-            raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
+    if not deafrica_conflux.io.check_file_exists(dataset_ids_file):
+        _log.error(f"Could not find text file {dataset_ids_file}!")
+        raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
 
     # Read ID/s from the S3 URI or File URI.
-    with fsspec.open(dataset_ids_file, "rb") as file:
-        dataset_ids = [line.decode().strip() for line in file]
+    if deafrica_conflux.io.check_if_s3_uri(dataset_ids_file):
+        fs = fsspec.filesystem("s3")
+    else:
+        fs = fsspec.filesystem("file")
+
+    with fs.open(dataset_ids_file, "r") as file:
+        dataset_ids = [line.strip() for line in file]
     _log.info(f"Read {dataset_ids} from file.")
 
     if db:
@@ -209,10 +212,8 @@ def run_from_txt(
         parent_folder, file + "_failed_dataset_ids" + file_extension
     )
 
-    with fsspec.open(failed_datasets_text_file, "a") as file:
+    with fs.open(failed_datasets_text_file, "a") as file:
         for dataset_id in failed_dataset_ids:
-            file.write("%s\n" % dataset_id)
+            file.write(f"{dataset_id}\n")
 
     _log.info(f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}.")
-
-    return 0
