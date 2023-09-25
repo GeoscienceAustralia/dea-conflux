@@ -24,7 +24,7 @@ from deafrica_conflux.cli.logs import logging_setup
 @click.option("-v", "--verbose", count=True)
 @click.option(
     "--polygons-vector-file",
-    type=click.Path(),
+    type=str,
     help="Path to the vector file defining the polygon(s) to run polygon drill on to filter datasets.",
 )
 @click.option(
@@ -59,36 +59,35 @@ def get_dataset_ids(
     """
     # Support pathlib paths.
     output_file_path = str(output_file_path)
-
+    
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
     dss = deafrica_conflux.hopper.find_datasets(expressions, [product])
 
-    if polygons_vector_file:
+    if polygons_vector_file is not None:
         # Read the vector file.
         try:
             polygons_gdf = gpd.read_file(polygons_vector_file)
         except Exception as error:
             _log.exception(f"Could not read the file {polygons_vector_file}")
             raise error
-        else:
-            # Guess the ID field.
-            id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
-            _log.debug(f"Guessed ID field: {id_field}")
+        # Guess the ID field.
+        id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
+        _log.debug(f"Guessed ID field: {id_field}")
 
-            # Set the ID field as the index.
-            polygons_gdf.set_index(id_field, inplace=True)
+        # Set the ID field as the index.
+        polygons_gdf.set_index(id_field, inplace=True)
 
-            _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
+        _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
 
-            # Reprojection is done to avoid UserWarning: Geometry is in a geographic CRS.
-            # when using filter_datasets when polygons are in "EPSG:4326" crs.
-            polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
+        # Reprojection is done to avoid UserWarning: Geometry is in a geographic CRS.
+        # when using filter_datasets when polygons are in "EPSG:4326" crs.
+        polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
 
-            dataset_ids = deafrica_conflux.drill.filter_datasets(
-                dss, polygons_gdf, worker_num=num_worker
-            )
+        dataset_ids = deafrica_conflux.drill.filter_datasets(
+            dss, polygons_gdf, worker_num=num_worker
+        )
     else:
         dataset_ids = [str(ds.id) for ds in dss]
 
@@ -104,7 +103,9 @@ def get_dataset_ids(
         else:
             fs = fsspec.filesystem("file")
             _log.info("Dataset ids will be saved to a local text file")
-            path_head, path_tail = os.path.split(output_file_path)
+            parsed_output_fp = urllib.parse.urlparse(output_file_path).path
+            absolute_output_fp = os.path.abspath(parsed_output_fp)
+            path_head, path_tail = os.path.split(absolute_output_fp)
             if path_head:
                 if not fs.exists(path_head):
                     fs.mkdirs(path_head, exist_ok=True)
@@ -115,3 +116,5 @@ def get_dataset_ids(
                 file.write(f"{dataset_id}\n")
 
         _log.info(f"Dataset IDs written to: {output_file_path}.")
+
+    return 0
