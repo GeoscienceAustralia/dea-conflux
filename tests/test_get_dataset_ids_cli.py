@@ -44,14 +44,16 @@ def test_get_dataset_ids_write_to_local_file(runner):
     use_id = "UID"
     output_file_path = str(TEST_TEXT_FILE_LOCAL)
     num_worker = "8"
-    args = ["--verbose",
-            f"--polygons-vector-file={polygons_vector_file}",
-            f"--use-id={use_id}",
-            f"--output-file-path={output_file_path}",
-            f"--num-worker={num_worker}",
-            product,
-            expressions]
-    
+    args = [
+        "--verbose",
+        f"--polygons-vector-file={polygons_vector_file}",
+        f"--use-id={use_id}",
+        f"--output-file-path={output_file_path}",
+        f"--num-worker={num_worker}",
+        product,
+        expressions,
+    ]
+
     # If file exists remove it.
     fs = fsspec.filesystem("file")
     if fs.exists(output_file_path):
@@ -78,14 +80,16 @@ def test_get_dataset_ids_write_to_existing_local_file(runner):
     use_id = "UID"
     output_file_path = str(TEST_TEXT_FILE_LOCAL)
     num_worker = "8"
-    args = ["--verbose",
-            f"--polygons-vector-file={polygons_vector_file}",
-            f"--use-id={use_id}",
-            f"--output-file-path={output_file_path}",
-            f"--num-worker={num_worker}",
-            product,
-            expressions]
-    
+    args = [
+        "--verbose",
+        f"--polygons-vector-file={polygons_vector_file}",
+        f"--use-id={use_id}",
+        f"--output-file-path={output_file_path}",
+        f"--num-worker={num_worker}",
+        product,
+        expressions,
+    ]
+
     # If file exists remove it.
     fs = fsspec.filesystem("file")
     if fs.exists(output_file_path):
@@ -103,7 +107,9 @@ def test_get_dataset_ids_write_to_existing_local_file(runner):
     fs.rm(output_file_path)
 
 
-@pytest.mark.skip(reason="This test fails due to this error from aiobotocore issue AttributeError: 'MockRawResponse' object has no attribute 'raw_headers'")
+@pytest.mark.skip(
+    reason="This test fails due to this error from aiobotocore issue AttributeError: 'MockRawResponse' object has no attribute 'raw_headers'"
+)
 @mock_s3
 def test_get_dataset_ids_write_to_s3_file(runner, s3_client):
     # This test fails due to this error from aiobotocore issue
@@ -114,14 +120,16 @@ def test_get_dataset_ids_write_to_s3_file(runner, s3_client):
     use_id = "UID"
     output_file_path = str(TEST_TEXT_FILE_S3)
     num_worker = "8"
-    args = ["--verbose",
-            f"--polygons-vector-file={polygons_vector_file}",
-            f"--use-id={use_id}",
-            f"--output-file-path={output_file_path}",
-            f"--num-worker={num_worker}",
-            product,
-            expressions]
-    
+    args = [
+        "--verbose",
+        f"--polygons-vector-file={polygons_vector_file}",
+        f"--use-id={use_id}",
+        f"--output-file-path={output_file_path}",
+        f"--num-worker={num_worker}",
+        product,
+        expressions,
+    ]
+
     # If file exists remove it.
     fs = fsspec.filesystem("s3")
     if fs.exists(output_file_path):

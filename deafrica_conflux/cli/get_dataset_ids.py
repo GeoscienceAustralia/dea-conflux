@@ -59,7 +59,7 @@ def get_dataset_ids(
     """
     # Support pathlib paths.
     output_file_path = str(output_file_path)
-    
+
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
