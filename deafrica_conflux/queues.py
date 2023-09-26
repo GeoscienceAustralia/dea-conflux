@@ -275,14 +275,13 @@ def send_batch(
             failed = send_message_batch_response.get("Failed", None)
             
             if successful is not None:
-                # ID in the send_message_batch_response matches ID in the entries.
-                # Use ID to identify successfully sent entries.
+                # ID in the send_message_batch_response matches ID in the batch.
+                # Use ID to identify successfully sent entries in the batch.
                 successful_ids = [msg["Id"] for msg in successful]
                 successful_entries = [entry for entry in batch if entry["Id"] in successful_ids]
                 successful_messages = [entry["MessageBody"] for entry in successful_entries]
                 _log.info(f"Successfully sent messages {successful_messages} to queue {queue_url}")
                 successful_msgs_list.extend(successful_entries)
-                # Delete successful entries from the batch
             if failed is not None:
                 failed_ids = [msg["Id"] for msg in failed]
                 failed_entries = [entry for entry in batch if entry["Id"] in failed_ids]
@@ -303,8 +302,8 @@ def send_batch_with_retry(
     queue_url: str, messages: list[str], max_retries: int = 10, sqs_client: SQSClient | None = None
 ) -> tuple[list | None, list | None]:
     """
-    Sends a batch of messages in a single request to an SQS queue.
-    Retry to send failed messages `max_retries` number of times.
+    Sends messages to an SQS queue and retry a maximum a number of `max_retries` of times
+    to send failed messages.
 
     Parameters
     ----------
@@ -327,12 +326,14 @@ def send_batch_with_retry(
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
         
+    successfully_sent = []
     retries = 0
     while retries <= max_retries:
         successful, messages = send_batch(queue_url=queue_url,
                                           messages=messages,
                                           sqs_client=sqs_client)
-                
+        
+        successfully_sent.extend(successful)
         # If there are failed messages increase the number of retries by 1.
         if messages:
             retries += 1
@@ -340,10 +341,12 @@ def send_batch_with_retry(
             break
 
     if messages:
-        _log.info(f"Failed to send messages {messages} to queue {queue_url}")
+        _log.error(f"Failed to send messages {messages} to queue {queue_url} after {max_retries} retries.")
+
+    return successfully_sent, messages
 
 
-def push_to_queue_from_txt(
+def push_dataset_ids_to_queue_from_txt(
     text_file_path: str | Path, queue_name: str, max_retries: int = 10, sqs_client: SQSClient = None
 ):
     """
@@ -352,12 +355,12 @@ def push_to_queue_from_txt(
     Parameters
     ----------
     text_file_path : str | Path
-        File path (s3 or local) of the text file to push to the specified
-        SQS queue.
+        File path (s3 or local) of the text file containing the dataset ids to be
+        push to the specified SQS queue.
     queue_name : str
         Name of the SQS queue to push the lines of the text file to.
     max_retries: int
-        Maximum number of times to retry to send a batch of messages.
+        Maximum number of times to retry to a dataset id to the SQS queue.
     sqs_client : SQSClient, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
     """
@@ -382,106 +385,148 @@ def push_to_queue_from_txt(
     queue_url = get_queue_url(queue_name, sqs_client)
 
     # Process each line to prevent loading the entire file into memory.
+    failed_to_push = []
     with fs.open(text_file_path, "r") as file:
-        # Process each line.
         for line in file:
             dataset_id = line.strip()
+            # Push the dataset id to the sqs queue.
+            _, failed = send_batch_with_retry(queue_url=queue_url,
+                                              messages=[dataset_id],
+                                              max_retries=max_retries,
+                                              sqs_client=sqs_client)
+            if failed:
+                failed_to_push.extend(failed)
 
-            # Send the dataset id as a message to the SQS Queue
-
-
+    if failed_to_push:
+        _log.error(f"Failed to push ids {failed_to_push} ")
     
-def send_message(
-        queue_url: str,
-        receipt_handles: list[str],
-        max_retries: int = 10,
-        sqs_client: SQSClient | None = None,):
-    
-    
-    # Get the service client.
-    if sqs_client is None:
-        sqs_client = boto3.client("sqs")
-
-    # Send the message.
-    
-    
-
 
 def delete_batch(
     queue_url: str,
-    receipt_handles: list[str],
-    max_retries: int = 10,
+    entries: list[dict[str, str]],
     sqs_client: SQSClient | None = None,
 ):
     """
-    Deletes a batch of messages in a single request to an SQS queue.
+    Deletes messages from a SQS queue.
 
     Parameters
     ----------
     queue_url : str
-        URL of the SQS queue from which messages are deleted.
-    receipt_handles : list[str]
-        A list of the receipt handles for the messages to be deleted.
+        URL of the SQS queue to delete messages from.
+    entries : list[dict[str, str]]
+        A list of the messages to be deleted. The entries must contain an "Id"
+        and "ReceiptHandle".
+    sqs_client : SQSClient | None, optional
+        A low-level client representing Amazon Simple Queue Service (SQS), by default None
+
+    Returns
+    -------
+    tuple[list, list]
+        A list of the successfully deleted messages and a list of the failed messages.
+
+    """
+
+    # Get the service client.
+    if sqs_client is None:
+        sqs_client = boto3.client("sqs")
+
+    # Assert each message contains the required properties.
+    for entry in entries:
+        assert "Id" in entry.keys()
+        assert "ReceiptHandle" in entry.keys()
+
+    # Batch the entries into groups of 10.
+    batched_entries = batch_messages(messages=entries, n=10)
+
+    # Assert each message contains the required properties.
+    for entry in entries:
+        assert "Id" in entry.keys()
+        assert "ReceiptHandle" in entry.keys()
+
+    # Batch the entries into groups of 10.
+    batched_entries = batch_messages(messages=entries, n=10)
+    
+    successful_entries_list = []
+    failed_entries_list = []
+    for batch in batched_entries:
+        try:
+            delete_response = sqs_client.delete_message_batch(QueueUrl=queue_url, Entries=batch)
+        except ClientError as error:
+            _log.exception(f"Failed to delete messages {batch} from queue: {queue_url}.")
+            raise error
+        else:
+            successful = delete_response.get("Successful", None)
+            failed = delete_response.get("Failed", None)
+
+            if successful is not None:
+                # ID in the delete_response matches ID in the batch.
+                # Use ID to identify successfully deleted entries in the batch.
+                successful_ids = [msg["Id"] for msg in successful]
+                successful_entries = [entry for entry in batch if entry["Id"] in successful_ids]
+                _log.info(f"Successfully deleted messages {successful_entries} from queue {queue_url}")
+                successful_entries_list.extend(successful_entries)
+            if failed is not None:
+                failed_ids = [msg["Id"] for msg in failed]
+                failed_entries = [entry for entry in batch if entry["Id"] in failed_ids]
+                _log.error(f"Failed to delete messages {failed_entries} from queue {queue_url}")
+                failed_entries_list.extend(failed_entries)
+                
+    if successful_entries_list:
+        _log.info(f"Successfully deleted {len(successful_entries_list)} out of {len(entries)} messages from queue {queue_url}")
+
+    if failed_entries_list:
+        _log.error(f"Failed to delete messages {len(failed_entries_list)} out of {len(entries)} messages from queue {queue_url}")
+
+    return successful_entries_list, failed_entries_list
+     
+
+def delete_batch_with_retry(
+    queue_url: str, entries: list[dict[str, str]], max_retries: int = 10, sqs_client: SQSClient | None = None
+) -> tuple[list | None, list | None]:
+    """
+    Delete messages from an SQS queue and retry a maximum a number of `max_retries` of times
+    to delete failed messages.
+
+    Parameters
+    ----------
+    queue_url : str
+        URL of the SQS queue to delete messages from.
+    entries : list[dict[str, str]]
+        A list of the messages to be deleted. The entries must contain an "Id"
+        and "ReceiptHandle".
     max_retries : int, optional
         Maximum number of times to retry to delete a batch of messages., by default 10
     sqs_client : SQSClient | None, optional
         A low-level client representing Amazon Simple Queue Service (SQS), by default None
 
-    """
+    Returns
+    -------
+    tuple[list, list]
+        A list of the successfully deleted messages and a list of the failed messages.
 
+    """
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
+        
+    successfully_deleted = []
+    retries = 0
+    while retries <= max_retries:
+        successful, entries = delete_batch(queue_url=queue_url,
+                                           entries=entries,
+                                           sqs_client=sqs_client)
+        
+        successfully_deleted.extend(successful)
+        # If there are failed messages increase the number of retries by 1.
+        if entries:
+            retries += 1
+        else:  # If there are no failed messages break the loop.
+            break
 
-    entries = []
-    for idx, receipt_handle in enumerate(receipt_handles):
-        entry = {"Id": str(idx), "ReceiptHandle": str(receipt_handle)}
-        entries.append(entry)
+    if entries:
+        _log.error(f"Failed to delete messages {entries} from queue {queue_url} after {max_retries} retries.")
 
-    batched_entries = batch_messages(messages=entries, n=10)
-
-    successful_entries_list = []
-    failed_entries_list = []
-    for batch in batched_entries:
-        assert len(batch) <= 10
-
-        retries = 0
-        batch_success = []
-        while retries <= max_retries:
-            try:
-                delete_message_batch_response = sqs_client.delete_message_batch(
-                    QueueUrl=queue_url, Entries=batch
-                )
-            except ClientError as error:
-                _log.exception(f"Failed to delete messages from queue: {queue_url}.")
-                raise error
-            else:
-                successful = delete_message_batch_response.get("Successful", None)
-                failed = delete_message_batch_response.get("Failed", None)
-
-                if successful is not None:
-                    _log.info(f"Succesfully deleted messages {successful} from queue {queue_url}")
-                    batch_success.extend(successful)
-
-                if failed is not None:
-                    _log.info(f"Failed to delete messages {failed} from queue {queue_url}")
-                    retries += 1
-                else:
-                    retries = 0
-                # There are no messages left in the queue to delete.
-                if successful is None and failed is None:
-                    break
-
-        if batch_success:
-            successful_entries_list.extend(batch_success)
-
-        if failed:
-            failed_entries_list.extend(failed)
-
-    if successful_entries_list:
-        _log.info(f"Succesfully deleted messages {len(successful_entries_list)} from queue {queue_url}")
-    if failed_entries_list:
-        _log.error(f"Failed to delete {len(failed_entries_list)} messages from queue {queue_url}.")
+    return successfully_deleted, entries
 
 
 def receive_batch(
