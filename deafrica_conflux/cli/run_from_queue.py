@@ -70,9 +70,14 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
 )
 @click.option("-v", "--verbose", count=True)
 @click.option(
-    "--timeout",
+    "--visibility-timeout",
     default=18 * 60,
     help="The duration in seconds that a received SQS msg is invisible.",
+)
+@click.option(
+    "--max-retries",
+    default=10,
+    help="Maximum number of times to retry sending/receiving messages to/from a SQS queue.",
 )
 @click.option("--db/--no-db", default=True, help="Write to the Waterbodies database.")
 @click.option(
@@ -90,7 +95,8 @@ def run_from_sqs_queue(
     overwrite,
     overedge,
     verbose,
-    timeout,
+    visibility_timeout,
+    max_retries,
     db,
     dump_empty_dataframe,
 ):
@@ -114,21 +120,24 @@ def run_from_sqs_queue(
     except Exception as error:
         _log.exception(f"Could not read file {polygons_vector_file}")
         raise error
+    else:
+        # Guess the ID field.
+        id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
+        _log.info(f"Guessed ID field: {id_field}")
 
-    # Guess the ID field.
-    id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
-    _log.info(f"Guessed ID field: {id_field}")
-
-    # Set the ID field as the index.
-    polygons_gdf.set_index(id_field, inplace=True)
-
-    dead_letter_queue_name = dataset_ids_queue + "_deadletter"
+        # Set the ID field as the index.
+        polygons_gdf.set_index(id_field, inplace=True)
 
     # Create the service client.
     sqs_client = boto3.client("sqs")
-    # Read ID/s from the queue.
+
     dataset_ids_queue_url = deafrica_conflux.queues.get_queue_url(
         queue_name=dataset_ids_queue, sqs_client=sqs_client
+    )
+    # Get the dead-letter queue.
+    dead_letter_queue_name = f"{dataset_ids_queue}-deadletter"
+    dead_letter_queue_url = deafrica_conflux.queues.get_queue_url(
+        queue_name=dead_letter_queue_name, sqs_client=sqs_client
     )
 
     if db:
@@ -136,51 +145,47 @@ def run_from_sqs_queue(
 
     dc = datacube.Datacube(app="deafrica-conflux-drill")
 
-    message_retries = 10
-    while message_retries > 0:
-        response = sqs_client.receive_message(
-            QueueUrl=dataset_ids_queue_url,
-            AttributeNames=["All"],
-            MaxNumberOfMessages=1,
-            VisibilityTimeout=timeout,
+    retries = 0
+    while retries <= max_retries:
+        # Retrieve a single message from the dataset_ids_queue.
+        message = deafrica_conflux.queues.receive_a_message(
+            queue_url=dataset_ids_queue_url,
+            max_retries=max_retries,
+            visibility_timeout=visibility_timeout,
+            sqs_client=sqs_client,
         )
-        messages = response["Messages"]
-
-        if len(messages) == 0:
-            _log.info("No messages received from queue")
-            message_retries -= 1
-            continue
+        if message is None:
+            retries += 1
         else:
-            message_retries = 10
+            retries = 0  # reset the count
 
-        # Process each ID.
-        dataset_ids = [msg["Body"] for msg in messages]
-        _log.info(f"Read {dataset_ids} from queue")
+            # Process the ID.
+            dataset_id = message["Body"]
+            _log.info(f"Read dataset id {dataset_id} from queue {dataset_ids_queue_url}")
 
-        entries = [
-            {"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]} for msg in messages
-        ]
+            entry_to_delete = [
+                {"Id": message["MessageId"], "ReceiptHandle": message["ReceiptHandle"]}
+            ]
 
-        # Loop through the scenes to produce parquet files.
-        for i, (entry, id_) in enumerate(zip(entries, dataset_ids)):
+            # Produce the parquet file.
             success_flag = True
-
-            _log.info(f"Processing {id_} ({i + 1}/{len(dataset_ids)})")
-
-            centre_date = dc.index.datasets.get(id_).center_time
+            centre_date = dc.index.datasets.get(dataset_id).center_time
 
             if not overwrite:
-                _log.info(f"Checking existence of {id_}")
+                _log.info(f"Checking existence of {dataset_id}")
                 exists = deafrica_conflux.io.table_exists(
-                    product_name, id_, centre_date, output_directory
+                    drill_name=product_name,
+                    uuid=dataset_id,
+                    centre_date=centre_date,
+                    output_directory=output_directory,
                 )
 
             if overwrite or not exists:
                 try:
                     table = deafrica_conflux.drill.drill(
-                        plugin,
-                        polygons_gdf,
-                        id_,
+                        plugin=plugin,
+                        polygons_gdf=polygons_gdf,
+                        scene_uuid=dataset_id,
                         partial=partial,
                         overedge=overedge,
                         dc=dc,
@@ -190,7 +195,11 @@ def run_from_sqs_queue(
                     # dump that dataframe as PQ file
                     if (dump_empty_dataframe) or (not table.empty):
                         pq_filename = deafrica_conflux.io.write_table_to_parquet(
-                            product_name, id_, centre_date, table, output_directory
+                            drill_name=product_name,
+                            uuid=dataset_id,
+                            centre_date=centre_date,
+                            table=table,
+                            output_directory=output_directory,
                         )
                         if db:
                             _log.debug(f"Writing {pq_filename} to DB")
@@ -201,36 +210,53 @@ def run_from_sqs_queue(
                                 drop=False,
                             )
                 except KeyError as keyerr:
-                    _log.exception(f"Found {id_} has KeyError: {str(keyerr)}")
-                    deafrica_conflux.queues.move_to_deadletter_queue(
-                        dead_letter_queue_name, id_, sqs_client
+                    _log.exception(f"Found {dataset_id} has KeyError: {str(keyerr)}")
+                    deafrica_conflux.queues.move_to_dead_letter_queue(
+                        deadletter_queue_url=dead_letter_queue_url,
+                        message_body=dataset_id,
+                        sqs_client=sqs_client,
                     )
                     success_flag = False
                 except TypeError as typeerr:
-                    _log.exception(f"Found {id_} has TypeError: {str(typeerr)}")
-                    deafrica_conflux.queues.move_to_deadletter_queue(
-                        dead_letter_queue_name, id_, sqs_client
+                    _log.exception(f"Found {dataset_id} has TypeError: {str(typeerr)}")
+                    deafrica_conflux.queues.move_to_dead_letter_queue(
+                        deadletter_queue_url=dead_letter_queue_url,
+                        message_body=dataset_id,
+                        sqs_client=sqs_client,
                     )
                     success_flag = False
                 except RasterioIOError as ioerror:
-                    _log.exception(f"Found {id_} has RasterioIOError: {str(ioerror)}")
-                    deafrica_conflux.queues.move_to_deadletter_queue(
-                        dead_letter_queue_name, id_, sqs_client
+                    _log.exception(f"Found {dataset_id} has RasterioIOError: {str(ioerror)}")
+                    deafrica_conflux.queues.move_to_dead_letter_queue(
+                        deadletter_queue_url=dead_letter_queue_url,
+                        message_body=dataset_id,
+                        sqs_client=sqs_client,
                     )
                     success_flag = False
             else:
-                _log.info(f"{id_} already exists, skipping")
+                _log.info(f"{dataset_id} already exists, skipping")
 
-            # Delete from queue.
+            # Delete datased id from queue.
             if success_flag:
-                _log.info(f"Successful, deleting {id_}")
-                response = sqs_client.delete_message_batch(
-                    QueueUrl=dataset_ids_queue_url, Entries=[entry]
+                _log.info(f"Successful, deleting {dataset_id}")
+                (
+                    successfully_deleted,
+                    failed_to_delete,
+                ) = deafrica_conflux.queues.delete_batch_with_retry(
+                    queue_url=dataset_ids_queue_url,
+                    entries=entry_to_delete,
+                    max_retries=max_retries,
+                    sqs_client=sqs_client,
                 )
-                if len(response["Successful"]) != 1:
-                    _log.error(f"Failed to delete message: {entry}")
-                    raise RuntimeError(f"Failed to delete message: {entry}")
+                if failed_to_delete:
+                    _log.error(
+                        f"Failed to delete dataset id {dataset_id} from queue {dataset_ids_queue_url}"
+                    )
+                    raise RuntimeError(f"Failed to delete dataset id: {dataset_id}")
+                else:
+                    _log.info(f"Deleted dataset id {dataset_id} from queue")
+
             else:
                 _log.info(
-                    f"Not successful, moved {id_} to dead letter queue {dead_letter_queue_name}"
+                    f"Not successful, moved {dataset_id} to dead letter queue {dead_letter_queue_url}"
                 )

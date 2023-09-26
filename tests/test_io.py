@@ -78,9 +78,11 @@ def test_write_table_local(conflux_table):
 
 def test_write_table_s3(conflux_table, s3_client):
     # Create bucket.
-    s3_client.create_bucket(ACL='public-read-write',
-                            Bucket=TEST_BUCKET,
-                            CreateBucketConfiguration={'LocationConstraint': 'af-south-1'})
+    s3_client.create_bucket(
+        ACL="public-read-write",
+        Bucket=TEST_BUCKET,
+        CreateBucketConfiguration={"LocationConstraint": "af-south-1"},
+    )
 
     test_date = datetime.datetime(2018, 1, 1)
     deafrica_conflux.io.write_table_to_parquet(
@@ -91,7 +93,7 @@ def test_write_table_s3(conflux_table, s3_client):
         output_directory=TEST_S3_DIR,
     )
     outpath = os.path.join(TEST_S3_DIR, "20180101", "name_uuid_20180101-000000-000000.pq")
-    
+
     fs = fsspec.filesystem("s3")
     if fs.exists(outpath):
         assert True
@@ -103,11 +105,13 @@ def test_write_table_s3(conflux_table, s3_client):
 
 def test_read_write_table(conflux_table):
     test_date = datetime.datetime(2018, 1, 1)
-    deafrica_conflux.io.write_table_to_parquet(drill_name="name",
-                                               uuid="uuid",
-                                               centre_date=test_date,
-                                               table=conflux_table,
-                                               output_directory=TEST_LOCAL_DIR)
+    deafrica_conflux.io.write_table_to_parquet(
+        drill_name="name",
+        uuid="uuid",
+        centre_date=test_date,
+        table=conflux_table,
+        output_directory=TEST_LOCAL_DIR,
+    )
     outpath = os.path.join(TEST_LOCAL_DIR, "20180101", "name_uuid_20180101-000000-000000.pq")
     table = deafrica_conflux.io.read_table_from_parquet(outpath)
     assert len(table) == 3
@@ -135,7 +139,7 @@ def test_check_local_dir_exists_true():
 
     # Check if dir exists.
     assert deafrica_conflux.io.check_dir_exists(TEST_LOCAL_DIR)
-    
+
     # Tear down.
     fs.rm(TEST_LOCAL_DIR, recursive=True)
 
@@ -148,7 +152,7 @@ def test_check_local_dir_exists_false():
 @mock_s3
 def test_check_s3_dir_exists_true(s3_client):
     # Create the test bucket.
-    response = s3_client.create_bucket( # noqa F841
+    response = s3_client.create_bucket(  # noqa F841
         Bucket=TEST_BUCKET,
         CreateBucketConfiguration={"LocationConstraint": "af-south-1"},
     )

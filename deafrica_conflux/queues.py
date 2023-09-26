@@ -25,7 +25,7 @@ _log = logging.getLogger(__name__)
 # https://github.com/awsdocs/aws-doc-sdk-examples/tree/main/python/example_code/sqs#code-examples
 def get_queue_url(queue_name: str, sqs_client: SQSClient = None) -> str:
     """
-    Get the URL of an existing Amazon SQS queue by name, e.g., alex-really-secret-queue
+    Get the URL of an existing SQS queue by name, e.g., alex-really-secret-queue
 
     Parameters
     ----------
@@ -103,7 +103,7 @@ def make_source_queue(
     sqs_client: SQSClient = None,
 ):
     """
-    Creates an Amazon SQS queue.
+    Creates a SQS queue.
 
     Parameters
     ----------
@@ -174,7 +174,7 @@ def make_source_queue(
 
 def delete_queue(queue_name: str, sqs_client: SQSClient = None):
     """
-    Deletes a queue, regardless of the queue's contents.
+    Deletes a SQS queue, regardless of the queue's contents.
 
     Parameters
     ----------
@@ -232,7 +232,7 @@ def send_batch(
     queue_url: str, messages: list[str], sqs_client: SQSClient | None = None
 ) -> tuple[list | None, list | None]:
     """
-    Sends messages to an SQS queue.
+    Sends messages to a SQS queue.
 
     Parameters
     ----------
@@ -307,7 +307,7 @@ def send_batch_with_retry(
     queue_url: str, messages: list[str], max_retries: int = 10, sqs_client: SQSClient | None = None
 ) -> tuple[list | None, list | None]:
     """
-    Sends messages to an SQS queue and retry a maximum a number of `max_retries` of times
+    Sends messages to a SQS queue and retry a maximum a number of `max_retries` times
     to send failed messages.
 
     Parameters
@@ -351,6 +351,40 @@ def send_batch_with_retry(
         )
 
     return successfully_sent, messages
+
+
+def move_to_dead_letter_queue(
+    dead_letter_queue_url: str,
+    message_body: str,
+    max_retries: int = 10,
+    sqs_client: SQSClient = None,
+):
+    """
+    Deliver a message to the dead-letter SQS queue.
+
+    Parameters
+    ----------
+    dead_letter_queue_url : str
+        URL of the dead-letter SQS queue to receive the message.
+    message_body : str
+        The body text of the message.
+    max_retries : int, optional
+        Maximum number of times to try to resend a message to the dead-letter SQS queue.
+    sqs_client : SQSClient, optional
+        A low-level client representing Amazon Simple Queue Service (SQS), by default None
+    """
+    # Get the service client.
+    if sqs_client is None:
+        sqs_client = boto3.client("sqs")
+
+    message = [str(message_body)]
+    # Send message to SQS queue
+    send_batch_with_retry(
+        queue_url=dead_letter_queue_url,
+        messages=message,
+        max_retries=max_retries,
+        sqs_client=sqs_client,
+    )
 
 
 def push_dataset_ids_to_queue_from_txt(
@@ -614,40 +648,3 @@ def receive_a_message(
     else:
         _log.info(f"Received no message from queue {queue_url}")
         return None
-
-
-def move_to_deadletter_queue(
-    deadletter_queue_url: str,
-    message_body: str,
-    max_retries: int = 10,
-    sqs_client: SQSClient = None,
-):
-    """
-    Deliver a message to the dead-letter SQS queue.
-
-    Parameters
-    ----------
-    deadletter_queue_url : str
-        URL of the deadletter SQS queue to receive the message.
-    message_body : str
-        The body text of the message.
-    max_retries : int, optional
-        Maximum number of times to try to resend a message to the deadleter SQS queue.
-    sqs_client : SQSClient, optional
-        A low-level client representing Amazon Simple Queue Service (SQS), by default None
-    """
-    # Get the service client.
-    if sqs_client is None:
-        sqs_client = boto3.client("sqs")
-
-    # Only send one message, so 1 is OK as the identifier for a message in this
-    # batch used to communicate the result.
-    entry = {"Id": "1", "MessageBody": str(message_body)}
-
-    # Send message to SQS queue
-    send_batch_with_retry(
-        queue_url=deadletter_queue_url,
-        messages=[entry],
-        max_retries=max_retries,
-        sqs_client=sqs_client,
-    )
