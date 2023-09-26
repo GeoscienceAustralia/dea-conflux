@@ -27,6 +27,6 @@ def push_to_sqs_queue(text_file_path, queue_name, verbose):
     # Create an sqs client.
     sqs_client = boto3.client("sqs")
 
-    deafrica_conflux.queues.push_to_queue_from_txt(
-        text_file_path=text_file_path, queue_name=queue_name, sqs_client=sqs_client
+    deafrica_conflux.queues.push_dataset_ids_to_queue_from_txt(
+        text_file_path=text_file_path, queue_name=queue_name, max_retries=10, sqs_client=sqs_client
     )
