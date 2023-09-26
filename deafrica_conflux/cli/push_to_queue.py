@@ -15,10 +15,15 @@ from deafrica_conflux.cli.logs import logging_setup
     help="REQUIRED. Path to text file to push to queue.",
 )
 @click.option("--queue-name", required=True, help="REQUIRED. Queue name to push to.")
+@click.option(
+    "--max-retries",
+    default=10,
+    help="Maximum number of times to retry sending/receiving messages to/from a SQS queue.",
+)
 @click.option("-v", "--verbose", count=True)
-def push_to_sqs_queue(text_file_path, queue_name, verbose):
+def push_to_sqs_queue(text_file_path, queue_name, max_retries, verbose):
     """
-    Push lines of a text file to a SQS queue.
+    Push dataset ids from the lines of a text file to a SQS queue.
     """
     # Cribbed from datacube-alchemist
     logging_setup(verbose)
@@ -27,6 +32,24 @@ def push_to_sqs_queue(text_file_path, queue_name, verbose):
     # Create an sqs client.
     sqs_client = boto3.client("sqs")
 
-    deafrica_conflux.queues.push_dataset_ids_to_queue_from_txt(
-        text_file_path=text_file_path, queue_name=queue_name, max_retries=10, sqs_client=sqs_client
+    failed_to_push = deafrica_conflux.queues.push_dataset_ids_to_queue_from_txt(
+        text_file_path=text_file_path,
+        queue_name=queue_name,
+        max_retries=max_retries,
+        sqs_client=sqs_client,
     )
+
+    if failed_to_push:
+        # Push the failed dataset ids to the deadletter queue.
+        deadletter_queue_name = f"{queue_name}-deadletter"
+        deadletter_queue_url = deafrica_conflux.queues.get_queue_url(
+            queue_name=deadletter_queue_name, sqs_client=sqs_client
+        )
+
+        for idx in failed_to_push:
+            deafrica_conflux.queues.move_to_deadletter_queue(
+                deadletter_queue_name=deadletter_queue_url,
+                message_body=idx,
+                max_retries=max_retries,
+                sqs_client=sqs_client,
+            )
