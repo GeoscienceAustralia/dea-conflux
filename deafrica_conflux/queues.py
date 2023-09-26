@@ -558,31 +558,60 @@ def receive_batch(
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
 
-    # Read messages from the queue.
-    received_messages_list = []
-
     retries = 0
+    retrieved_messages = []
     while retries <= max_retries:
-        receive_response = sqs_client.receive_message(
-            QueueUrl=queue_url,
-            AttributeNames=["All"],
-            MaxNumberOfMessages=10,
-            VisibilityTimeout=visibility_timeout,
-        )
-        received_messages = receive_response.get("Messages", None)
-        if received_messages is not None:
-            _log.info(f"Received messages {received_messages} from queue {queue_url}")
-            received_messages_list.extend(received_messages)
+        # Retrieve a batch of 10 messages from the queue.
+        receive_response = sqs_client.receive_message(QueueUrl=queue_url,
+                                                      AttributeNames=["All"],
+                                                      MaxNumberOfMessages=10,
+                                                      VisibilityTimeout=3600)
+        receive_messages = receive_response.get("Messages", None)
 
-            # Delete the received messages from the queue
-            receipt_handles = [msg["ReceiptHandle"] for msg in received_messages]
-            delete_batch(queue_url=queue_url,
-                         receipt_handles=receipt_handles,
-                         max_retries=max_retries,
-                         sqs_client=sqs_client)
-            retries = 0
-        else:
+        if receive_messages is None:
             retries += 1
-            _log.info(f"No messages present in queue {queue_url}")
+        else:
+            retries = 0  # Reset the count
 
-    return received_messages_list
+            retrieved_msgs = [msg["Body"] for msg in receive_messages]
+            retrieved_messages.extend(retrieved_msgs)
+
+            # Delete received messages from the queue.
+            entries = [{"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]} for msg in receive_messages]
+            delete_batch_with_retry(queue_url=queue_url,
+                                    entries=entries,
+                                    max_retries=max_retries,
+                                    sqs_client=sqs_client)
+    return retrieved_messages
+
+
+def move_to_deadletter_queue(
+    deadletter_queue_name: str, message_body: str, sqs_client: SQSClient = None
+):
+    """
+    Deliver a message to the dead-letter SQS queue.
+
+    Parameters
+    ----------
+    deadletter_queue_name : str
+        The name of the deadletter SQS queue to receive the message.
+    message_body : str
+        The body text of the message.
+    sqs_client : SQSClient, optional
+        A low-level client representing Amazon Simple Queue Service (SQS), by default None
+    """
+    # Get the service client.
+    if sqs_client is None:
+        sqs_client = boto3.client("sqs")
+
+    deadletter_queue_url = get_queue_url(deadletter_queue_name, sqs_client)
+
+    # Only send one message, so 1 is OK as the identifier for a message in this
+    # batch used to communicate the result.
+    entry = {"Id": "1", "MessageBody": str(message_body)}
+
+    # Send message to SQS queue
+    send_batch_with_retry(queue_url=deadletter_queue_url,
+                          messages=[entry],
+                          max_retries=10,
+                          sqs_client=sqs_client)
