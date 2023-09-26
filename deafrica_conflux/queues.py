@@ -246,8 +246,8 @@ def send_batch(
     Returns
     -------
     tuple[list, list]
-        A list of SendMessageBatchRequestEntry items for the successfully sent messages
-        and a list of SendMessageBatchRequestEntry items for the failed messages.
+        A list of  the successfully sent messages
+        and a list of the failed messages.
 
     """
     # Get the service client.
@@ -261,10 +261,10 @@ def send_batch(
     # SendMessageBatch can only send up to 10 messages at a time.
     batched_entries = batch_messages(messages=entries, n=10)
 
-    successful_entries_list = []
-    failed_entries_list = []
+    successful_msgs_list = []
+    failed_msgs_list = []
     for batch in batched_entries:
-        try: 
+        try:
             send_message_batch_response = sqs_client.send_message_batch(QueueUrl=queue_url,
                                                                         Entries=batch)
         except ClientError as error:
@@ -279,22 +279,24 @@ def send_batch(
                 # Use ID to identify successfully sent entries.
                 successful_ids = [msg["Id"] for msg in successful]
                 successful_entries = [entry for entry in batch if entry["Id"] in successful_ids]
-                _log.info(f"Successfully sent messages {successful_entries} to queue {queue_url}")
-                successful_entries_list.extend(successful_entries)
+                successful_messages = [entry["MessageBody"] for entry in successful_entries]
+                _log.info(f"Successfully sent messages {successful_messages} to queue {queue_url}")
+                successful_msgs_list.extend(successful_entries)
                 # Delete successful entries from the batch
             if failed is not None:
                 failed_ids = [msg["Id"] for msg in failed]
                 failed_entries = [entry for entry in batch if entry["Id"] in failed_ids]
-                _log.error(f"Failed to send messages {failed_entries} to queue {queue_url}")
-                failed_entries_list.extend(failed_entries)
+                failed_messages = [entry["MessageBody"] for entry in failed_entries]
+                _log.error(f"Failed to send messages {failed_messages} to queue {queue_url}")
+                failed_msgs_list.extend(failed_entries)
     
-    if successful_entries_list:
-        _log.info(f"Successfully sent {len(successful_entries_list)} out of {len(entries)} messages to queue {queue_url}")
+    if successful_msgs_list:
+        _log.info(f"Successfully sent {len(successful_msgs_list)} out of {len(messages)} messages to queue {queue_url}")
 
-    if failed_entries_list:
-        _log.error(f"Failed to send messages {len(failed_entries_list)} out of {len(entries)} messages to queue {queue_url}")
+    if failed_msgs_list:
+        _log.error(f"Failed to send messages {len(failed_msgs_list)} out of {len(messages)} messages to queue {queue_url}")
 
-    return successful_entries_list, failed_entries_list
+    return successful_msgs_list, failed_msgs_list
 
 
 def send_batch_with_retry(
