@@ -79,7 +79,7 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
     "--dump-empty-dataframe/--not-dump-empty-dataframe",
     default=True,
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
-)   
+)
 def run_from_sqs_queue(
     dataset_ids_queue,
     polygons_vector_file,
