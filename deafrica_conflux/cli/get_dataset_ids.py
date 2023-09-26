@@ -72,22 +72,23 @@ def get_dataset_ids(
         except Exception as error:
             _log.exception(f"Could not read the file {polygons_vector_file}")
             raise error
-        # Guess the ID field.
-        id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
-        _log.debug(f"Guessed ID field: {id_field}")
+        else:
+            # Guess the ID field.
+            id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
+            _log.debug(f"Guessed ID field: {id_field}")
 
-        # Set the ID field as the index.
-        polygons_gdf.set_index(id_field, inplace=True)
+            # Set the ID field as the index.
+            polygons_gdf.set_index(id_field, inplace=True)
 
-        _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
+            _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
 
-        # Reprojection is done to avoid UserWarning: Geometry is in a geographic CRS.
-        # when using filter_datasets when polygons are in "EPSG:4326" crs.
-        polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
+            # Reprojection is done to avoid UserWarning: Geometry is in a geographic CRS.
+            # when using filter_datasets when polygons are in "EPSG:4326" crs.
+            polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
 
-        dataset_ids = deafrica_conflux.drill.filter_datasets(
-            dss, polygons_gdf, worker_num=num_worker
-        )
+            dataset_ids = deafrica_conflux.drill.filter_datasets(
+                dss, polygons_gdf, worker_num=num_worker
+            )
     else:
         dataset_ids = [str(ds.id) for ds in dss]
 
@@ -116,5 +117,3 @@ def get_dataset_ids(
                 file.write(f"{dataset_id}\n")
 
         _log.info(f"Dataset IDs written to: {output_file_path}.")
-
-    return 0
