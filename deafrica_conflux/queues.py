@@ -326,20 +326,21 @@ def send_batch_with_retry(
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
-
+        
     retries = 0
-    sucessful = []
     while retries <= max_retries:
-        sucessful_msgs, messages = send_batch(
-            queue_url=queue_url, messages=messages, sqs_client=sqs_client
-        )
-        sucessful.extend(sucessful_msgs)
-        if messages is None:
-            break
-        else:
+        successful, messages = send_batch(queue_url=queue_url,
+                                          messages=messages,
+                                          sqs_client=sqs_client)
+                
+        # If there are failed messages increase the number of retries by 1.
+        if messages:
             retries += 1
+        else:  # If there are no failed messages break the loop.
+            break
 
-    return sucessful, messages
+    if messages:
+        _log.info(f"Failed to send messages {messages} to queue {queue_url}")
 
 
 def push_to_queue_from_txt(
