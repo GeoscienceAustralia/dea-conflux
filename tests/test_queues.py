@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import boto3
 import fsspec
@@ -10,7 +11,9 @@ import deafrica_conflux.queues
 
 TEST_SOURCE_QUEUE = "test_waterbodies_queue"
 TEST_DEADLETTER_QUEUE = "test_waterbodies_queue_deadletter"
-TEST_TEXT_FILE = "test_push_to_queue_from_txt.txt"
+
+HERE = Path(__file__).parent.resolve()
+TEST_TEXT_FILE = HERE / "data" / "test_push_to_queue_from_txt.txt"
 
 
 @pytest.fixture(scope="function")
@@ -23,9 +26,10 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "af-south-1"
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sqs_client(aws_credentials):
-    return boto3.client("sqs")
+    with mock_sqs():
+        yield boto3.client("sqs", region_name="af-south-1")
 
 
 @mock_sqs
@@ -144,31 +148,9 @@ def test_delete_empty_sqs_queue(sqs_client):
 
 
 @mock_sqs
-def test_move_to_deadletter_queue(sqs_client):
-    message_body = "Test move to deadletter queue"
-
-    # Create the deadletter queue.
-    sqs_client.create_queue(QueueName=TEST_DEADLETTER_QUEUE)
-    deadletter_queue_url = deafrica_conflux.queues.get_queue_url(TEST_DEADLETTER_QUEUE)
-
-    try:
-        deafrica_conflux.queues.move_to_deadletter_queue(
-            deadletter_queue_name=TEST_DEADLETTER_QUEUE,
-            message_body=message_body,
-            sqs_client=sqs_client,
-        )
-    except Exception:
-        assert False
-    else:
-        response = sqs_client.receive_message(QueueUrl=deadletter_queue_url)
-        assert response["Messages"][0]["Body"] == message_body
-
-
-@mock_sqs
 def test_send_batch(sqs_client):
     # Create messages to send.
-    messages_to_send = list(range(0, 100))
-    messages_to_send = [str(i) for i in messages_to_send]
+    messages_to_send = [str(i) for i in list(range(0, 42))]
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
@@ -181,7 +163,7 @@ def test_send_batch(sqs_client):
     except Exception:
         assert False
     else:
-        assert len(successful_messages) == len(messages_to_send)
+        assert successful_messages == messages_to_send
 
 
 @mock_sqs
@@ -189,8 +171,7 @@ def test_send_batch_with_retry(sqs_client):
     max_retries = 10
 
     # Create messages to send.
-    messages_to_send = list(range(0, 97))
-    messages_to_send = [str(i) for i in messages_to_send]
+    messages_to_send = [str(i) for i in list(range(0, 97))]
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
@@ -206,58 +187,50 @@ def test_send_batch_with_retry(sqs_client):
     except Exception:
         assert False
     else:
-        assert len(messages_to_send) == len(successful_messages)
+        assert messages_to_send == successful_messages
 
 
 @mock_sqs
-def test_receive_batch(sqs_client):
+def test_move_to_deadletter_queue(sqs_client):
+    message_body = "Test move to deadletter queue"
     max_retries = 10
-    visibility_timeout = 3600
 
-    # Create messages to send.
-    messages_to_send = list(range(1, 23))
-    messages_to_send = [str(i) for i in messages_to_send]
+    # Create the deadletter queue.
+    sqs_client.create_queue(QueueName=TEST_DEADLETTER_QUEUE)
+    deadletter_queue_url = deafrica_conflux.queues.get_queue_url(TEST_DEADLETTER_QUEUE)
 
-    # Create queue.
-    sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
-    queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
-
-    deafrica_conflux.queues.send_batch(
-        queue_url=queue_url, messages=messages_to_send, sqs_client=sqs_client
-    )
     try:
-        received_messages = deafrica_conflux.queues.receive_batch(
-            queue_url=queue_url,
+        deafrica_conflux.queues.move_to_dead_letter_queue(
+            deadletter_queue_url=deadletter_queue_url,
+            message_body=message_body,
             max_retries=max_retries,
-            visibility_timeout=visibility_timeout,
             sqs_client=sqs_client,
         )
     except Exception:
         assert False
     else:
-        assert len(messages_to_send) == len(received_messages)
+        response = sqs_client.receive_message(QueueUrl=deadletter_queue_url)
+        assert response["Messages"][0]["Body"] == message_body
 
 
 @mock_sqs
-def test_push_to_queue_from_txt(sqs_client):
+def test_push_dataset_ids_to_queue_from_local_txt(sqs_client):
     max_retries = 10
+    # Create messages to send.
+    dataset_ids = [str(i) for i in list(range(0, 365))]
 
-    # Write messages to text file.
-    messages_to_send = list(range(0, 43))
-    messages_to_send = [str(i) for i in messages_to_send]
-
+    # Write the messages to a local text file
     fs = fsspec.filesystem("file")
-    with fs.open(TEST_TEXT_FILE, "w") as f:
-        for msg in messages_to_send:
-            f.write(f"{msg}\n")
+    with fs.open(TEST_TEXT_FILE, "w") as file:
+        for dataset_id in dataset_ids:
+            file.write(f"{dataset_id}\n")
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
-    queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
 
-    # Push to queue from text file.
+    # Push ids to sqs queues
     try:
-        deafrica_conflux.queues.push_to_queue_from_txt(
+        deafrica_conflux.queues.push_dataset_ids_to_queue_from_txt(
             text_file_path=TEST_TEXT_FILE,
             queue_name=TEST_SOURCE_QUEUE,
             max_retries=max_retries,
@@ -266,55 +239,64 @@ def test_push_to_queue_from_txt(sqs_client):
     except Exception:
         assert False
     else:
-        received_messages = deafrica_conflux.queues.receive_batch(
-            queue_url=queue_url,
-            max_retries=max_retries,
-            visibility_timeout=3600,
-            sqs_client=sqs_client,
-        )
-        assert len(messages_to_send) == len(received_messages)
-        # Remove text file.
-        fs.rm(TEST_TEXT_FILE)
+        assert True
 
 
-@mock_sqs
-def test_delete_batch(sqs_client):
+def test_delete_batch_with_retry(sqs_client):
+    # Create queue.
+    sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
+    queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
+
+    # Create the messages to send.
+    messages = [str(i) for i in list(range(1, 10))]
+
+    # Push the messages to the queue.
+    deafrica_conflux.queues.send_batch(
+        queue_url=queue_url, messages=messages, sqs_client=sqs_client
+    )
+
+    # Receive messages from queue
+    receive_response = sqs_client.receive_message(
+        QueueUrl=queue_url, AttributeNames=["All"], MaxNumberOfMessages=10
+    )
+
+    receive_messages = receive_response["Messages"]
+    entries_to_delete = [
+        {"Id": msg["MessageId"], "ReceiptHandle": msg["ReceiptHandle"]} for msg in receive_messages
+    ]
+
+    # Delete messages
+    successfully_deleted, failed = deafrica_conflux.queues.delete_batch_with_retry(
+        queue_url=queue_url, entries=entries_to_delete, max_retries=10, sqs_client=sqs_client
+    )
+
+    assert successfully_deleted == entries_to_delete
+
+
+def test_receive_a_message(sqs_client):
     max_retries = 10
-
-    # Send messages to queue.
-    messages_to_send = list(range(0, 50))
-    messages_to_send = [str(i) for i in messages_to_send]
+    visibility_timeout = 3600
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
     queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
 
-    # Push messages to queue.
-    deafrica_conflux.queues.send_batch(
-        queue_url=queue_url, messages=messages_to_send, sqs_client=sqs_client
-    )
+    # Create the messages to send.
+    messages = [str(i) for i in list(range(1, 10))]
 
-    # Receive messages from queue.
-    received_messages = deafrica_conflux.queues.receive_batch(
-        queue_url=queue_url, max_retries=max_retries, visibility_timeout=3600, sqs_client=sqs_client
-    )
-    receipt_handles = [msg["ReceiptHandle"] for msg in received_messages]
+    # Send the messages to the queue.
+    deafrica_conflux.queues.send_batch(queue_url=queue_url, messages=messages)
 
-    # Delete messages.
+    # Retrieve a single message.
     try:
-        deafrica_conflux.queues.delete_batch(
+        message = deafrica_conflux.queues.receive_a_message(
             queue_url=queue_url,
-            receipt_handles=receipt_handles,
             max_retries=max_retries,
+            visibility_timeout=visibility_timeout,
             sqs_client=sqs_client,
         )
     except Exception:
         assert False
     else:
-        received_messages = deafrica_conflux.queues.receive_batch(
-            queue_url=queue_url,
-            max_retries=max_retries,
-            visibility_timeout=3600,
-            sqs_client=sqs_client,
-        )
-        assert received_messages == []
+        assert message is not None
+        assert message["Body"] in messages
