@@ -23,7 +23,7 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
     help="Run deafrica-conflux on dataset ids from an SQS queue.",
 )
 @click.option(
-    "-dataset-ids-queue",
+    "--dataset-ids-queue",
     type=str,
     help="SQS Queue to read dataset IDs from to run deafrica-conflux on.",
 )
