@@ -219,7 +219,7 @@ def batch_messages(messages: list, n: int = 10):
     list[list, list]
         A list of lists containing the batched messages.
     """
-    batched_messages = [messages[i: i + n] for i in range(0, len(messages), n)]
+    batched_messages = [messages[i : i + n] for i in range(0, len(messages), n)]
 
     assert len(batched_messages) == math.ceil(len(messages) / n)
 
@@ -604,7 +604,7 @@ def receive_a_message(
                 retries += 1
             else:
                 break  # Reset the count
-    
+
     if received_message is not None:
         assert len(received_message) == 1
         # Get the message body from the retrieved message.
@@ -612,7 +612,7 @@ def receive_a_message(
         return message
     else:
         return None
-    
+
 
 def move_to_deadletter_queue(
     deadletter_queue_url: str,
@@ -643,7 +643,7 @@ def move_to_deadletter_queue(
     entry = {"Id": "1", "MessageBody": str(message_body)}
 
     # Send message to SQS queue
-    send_batch_with_retry(
+    send_batch_with_retstrry(
         queue_url=deadletter_queue_url,
         messages=[entry],
         max_retries=max_retries,
