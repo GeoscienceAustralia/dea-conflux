@@ -253,7 +253,7 @@ def batch_messages(messages: list, n: int = 10):
     list[list, list]
         A list of lists containing the batched messages.
     """
-    batched_messages = [messages[i : i + n] for i in range(0, len(messages), n)]
+    batched_messages = [messages[i: i + n] for i in range(0, len(messages), n)]
 
     assert len(batched_messages) == math.ceil(len(messages) / n)
 
