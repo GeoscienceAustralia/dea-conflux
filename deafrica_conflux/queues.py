@@ -282,13 +282,13 @@ def send_batch(
                 successful_entries = [entry for entry in batch if entry["Id"] in successful_ids]
                 successful_messages = [entry["MessageBody"] for entry in successful_entries]
                 _log.info(f"Successfully sent messages {successful_messages} to queue {queue_url}")
-                successful_msgs_list.extend(successful_entries)
+                successful_msgs_list.extend(successful_messages)
             if failed is not None:
                 failed_ids = [msg["Id"] for msg in failed]
                 failed_entries = [entry for entry in batch if entry["Id"] in failed_ids]
                 failed_messages = [entry["MessageBody"] for entry in failed_entries]
                 _log.error(f"Failed to send messages {failed_messages} to queue {queue_url}")
-                failed_msgs_list.extend(failed_entries)
+                failed_msgs_list.extend(failed_messages)
 
     if successful_msgs_list:
         _log.info(
@@ -609,8 +609,10 @@ def receive_a_message(
         assert len(received_message) == 1
         # Get the message body from the retrieved message.
         message = received_message[0]
+        _log.info(f"Received message {message} from queue {queue_url}")
         return message
     else:
+        _log.info(f"Received no message from queue {queue_url}")
         return None
 
 
@@ -643,7 +645,7 @@ def move_to_deadletter_queue(
     entry = {"Id": "1", "MessageBody": str(message_body)}
 
     # Send message to SQS queue
-    send_batch_with_retstrry(
+    send_batch_with_retry(
         queue_url=deadletter_queue_url,
         messages=[entry],
         max_retries=max_retries,
