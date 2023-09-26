@@ -1,6 +1,6 @@
 import json
 import os
-
+from pathlib import Path
 import boto3
 import fsspec
 import pytest
@@ -10,7 +10,9 @@ import deafrica_conflux.queues
 
 TEST_SOURCE_QUEUE = "test_waterbodies_queue"
 TEST_DEADLETTER_QUEUE = "test_waterbodies_queue_deadletter"
-TEST_TEXT_FILE = "test_push_to_queue_from_txt.txt"
+
+HERE = Path(__file__).parent.resolve()
+TEST_TEXT_FILE = HERE / "data" / "test_push_to_queue_from_txt.txt"
 
 
 @pytest.fixture(scope="function")
@@ -23,9 +25,10 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "af-south-1"
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sqs_client(aws_credentials):
-    return boto3.client("sqs")
+    with mock_sqs():
+        yield boto3.client("sqs", region_name="af-south-1")
 
 
 @mock_sqs
