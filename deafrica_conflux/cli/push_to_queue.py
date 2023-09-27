@@ -41,14 +41,14 @@ def push_to_sqs_queue(text_file_path, queue_name, max_retries, verbose):
 
     if failed_to_push:
         # Push the failed dataset ids to the deadletter queue.
-        deadletter_queue_name = f"{queue_name}-deadletter"
-        deadletter_queue_url = deafrica_conflux.queues.get_queue_url(
-            queue_name=deadletter_queue_name, sqs_client=sqs_client
+        dead_letter_queue_name = f"{queue_name}-deadletter"
+        dead_letter_queue_url = deafrica_conflux.queues.get_queue_url(
+            queue_name=dead_letter_queue_name, sqs_client=sqs_client
         )
 
         for idx in failed_to_push:
-            deafrica_conflux.queues.move_to_deadletter_queue(
-                deadletter_queue_name=deadletter_queue_url,
+            deafrica_conflux.queues.move_to_dead_letter_queue(
+                dead_letter_queue_url=dead_letter_queue_url,
                 message_body=idx,
                 max_retries=max_retries,
                 sqs_client=sqs_client,
