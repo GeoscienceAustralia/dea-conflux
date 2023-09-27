@@ -206,6 +206,7 @@ def run_from_sqs_queue(
                             )
                 except KeyError as keyerr:
                     _log.exception(f"Found {dataset_id} has KeyError: {str(keyerr)}")
+                    _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
                     deafrica_conflux.queues.move_to_dead_letter_queue(
                         dead_letter_queue_url=dead_letter_queue_url,
                         message_body=dataset_id,
@@ -214,6 +215,7 @@ def run_from_sqs_queue(
                     success_flag = False
                 except TypeError as typeerr:
                     _log.exception(f"Found {dataset_id} has TypeError: {str(typeerr)}")
+                    _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
                     deafrica_conflux.queues.move_to_dead_letter_queue(
                         dead_letter_queue_url=dead_letter_queue_url,
                         message_body=dataset_id,
@@ -222,6 +224,7 @@ def run_from_sqs_queue(
                     success_flag = False
                 except RasterioIOError as ioerror:
                     _log.exception(f"Found {dataset_id} has RasterioIOError: {str(ioerror)}")
+                    _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
                     deafrica_conflux.queues.move_to_dead_letter_queue(
                         dead_letter_queue_url=dead_letter_queue_url,
                         message_body=dataset_id,
