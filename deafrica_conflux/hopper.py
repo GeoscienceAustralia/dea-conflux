@@ -59,6 +59,6 @@ def find_datasets(
                     return
         except ValueError as error:
             _log.warning(
-                f"Error searching for datasets. " f"Maybe none were returned? " f"Error was {error}"
+                f"Error searching for datasets. Maybe none were returned? Error was {error}"
             )
             continue

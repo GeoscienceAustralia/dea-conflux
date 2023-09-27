@@ -4,21 +4,24 @@ Geoscience Australia
 2021
 """
 import importlib.util
+from pathlib import Path
 from types import ModuleType
 
 
-def run_plugin(plugin_path: str) -> ModuleType:
+def run_plugin(plugin_path: str | Path) -> ModuleType:
     """Run a Python plugin from a path.
 
     Arguments
     ---------
-    plugin_path : str
+    plugin_path : str | Path
         Path to Python plugin file.
 
     Returns
     -------
     module
     """
+    plugin_path = str(plugin_path)
+
     spec = importlib.util.spec_from_file_location("deafrica_conflux.plugin", plugin_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

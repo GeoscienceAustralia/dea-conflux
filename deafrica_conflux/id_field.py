@@ -1,5 +1,9 @@
+import logging
+
 import geopandas as gpd
 import numpy as np
+
+_log = logging.getLogger(__name__)
 
 
 def id_field_values_is_unique(input_gdf: gpd.geopandas.GeoDataFrame, id_field: str) -> bool:
@@ -28,7 +32,7 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame, use_id: str = "") -> s
     """
     Guess the name of the ID column in the GeoDataFrame if no column name is
     passed to the 'use_id' parameter. If a column name is passed to 'use_id',
-    check if the ids in the column are unique.
+    check if the values in the column are unique.
 
     Parameters
     ----------
@@ -40,7 +44,7 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame, use_id: str = "") -> s
     Returns
     -------
     str
-        ID column name
+        ID column name.
 
     """
 
@@ -49,14 +53,19 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame, use_id: str = "") -> s
     # Check if values in passed use_id column are unique.
     if use_id:
         if use_id not in input_gdf_columns:
+            _log.error(
+                f"Couldn't find ID column '{use_id}' in the GeoDataFrame columns: {input_gdf_columns}."
+            )
             raise ValueError(
-                f"Couldn't find ID column '{use_id}' in the vector file columns: {input_gdf_columns}."
+                f"Couldn't find ID column '{use_id}' in the GeoDataFrame columns: {input_gdf_columns}."
             )
         else:
             if id_field_values_is_unique(input_gdf, use_id):
+                _log.info(f"Values in the column {use_id} are unique.")
                 return use_id
             else:
-                raise ValueError(f"Values in the {use_id} column are not unique.")
+                _log.error(f"Values in the column {use_id} are not unique.")
+                raise ValueError(f"Values in the column {use_id} are not unique.")
 
     # Guess ID column to use.
     else:
@@ -87,15 +96,20 @@ def guess_id_field(input_gdf: gpd.geopandas.GeoDataFrame, use_id: str = "") -> s
                     guess_result.append(guess)
 
         if not guess_result:
+            _log.error(
+                f"Couldn't find any ID column {possible_id_columns} in the GeoDataFrame columns {input_gdf_columns}."
+            )
             raise ValueError(
-                f"Couldn't find any ID column {possible_id_columns} in the vector file columns: {input_gdf_columns}."
+                f"Couldn't find any ID column {possible_id_columns} in the GeoDataFrame columns {input_gdf_columns}."
             )
         else:
             for list_index, list_item in enumerate(guess_result):
                 if id_field_values_is_unique(input_gdf, list_item):
+                    _log.info(f"Values in the column {list_item} are unique.")
                     return list_item
                 else:
                     if list_index + 1 == len(guess_result):
+                        _log.error(f"ID values in the column(s) {guess_result} are not unique.")
                         raise ValueError(
                             f"ID values in the column(s) {guess_result} are not unique."
                         )

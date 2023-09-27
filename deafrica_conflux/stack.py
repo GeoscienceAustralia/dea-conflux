@@ -14,6 +14,7 @@ import enum
 import logging
 import os
 import re
+from pathlib import Path
 
 import fsspec
 import geohash
@@ -50,13 +51,13 @@ def stack_format_date(date: datetime.datetime) -> str:
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
+def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
     """
     Find Parquet files matching a pattern.
 
     Arguments
     ---------
-    path : str
+    path : str | Path
         Path (s3 or local) to search for Parquet files.
 
     pattern : str
@@ -70,12 +71,9 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     pattern = re.compile(pattern)
 
     # "Support" pathlib Paths.
-    try:
-        path.startswith
-    except AttributeError:
-        path = str(path)
+    path = str(path)
 
-    if path.startswith("s3://"):
+    if deafrica_conflux.io.check_if_s3_uri(path):
         # Find Parquet files on S3.
         file_system = fsspec.filesystem("s3")
     else:
@@ -96,7 +94,7 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
             else:
                 pq_file_paths.append(file)
 
-    if path.startswith("s3://"):
+    if deafrica_conflux.io.check_if_s3_uri(path):
         pq_file_paths = [f"s3://{file}" for file in pq_file_paths]
 
     return pq_file_paths
@@ -123,7 +121,7 @@ def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
 
-    df.sort_values(["DAY", "invalid_percentage"], ascending=True, inplace=True)
+    df.sort_values(["DAY", "pc_invalid"], ascending=True, inplace=True)
     # For the invalid_percentage, the less the better.
     # So we only keep the first one.
     df.drop_duplicates("DAY", keep="first", inplace=True)
@@ -134,19 +132,22 @@ def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_parquet_file(path) -> pd.DataFrame:
+def load_parquet_file(path: str | Path) -> pd.DataFrame:
     """
     Load Parquet file from given path.
 
     Arguments
     ---------
-    path : str
+    path : str | Path
         Path (s3 or local) to search for Parquet files.
     Returns
     -------
     pandas.DataFrame
         pandas DataFrame
     """
+    # "Support" pathlib Paths.
+    path = str(path)
+
     df = deafrica_conflux.io.read_table_from_parquet(path)
     # the pq file will be empty if no polygon belongs to that scene
     if df.empty is not True:
@@ -157,8 +158,8 @@ def load_parquet_file(path) -> pd.DataFrame:
 
 
 def stack_waterbodies_parquet_to_csv(
-    parquet_file_paths: [str],
-    output_directory: str,
+    parquet_file_paths: [str | Path],
+    output_directory: str | Path,
     remove_duplicated_data: bool = True,
     verbose: bool = False,
 ):
@@ -167,10 +168,10 @@ def stack_waterbodies_parquet_to_csv(
 
     Arguments
     ---------
-    parquet_file_paths : [str]
+    parquet_file_paths : [str | Path]
         List of paths to Parquet files to stack.
 
-    output_directory : str
+    output_directory : str | Path
         Path to output directory.
 
     remove_duplicated_data: bool
@@ -178,6 +179,10 @@ def stack_waterbodies_parquet_to_csv(
 
     verbose : bool
     """
+    # "Support" pathlib Paths.
+    parquet_file_paths = [str(pq_file_path) for pq_file_path in parquet_file_paths]
+    output_directory = str(output_directory)
+
     # id -> [series of date x bands]
     id_to_series = collections.defaultdict(list)
     _log.info("Reading...")
@@ -193,7 +198,6 @@ def stack_waterbodies_parquet_to_csv(
             series.name = date
             id_to_series[uid].append(series)
 
-    output_directory = str(output_directory)  # handle Path type
     _log.info("Writing...")
     for uid, seriess in id_to_series.items():
         df = pd.DataFrame(seriess)
@@ -203,9 +207,13 @@ def stack_waterbodies_parquet_to_csv(
 
         output_file_name = os.path.join(output_directory, f"{uid[:4]}", f"{uid}.csv")
         _log.info(f"Writing {output_file_name}")
-        if not output_directory.startswith("s3://"):
-            os.makedirs(os.path.join(output_directory, f"{uid[:4]}"), exist_ok=True)
-        with fsspec.open(output_file_name, "w") as f:
+        if deafrica_conflux.io.check_if_s3_uri(output_directory):
+            fs = fsspec.filesystem("s3")
+        else:
+            fs = fsspec.filesystem("file")
+            fs.mkdirs(os.path.join(output_directory, f"{uid[:4]}"), exist_ok=True)
+
+        with fs.open(output_file_name, "w") as f:
             df.to_csv(f, index_label="date")
 
 
@@ -229,7 +237,7 @@ def get_waterbody_key(uid: str, session: Session):
 
 
 def stack_waterbodies_parquet_to_db(
-    parquet_file_paths: [str],
+    parquet_file_paths: [str | Path],
     verbose: bool = False,
     engine: Engine = None,
     uids: {str} = None,
@@ -240,7 +248,7 @@ def stack_waterbodies_parquet_to_db(
 
     Arguments
     ---------
-    parquet_file_paths : [str]
+    parquet_file_paths : [str | Path]
         List of paths to Parquet files to stack.
 
     verbose : bool
@@ -256,6 +264,8 @@ def stack_waterbodies_parquet_to_db(
     drop : bool
         Whether to drop the database. Default False.
     """
+    parquet_file_paths = [str(pq_file_path) for pq_file_path in parquet_file_paths]
+
     if verbose:
         parquet_file_paths = tqdm(parquet_file_paths)
 
@@ -316,7 +326,7 @@ def stack_waterbodies_parquet_to_db(
 
 
 def stack_waterbodies_db_to_csv(
-    output_directory: str,
+    output_directory: str | Path,
     verbose: bool = False,
     uids: {str} = None,
     remove_duplicated_data: bool = True,
@@ -330,7 +340,7 @@ def stack_waterbodies_db_to_csv(
 
     Arguments
     ---------
-    output_directory : str
+    output_directory : str | Path
         Path to write CSVs to.
 
     verbose : bool
@@ -360,6 +370,9 @@ def stack_waterbodies_db_to_csv(
         Number of chunks after split overall waterbodies ID list
 
     """
+    # "Support" pathlib Paths.
+    output_directory = str(output_directory)
+
     # connect to the db
     if not engine:
         engine = deafrica_conflux.db.get_engine_waterbodies()
@@ -401,8 +414,13 @@ def stack_waterbodies_db_to_csv(
         df.drop(columns=["pc_missing"], inplace=True)
 
         output_file_name = os.path.join(output_directory, wb.wb_name[:4], wb.wb_name + ".csv")
-        print(output_file_name)
-        with fsspec.open(output_file_name, "w") as f:
+
+        if deafrica_conflux.io.check_if_s3_uri(output_file_name):
+            fs = fsspec.filesystem("s3")
+        else:
+            fs = fsspec.filesystem("file")
+
+        with fs.open(output_file_name, "w") as f:
             df.to_csv(f, header=True, index=False)
 
         Session.remove()
@@ -435,7 +453,7 @@ def stack_waterbodies_db_to_csv(
 
 
 def stack_parquet(
-    path: str,
+    path: str | Path,
     pattern: str = ".*",
     mode: StackMode = StackMode.WATERBODIES,
     verbose: bool = False,
@@ -446,7 +464,7 @@ def stack_parquet(
 
     Arguments
     ---------
-    path : str
+    path : str | Path
         Path (s3 or local) to search for parquet files.
 
     pattern : str
@@ -461,6 +479,7 @@ def stack_parquet(
     **kwargs
         Passed to underlying stack method.
     """
+    # "Support" pathlib Paths.
     path = str(path)
 
     _log.info(f"Begin to query {path} with pattern {pattern}")

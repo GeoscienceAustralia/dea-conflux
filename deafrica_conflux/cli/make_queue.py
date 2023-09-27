@@ -17,13 +17,8 @@ def make_sqs_queue(queue_name, timeout, retention_period, retries):
     """
     Make an SQS queue.
     """
-
-    # Verify queue name.
-    deafrica_conflux.queues.verify_queue_name(queue_name)
-
     # Verify dead-letter queue name.
     dead_letter_queue_name = queue_name + "_deadletter"
-    deafrica_conflux.queues.verify_queue_name(dead_letter_queue_name)
 
     deafrica_conflux.queues.make_source_queue(
         queue_name=queue_name,
