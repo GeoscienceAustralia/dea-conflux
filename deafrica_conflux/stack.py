@@ -121,7 +121,7 @@ def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df = df.assign(DAY=[e.split("T")[0] for e in df["date"]])
 
-    df.sort_values(["DAY", "invalid_percentage"], ascending=True, inplace=True)
+    df.sort_values(["DAY", "pc_invalid"], ascending=True, inplace=True)
     # For the invalid_percentage, the less the better.
     # So we only keep the first one.
     df.drop_duplicates("DAY", keep="first", inplace=True)
