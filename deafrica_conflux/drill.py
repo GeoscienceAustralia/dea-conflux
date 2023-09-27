@@ -478,7 +478,7 @@ def drill(
 
     if not partial:
         if overedge:
-            # warnings.warn("overedge=True expects partial=True")
+            _log.error("overedge=True expects partial=True")
             raise ValueError("overedge=True expects partial=True")
         else:
             raise NotImplementedError()
@@ -567,11 +567,11 @@ def drill(
         req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span
         )
-        _log.debug("Loading datasets:")
+        _log.info("Loading datasets:")
         for ds_ in req_datasets:
-            _log.debug(f"\t{ds_.id}")
+            _log.info(f"\t{ds_.id}")
 
-        _log.debug(f"Going to load {len(req_datasets)} datasets")
+        _log.info(f"Going to load {len(req_datasets)} datasets")
         # There really shouldn't be more than nine of these.
         # But, they sometimes split into two scenes per tile in
         # collection 2. So we'll insist there's <= 18.

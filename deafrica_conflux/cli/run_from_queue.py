@@ -197,7 +197,7 @@ def run_from_sqs_queue(
                             output_directory=output_directory,
                         )
                         if db:
-                            _log.debug(f"Writing {pq_filename} to DB")
+                            _log.info(f"Writing {pq_filename} to DB")
                             deafrica_conflux.stack.stack_waterbodies_parquet_to_db(
                                 parquet_file_paths=[pq_filename],
                                 verbose=verbose,

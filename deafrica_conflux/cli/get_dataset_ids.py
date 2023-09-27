@@ -75,7 +75,7 @@ def get_dataset_ids(
         else:
             # Guess the ID field.
             id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
-            _log.debug(f"Guessed ID field: {id_field}")
+            _log.info(f"Guessed ID field: {id_field}")
 
             # Set the ID field as the index.
             polygons_gdf.set_index(id_field, inplace=True)
@@ -86,6 +86,9 @@ def get_dataset_ids(
             # when using filter_datasets when polygons are in "EPSG:4326" crs.
             polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
 
+            _log.info(
+                f"Filtering out datasets that are not near the polygons in {polygons_vector_file}"
+            )
             dataset_ids = deafrica_conflux.drill.filter_datasets(
                 dss, polygons_gdf, worker_num=num_worker
             )
@@ -101,6 +104,7 @@ def get_dataset_ids(
     else:
         if deafrica_conflux.io.check_if_s3_uri(output_file_path):
             fs = fsspec.filesystem("s3")
+            _log.info("Dataset ids will be saved to a s3 text file")
         else:
             fs = fsspec.filesystem("file")
             _log.info("Dataset ids will be saved to a local text file")

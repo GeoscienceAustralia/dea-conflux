@@ -91,6 +91,9 @@ def get_queue_attribute(queue_name: str, attribute_name: str, sqs_client: SQSCli
         raise error
     else:
         queue_attribute_value = response["Attributes"][attribute_name]
+        _log.info(
+            f"Got attribute value {queue_attribute_value} for attribute {attribute_name} from queue {queue_url}"
+        )
         return queue_attribute_value
 
 
@@ -152,6 +155,7 @@ def make_source_queue(
             _log.exception(f"Couldn't create dead-letter queue {dead_letter_queue_name}")
             raise error
         else:
+            _log.info(f"Created dead-letter queue {dead_letter_queue_name}")
             # Get the Amazon Resource Name (ARN) of the dead-letter queue.
             dead_letter_queue_arn = get_queue_attribute(
                 dead_letter_queue_name, "QueueArn", sqs_client
@@ -169,6 +173,7 @@ def make_source_queue(
         _log.exception(f"Could not create the queue {queue_name}.")
         raise error
     else:
+        _log.info(f"Created the queue {queue_name}.")
         assert response
 
 
@@ -264,12 +269,13 @@ def send_batch(
     successful_msgs_list = []
     failed_msgs_list = []
     for batch in batched_entries:
+        _log.info(f"Sending entries {batch} ....")
         try:
             send_message_batch_response = sqs_client.send_message_batch(
                 QueueUrl=queue_url, Entries=batch
             )
         except ClientError as error:
-            _log.exception(f"Failed to send messages {batch} to queue: {queue_url}.")
+            _log.exception(f"Failed to send entries {batch} to queue: {queue_url}.")
             raise error
         else:
             successful = send_message_batch_response.get("Successful", None)
@@ -445,7 +451,7 @@ def push_dataset_ids_to_queue_from_txt(
                 failed_to_push.extend(failed)
 
     if failed_to_push:
-        _log.error(f"Failed to push ids {failed_to_push} ")
+        _log.error(f"Failed to push dataset ids {failed_to_push} ")
 
     return failed_to_push
 
@@ -478,14 +484,6 @@ def delete_batch(
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
-
-    # Assert each message contains the required properties.
-    for entry in entries:
-        assert "Id" in entry.keys()
-        assert "ReceiptHandle" in entry.keys()
-
-    # Batch the entries into groups of 10.
-    batched_entries = batch_messages(messages=entries, n=10)
 
     # Assert each message contains the required properties.
     for entry in entries:
@@ -646,5 +644,5 @@ def receive_a_message(
         _log.info(f"Received message {message} from queue {queue_url}")
         return message
     else:
-        _log.info(f"Received no message from queue {queue_url}")
+        _log.error(f"Received no message from queue {queue_url}")
         return None

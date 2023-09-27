@@ -171,6 +171,11 @@ def table_exists(
 
     path = os.path.join(output_directory, folder_name, file_name)
 
+    if fs.exists(path):
+        _log.info(f"{path} exists.")
+    else:
+        _log.info(f"{path} does not exist.")
+
     return fs.exists(path)
 
 
