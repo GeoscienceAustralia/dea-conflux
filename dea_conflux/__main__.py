@@ -1353,17 +1353,40 @@ def package_delivery(csv_path, output, precision, verbose):
     help="Number of chunks after split overall waterbodies ID list.",
 )
 @click.option(
+    "--shapefile",
+    "-s",
+    type=click.Path(),
+    # Don't mandate existence since this might be s3://.
+    help="REQUIRED. Path to the polygon " "shapefile to run polygon drill on.",
+)
+@click.option(
     "--remove-duplicated-data/--no-remove-duplicated-data",
     default=True,
     help="Remove timeseries duplicated data if applicable. Default True",
 )
-def db_to_csv(output, verbose, jobs, index_num, split_num, remove_duplicated_data):
+def db_to_csv(
+    output, verbose, jobs, index_num, split_num, shapefile, remove_duplicated_data
+):
     """Output Waterbodies-style CSVs from a database."""
     logging_setup(verbose)
+
+    # Guess the ID field.
+    id_field = guess_id_field(shapefile)
+    logger.debug(f"Guessed ID field: {id_field}")
+
+    # Load and reproject the shapefile.
+    shapefile = load_and_reproject_shapefile(
+        shapefile,
+        id_field,
+        get_crs(shapefile),
+    )
+
+    uids = list(shapefile["id_field"])
 
     dea_conflux.stack.stack_waterbodies_db_to_csv(
         out_path=output,
         verbose=verbose > 0,
+        uids=uids,
         n_workers=jobs,
         index_num=index_num,
         split_num=split_num,
