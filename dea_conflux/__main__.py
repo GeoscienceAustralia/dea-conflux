@@ -1374,8 +1374,12 @@ def db_to_csv(
     id_field = guess_id_field(shapefile)
     logger.debug(f"Guessed ID field: {id_field}")
 
-    # Load and reproject the shapefile.
+    has_s3 = "s3" in gpd.io.file._VALID_URLS
+    gpd.io.file._VALID_URLS.discard("s3")
+    logger.info(f"Attempting to read {shapefile} to load polgyons.")
     shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    if has_s3:
+        gpd.io.file._VALID_URLS.add("s3")
 
     uids = list(shapefile[id_field])
 
