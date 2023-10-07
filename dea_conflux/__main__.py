@@ -1381,7 +1381,7 @@ def db_to_csv(
         get_crs(shapefile),
     )
 
-    uids = list(shapefile["id_field"])
+    uids = list(shapefile[id_field])
 
     dea_conflux.stack.stack_waterbodies_db_to_csv(
         out_path=output,
