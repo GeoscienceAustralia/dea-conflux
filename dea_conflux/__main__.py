@@ -1375,11 +1375,7 @@ def db_to_csv(
     logger.debug(f"Guessed ID field: {id_field}")
 
     # Load and reproject the shapefile.
-    shapefile = load_and_reproject_shapefile(
-        shapefile,
-        id_field,
-        get_crs(shapefile),
-    )
+    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
 
     uids = list(shapefile[id_field])
 
