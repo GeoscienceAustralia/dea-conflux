@@ -44,23 +44,20 @@ def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
     pc_invalid = (px_invalid / px_total) * 100.0
     ar_invalid = px_invalid * px_area
 
-    # Set wet and dry values to nan, which will be used if insufficient pixels are observed
-    px_wet = float("nan")
+    # Calculate wet and dry pixel numbers and areas
+    px_wet = inputs.water.sum()
+    ar_wet = px_wet * px_area
+    px_dry = px_total - px_invalid - px_wet
+    ar_dry = px_dry * px_area
+
+    # Set pc_wet and pc_dry values to nan, which will be used if insufficient pixels are observed
     pc_wet = float("nan")
-    ar_wet = float("nan")
-    px_dry = float("nan")
     pc_dry = float("nan")
-    ar_dry = float("nan")
 
-    # If the proportion of the waterbody missing is less than 10%, calculate values for wet and dry
+    # If the proportion of the waterbody missing is less than 10%, calculate values for pc_wet and pc_dry
     if pc_invalid <= 10.0:
-        px_wet = inputs.water.sum()
         pc_wet = (px_wet / px_total) * 100.0
-        ar_wet = px_wet * px_area
-
-        px_dry = px_total - px_invalid - px_wet
         pc_dry = 100.0 - pc_invalid - pc_wet
-        ar_dry = px_dry * px_area
 
     # Return all calculated values
     return xr.Dataset(
