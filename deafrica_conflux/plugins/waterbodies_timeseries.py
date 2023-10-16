@@ -12,6 +12,24 @@ input_products = {
 
 
 def transform(inputs: xr.Dataset) -> xr.Dataset:
+    """
+    Input to this function is a WOfS Feature Layers dataset where the .water
+    array contains bit flags to flag pixels as "wet" or otherwise. The output is
+    the masked dataset with the values:
+        1 = water
+        0 = dry
+        np.nan = invalid (not wet or dry)
+
+    Parameters
+    ----------
+    inputs : xr.Dataset
+        WOfS Feature Layers dataset to transform.
+
+    Returns
+    -------
+    xr.Dataset
+        Transformed WOfS Feature Layers dataset.
+    """
     wofl = inputs.water
 
     clear_and_wet = wofl == 128
@@ -27,9 +45,9 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
 
 def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
     """
-    Input to this function is dataset, where the .water array contains
+    Input to this function is a dataset, where the .water array contains
     pixel values for a single polygon
-    Values are as follows
+    Values are as follows:
         1 = water
         0 = dry
         null = invalid (not wet or dry)
@@ -44,23 +62,20 @@ def summarise(inputs: xr.Dataset, resolution: tuple) -> xr.Dataset:
     pc_invalid = (px_invalid / px_total) * 100.0
     ar_invalid = px_invalid * px_area
 
-    # Set wet and dry values to nan, which will be used if insufficient pixels are observed
-    px_wet = float("nan")
+    # Calculate wet and dry pixel numbers and areas
+    px_wet = inputs.water.sum()
+    ar_wet = px_wet * px_area
+    px_dry = px_total - px_invalid - px_wet
+    ar_dry = px_dry * px_area
+
+    # Set pc_wet and pc_dry values to nan, which will be used if insufficient pixels are observed
     pc_wet = float("nan")
-    ar_wet = float("nan")
-    px_dry = float("nan")
     pc_dry = float("nan")
-    ar_dry = float("nan")
 
-    # If the proportion of the waterbody missing is less than 10%, calculate values for wet and dry
+    # If the proportion of the waterbody missing is less than 10%, calculate values for pc_wet and pc_dry
     if pc_invalid <= 10.0:
-        px_wet = inputs.water.sum()
         pc_wet = (px_wet / px_total) * 100.0
-        ar_wet = px_wet * px_area
-
-        px_dry = px_total - px_invalid - px_wet
         pc_dry = 100.0 - pc_invalid - pc_wet
-        ar_dry = px_dry * px_area
 
     # Return all calculated values
     return xr.Dataset(

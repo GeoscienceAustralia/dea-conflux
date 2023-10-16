@@ -1,6 +1,6 @@
 import click
 
-import deafrica_conflux.queues
+from deafrica_conflux.queues import make_source_queue
 
 
 @click.command("make-sqs-queue", no_args_is_help=True)
@@ -20,7 +20,7 @@ def make_sqs_queue(queue_name, timeout, retention_period, retries):
     # Verify dead-letter queue name.
     dead_letter_queue_name = queue_name + "_deadletter"
 
-    deafrica_conflux.queues.make_source_queue(
+    make_source_queue(
         queue_name=queue_name,
         dead_letter_queue_name=dead_letter_queue_name,
         timeout=timeout,

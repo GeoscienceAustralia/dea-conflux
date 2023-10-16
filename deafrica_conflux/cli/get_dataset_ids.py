@@ -8,11 +8,11 @@ import fsspec
 import geopandas as gpd
 from datacube.ui import click as ui
 
-import deafrica_conflux.drill
-import deafrica_conflux.hopper
-import deafrica_conflux.id_field
-import deafrica_conflux.io
 from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.drill import filter_datasets
+from deafrica_conflux.hopper import find_datasets
+from deafrica_conflux.id_field import guess_id_field
+from deafrica_conflux.io import check_file_exists, check_if_s3_uri
 
 
 @click.command(
@@ -63,7 +63,7 @@ def get_dataset_ids(
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
-    dss = deafrica_conflux.hopper.find_datasets(expressions, [product])
+    dss = find_datasets(expressions, [product])
 
     if polygons_vector_file is not None:
         # Read the vector file.
@@ -74,7 +74,7 @@ def get_dataset_ids(
             raise error
         else:
             # Guess the ID field.
-            id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
+            id_field = guess_id_field(polygons_gdf, use_id)
             _log.info(f"Guessed ID field: {id_field}")
 
             # Set the ID field as the index.
@@ -89,20 +89,18 @@ def get_dataset_ids(
             _log.info(
                 f"Filtering out datasets that are not near the polygons in {polygons_vector_file}"
             )
-            dataset_ids = deafrica_conflux.drill.filter_datasets(
-                dss, polygons_gdf, worker_num=num_worker
-            )
+            dataset_ids = filter_datasets(dss, polygons_gdf, worker_num=num_worker)
     else:
         dataset_ids = [str(ds.id) for ds in dss]
 
     _log.info(f"Found {len(dataset_ids)} datasets.")
 
     # Check if the output file exists.
-    if deafrica_conflux.io.check_file_exists(output_file_path):
+    if check_file_exists(output_file_path):
         _log.error(f"{output_file_path} exists!")
         raise FileExistsError(f"{output_file_path} exists!")
     else:
-        if deafrica_conflux.io.check_if_s3_uri(output_file_path):
+        if check_if_s3_uri(output_file_path):
             fs = fsspec.filesystem("s3")
             _log.info("Dataset ids will be saved to a s3 text file")
         else:

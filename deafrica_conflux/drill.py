@@ -484,7 +484,7 @@ def drill(
             raise NotImplementedError()
 
     # Get a datacube if we don't have one already.
-    if dc is not None:
+    if dc is None:
         dc = datacube.Datacube(app="deafrica-conflux-drill")
 
     # Get the output crs and resolution from the plugin.

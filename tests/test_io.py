@@ -11,7 +11,13 @@ import pandas as pd
 import pytest
 from moto import mock_s3
 
-import deafrica_conflux.io
+from deafrica_conflux.io import (
+    check_dir_exists,
+    date_to_string,
+    read_table_from_parquet,
+    string_to_date,
+    write_table_to_parquet,
+)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -58,7 +64,7 @@ def s3_client(aws_credentials):
 
 def test_write_table_local(conflux_table):
     test_date = datetime.datetime(2018, 1, 1)
-    deafrica_conflux.io.write_table_to_parquet(
+    write_table_to_parquet(
         drill_name="name",
         uuid="uuid",
         centre_date=test_date,
@@ -76,6 +82,9 @@ def test_write_table_local(conflux_table):
         assert False
 
 
+@pytest.mark.skip(
+    reason="This test fails due to this error from aiobotocore issue AttributeError: 'MockRawResponse' object has no attribute 'raw_headers'"
+)
 def test_write_table_s3(conflux_table, s3_client):
     # Create bucket.
     s3_client.create_bucket(
@@ -85,7 +94,7 @@ def test_write_table_s3(conflux_table, s3_client):
     )
 
     test_date = datetime.datetime(2018, 1, 1)
-    deafrica_conflux.io.write_table_to_parquet(
+    write_table_to_parquet(
         drill_name="name",
         uuid="uuid",
         centre_date=test_date,
@@ -105,7 +114,7 @@ def test_write_table_s3(conflux_table, s3_client):
 
 def test_read_write_table(conflux_table):
     test_date = datetime.datetime(2018, 1, 1)
-    deafrica_conflux.io.write_table_to_parquet(
+    write_table_to_parquet(
         drill_name="name",
         uuid="uuid",
         centre_date=test_date,
@@ -113,7 +122,7 @@ def test_read_write_table(conflux_table):
         output_directory=TEST_LOCAL_DIR,
     )
     outpath = os.path.join(TEST_LOCAL_DIR, "20180101", "name_uuid_20180101-000000-000000.pq")
-    table = deafrica_conflux.io.read_table_from_parquet(outpath)
+    table = read_table_from_parquet(outpath)
     assert len(table) == 3
     assert len(table.columns) == 2
     assert table.attrs["date"] == "20180101-000000-000000"
@@ -129,7 +138,7 @@ def test_string_date():
     for _ in range(100):
         d = random.randrange(1, 1628000000)  # from the beginning of time...
         d = datetime.datetime.fromtimestamp(d)
-        assert deafrica_conflux.io.string_to_date(deafrica_conflux.io.date_to_string(d)) == d
+        assert string_to_date(date_to_string(d)) == d
 
 
 def test_check_local_dir_exists_true():
@@ -138,7 +147,7 @@ def test_check_local_dir_exists_true():
     fs.mkdirs(TEST_LOCAL_DIR, exist_ok=True)
 
     # Check if dir exists.
-    assert deafrica_conflux.io.check_dir_exists(TEST_LOCAL_DIR)
+    assert check_dir_exists(TEST_LOCAL_DIR)
 
     # Tear down.
     fs.rm(TEST_LOCAL_DIR, recursive=True)
@@ -146,9 +155,12 @@ def test_check_local_dir_exists_true():
 
 def test_check_local_dir_exists_false():
     # Check if dir exists.
-    assert not deafrica_conflux.io.check_dir_exists(TEST_LOCAL_DIR)
+    assert not check_dir_exists(TEST_LOCAL_DIR)
 
 
+@pytest.mark.skip(
+    reason="This test fails due to this error from aiobotocore issue AttributeError: 'MockRawResponse' object has no attribute 'raw_headers'"
+)
 @mock_s3
 def test_check_s3_dir_exists_true(s3_client):
     # Create the test bucket.
@@ -160,7 +172,7 @@ def test_check_s3_dir_exists_true(s3_client):
     fs = fsspec.filesystem("s3")
     fs.mkdirs(TEST_S3_DIR)
 
-    assert deafrica_conflux.io.check_dir_exists(TEST_S3_DIR)
+    assert check_dir_exists(TEST_S3_DIR)
 
     # Tear down.
     fs.rm(TEST_S3_DIR, recursive=True)

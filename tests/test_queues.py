@@ -7,7 +7,18 @@ import fsspec
 import pytest
 from moto import mock_sqs
 
-import deafrica_conflux.queues
+from deafrica_conflux.queues import (
+    delete_batch_with_retry,
+    delete_queue,
+    get_queue_attribute,
+    get_queue_url,
+    make_source_queue,
+    move_to_dead_letter_queue,
+    push_dataset_ids_to_queue_from_txt,
+    receive_a_message,
+    send_batch,
+    send_batch_with_retry,
+)
 
 TEST_SOURCE_QUEUE = "test_waterbodies_queue"
 TEST_DEADLETTER_QUEUE = "test_waterbodies_queue_deadletter"
@@ -38,9 +49,7 @@ def test_get_queue_url_with_existing_queue(sqs_client):
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
     # Get queue url.
     try:
-        queue_url = deafrica_conflux.queues.get_queue_url(
-            queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client
-        )
+        queue_url = get_queue_url(queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client)
     except Exception:
         assert False
     else:
@@ -51,9 +60,7 @@ def test_get_queue_url_with_existing_queue(sqs_client):
 def test_get_queue_url_with_not_existing_queue(sqs_client):
     # Get queue url.
     try:
-        queue_url = deafrica_conflux.queues.get_queue_url(  # noqa F841
-            queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client
-        )
+        queue_url = get_queue_url(queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client)  # noqa F841
     except sqs_client.exceptions.QueueDoesNotExist:
         assert True
     else:
@@ -69,7 +76,7 @@ def test_get_queue_attribute(sqs_client):
     )
     # Get attribute from the queue.
     try:
-        attribute = deafrica_conflux.queues.get_queue_attribute(
+        attribute = get_queue_attribute(
             queue_name=TEST_SOURCE_QUEUE, attribute_name="VisibilityTimeout", sqs_client=sqs_client
         )
     except Exception:
@@ -84,7 +91,7 @@ def test_make_source_queue_with_existing_deadletter_queue(sqs_client):
     sqs_client.create_queue(QueueName=TEST_DEADLETTER_QUEUE)
 
     try:
-        deafrica_conflux.queues.make_source_queue(
+        make_source_queue(
             queue_name=TEST_SOURCE_QUEUE,
             dead_letter_queue_name=TEST_DEADLETTER_QUEUE,
             sqs_client=sqs_client,
@@ -92,10 +99,8 @@ def test_make_source_queue_with_existing_deadletter_queue(sqs_client):
     except Exception:
         assert False
     else:
-        source_queue_url = deafrica_conflux.queues.get_queue_url(
-            queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client
-        )
-        redrive_policy_attribute = deafrica_conflux.queues.get_queue_attribute(
+        source_queue_url = get_queue_url(queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client)
+        redrive_policy_attribute = get_queue_attribute(
             queue_name=TEST_SOURCE_QUEUE, attribute_name="RedrivePolicy", sqs_client=sqs_client
         )
         redrive_policy_attribute = json.loads(redrive_policy_attribute)
@@ -107,7 +112,7 @@ def test_make_source_queue_with_existing_deadletter_queue(sqs_client):
 @mock_sqs
 def test_make_source_queue_with_no_existing_deadletter_queue(sqs_client):
     try:
-        deafrica_conflux.queues.make_source_queue(
+        make_source_queue(
             queue_name=TEST_SOURCE_QUEUE,
             dead_letter_queue_name=TEST_DEADLETTER_QUEUE,
             sqs_client=sqs_client,
@@ -115,10 +120,8 @@ def test_make_source_queue_with_no_existing_deadletter_queue(sqs_client):
     except Exception:
         assert False
     else:
-        source_queue_url = deafrica_conflux.queues.get_queue_url(
-            queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client
-        )
-        deadletter_queue_url = deafrica_conflux.queues.get_queue_url(
+        source_queue_url = get_queue_url(queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client)
+        deadletter_queue_url = get_queue_url(
             queue_name=TEST_DEADLETTER_QUEUE, sqs_client=sqs_client
         )
 
@@ -133,12 +136,12 @@ def test_delete_empty_sqs_queue(sqs_client):
 
     # Delete queue.
     try:
-        deafrica_conflux.queues.delete_queue(queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client)
+        delete_queue(queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client)
     except Exception:
         assert False
     else:
         try:
-            queue_url = deafrica_conflux.queues.get_queue_url(  # noqa F841
+            queue_url = get_queue_url(  # noqa F841
                 queue_name=TEST_SOURCE_QUEUE, sqs_client=sqs_client
             )
         except sqs_client.exceptions.QueueDoesNotExist:
@@ -154,10 +157,10 @@ def test_send_batch(sqs_client):
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
-    queue_url = deafrica_conflux.queues.get_queue_url(queue_name=TEST_SOURCE_QUEUE)
+    queue_url = get_queue_url(queue_name=TEST_SOURCE_QUEUE)
 
     try:
-        successful_messages, failed_messages = deafrica_conflux.queues.send_batch(
+        successful_messages, failed_messages = send_batch(
             queue_url=queue_url, messages=messages_to_send, sqs_client=sqs_client
         )
     except Exception:
@@ -175,10 +178,10 @@ def test_send_batch_with_retry(sqs_client):
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
-    queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
+    queue_url = get_queue_url(TEST_SOURCE_QUEUE)
 
     try:
-        successful_messages, failed_messages = deafrica_conflux.queues.send_batch_with_retry(
+        successful_messages, failed_messages = send_batch_with_retry(
             queue_url=queue_url,
             messages=messages_to_send,
             max_retries=max_retries,
@@ -197,11 +200,11 @@ def test_move_to_deadletter_queue(sqs_client):
 
     # Create the deadletter queue.
     sqs_client.create_queue(QueueName=TEST_DEADLETTER_QUEUE)
-    deadletter_queue_url = deafrica_conflux.queues.get_queue_url(TEST_DEADLETTER_QUEUE)
+    deadletter_queue_url = get_queue_url(TEST_DEADLETTER_QUEUE)
 
     try:
-        deafrica_conflux.queues.move_to_dead_letter_queue(
-            deadletter_queue_url=deadletter_queue_url,
+        move_to_dead_letter_queue(
+            dead_letter_queue_url=deadletter_queue_url,
             message_body=message_body,
             max_retries=max_retries,
             sqs_client=sqs_client,
@@ -230,7 +233,7 @@ def test_push_dataset_ids_to_queue_from_local_txt(sqs_client):
 
     # Push ids to sqs queues
     try:
-        deafrica_conflux.queues.push_dataset_ids_to_queue_from_txt(
+        push_dataset_ids_to_queue_from_txt(
             text_file_path=TEST_TEXT_FILE,
             queue_name=TEST_SOURCE_QUEUE,
             max_retries=max_retries,
@@ -245,15 +248,13 @@ def test_push_dataset_ids_to_queue_from_local_txt(sqs_client):
 def test_delete_batch_with_retry(sqs_client):
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
-    queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
+    queue_url = get_queue_url(TEST_SOURCE_QUEUE)
 
     # Create the messages to send.
     messages = [str(i) for i in list(range(1, 10))]
 
     # Push the messages to the queue.
-    deafrica_conflux.queues.send_batch(
-        queue_url=queue_url, messages=messages, sqs_client=sqs_client
-    )
+    send_batch(queue_url=queue_url, messages=messages, sqs_client=sqs_client)
 
     # Receive messages from queue
     receive_response = sqs_client.receive_message(
@@ -266,7 +267,7 @@ def test_delete_batch_with_retry(sqs_client):
     ]
 
     # Delete messages
-    successfully_deleted, failed = deafrica_conflux.queues.delete_batch_with_retry(
+    successfully_deleted, failed = delete_batch_with_retry(
         queue_url=queue_url, entries=entries_to_delete, max_retries=10, sqs_client=sqs_client
     )
 
@@ -279,17 +280,17 @@ def test_receive_a_message(sqs_client):
 
     # Create queue.
     sqs_client.create_queue(QueueName=TEST_SOURCE_QUEUE)
-    queue_url = deafrica_conflux.queues.get_queue_url(TEST_SOURCE_QUEUE)
+    queue_url = get_queue_url(TEST_SOURCE_QUEUE)
 
     # Create the messages to send.
     messages = [str(i) for i in list(range(1, 10))]
 
     # Send the messages to the queue.
-    deafrica_conflux.queues.send_batch(queue_url=queue_url, messages=messages)
+    send_batch(queue_url=queue_url, messages=messages)
 
     # Retrieve a single message.
     try:
-        message = deafrica_conflux.queues.receive_a_message(
+        message = receive_a_message(
             queue_url=queue_url,
             max_retries=max_retries,
             visibility_timeout=visibility_timeout,
