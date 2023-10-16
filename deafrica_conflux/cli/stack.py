@@ -14,7 +14,7 @@ from deafrica_conflux.stack import StackMode, stack_parquet
 @click.option(
     "--pattern",
     required=False,
-    default=".*\.pq",  # noqa W605
+    default=".*",  # noqa W605
     help="Regular expression for filename matching.",
 )
 @click.option(
