@@ -3,8 +3,12 @@ import logging
 import boto3
 import click
 
-import deafrica_conflux.queues
 from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.queues import (
+    get_queue_url,
+    move_to_dead_letter_queue,
+    push_dataset_ids_to_queue_from_txt,
+)
 
 
 @click.command("push-to-sqs-queue", no_args_is_help=True)
@@ -32,7 +36,7 @@ def push_to_sqs_queue(text_file_path, queue_name, max_retries, verbose):
     # Create an sqs client.
     sqs_client = boto3.client("sqs")
 
-    failed_to_push = deafrica_conflux.queues.push_dataset_ids_to_queue_from_txt(
+    failed_to_push = push_dataset_ids_to_queue_from_txt(
         text_file_path=text_file_path,
         queue_name=queue_name,
         max_retries=max_retries,
@@ -42,12 +46,12 @@ def push_to_sqs_queue(text_file_path, queue_name, max_retries, verbose):
     if failed_to_push:
         # Push the failed dataset ids to the deadletter queue.
         dead_letter_queue_name = f"{queue_name}-deadletter"
-        dead_letter_queue_url = deafrica_conflux.queues.get_queue_url(
+        dead_letter_queue_url = get_queue_url(
             queue_name=dead_letter_queue_name, sqs_client=sqs_client
         )
 
         for idx in failed_to_push:
-            deafrica_conflux.queues.move_to_dead_letter_queue(
+            move_to_dead_letter_queue(
                 dead_letter_queue_url=dead_letter_queue_url,
                 message_body=idx,
                 max_retries=max_retries,
