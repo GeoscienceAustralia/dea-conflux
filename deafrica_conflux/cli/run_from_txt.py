@@ -222,4 +222,6 @@ def run_from_txt(
             for dataset_id in failed_dataset_ids:
                 file.write(f"{dataset_id}\n")
 
-        _log.info(f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}.")
+        _log.info(
+            f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}."
+        )

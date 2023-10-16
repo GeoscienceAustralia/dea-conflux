@@ -16,7 +16,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from mypy_boto3_sqs.client import SQSClient
 
-import deafrica_conflux.io
+from deafrica_conflux.io import check_file_exists, check_if_s3_uri
 
 _log = logging.getLogger(__name__)
 
@@ -423,11 +423,11 @@ def push_dataset_ids_to_queue_from_txt(
     text_file_path = str(text_file_path)
 
     # Check if the text file exists.
-    if not deafrica_conflux.io.check_file_exists(text_file_path):
+    if not check_file_exists(text_file_path):
         _log.error(f"Could not find text file {text_file_path}!")
         raise FileNotFoundError(f"Could not find text file {text_file_path}!")
 
-    if deafrica_conflux.io.check_if_s3_uri(text_file_path):
+    if check_if_s3_uri(text_file_path):
         fs = fsspec.filesystem("s3")
     else:
         fs = fsspec.filesystem("file")

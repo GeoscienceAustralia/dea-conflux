@@ -23,9 +23,21 @@ import pandas as pd
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from tqdm.auto import tqdm
 
-import deafrica_conflux.db
-import deafrica_conflux.io
-from deafrica_conflux.db import Engine
+from deafrica_conflux.db import (
+    Engine,
+    Waterbody,
+    WaterbodyObservation,
+    create_waterbody_tables,
+    drop_waterbody_tables,
+    get_engine_waterbodies,
+    get_or_create,
+)
+from deafrica_conflux.io import (
+    PARQUET_EXTENSIONS,
+    check_if_s3_uri,
+    read_table_from_parquet,
+    string_to_date,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -73,7 +85,7 @@ def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
     # "Support" pathlib Paths.
     path = str(path)
 
-    if deafrica_conflux.io.check_if_s3_uri(path):
+    if check_if_s3_uri(path):
         # Find Parquet files on S3.
         file_system = fsspec.filesystem("s3")
     else:
@@ -85,7 +97,7 @@ def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
     files = file_system.find(path)
     for file in files:
         _, file_extension = os.path.splitext(file)
-        if file_extension not in deafrica_conflux.io.PARQUET_EXTENSIONS:
+        if file_extension not in PARQUET_EXTENSIONS:
             continue
         else:
             _, file_name = os.path.split(file)
@@ -94,7 +106,7 @@ def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
             else:
                 pq_file_paths.append(file)
 
-    if deafrica_conflux.io.check_if_s3_uri(path):
+    if check_if_s3_uri(path):
         pq_file_paths = [f"s3://{file}" for file in pq_file_paths]
 
     return pq_file_paths
@@ -148,10 +160,10 @@ def load_parquet_file(path: str | Path) -> pd.DataFrame:
     # "Support" pathlib Paths.
     path = str(path)
 
-    df = deafrica_conflux.io.read_table_from_parquet(path)
+    df = read_table_from_parquet(path)
     # the pq file will be empty if no polygon belongs to that scene
     if df.empty is not True:
-        date = deafrica_conflux.io.string_to_date(df.attrs["date"])
+        date = string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         df.loc[:, "date"] = date
     return df
@@ -189,8 +201,8 @@ def stack_waterbodies_parquet_to_csv(
     if verbose:
         parquet_file_paths = tqdm(parquet_file_paths)
     for pq_file_path in parquet_file_paths:
-        df = deafrica_conflux.io.read_table_from_parquet(pq_file_path)
-        date = deafrica_conflux.io.string_to_date(df.attrs["date"])
+        df = read_table_from_parquet(pq_file_path)
+        date = string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         # df is ids x bands
         # for each ID...
@@ -207,7 +219,7 @@ def stack_waterbodies_parquet_to_csv(
 
         output_file_name = os.path.join(output_directory, f"{uid[:4]}", f"{uid}.csv")
         _log.info(f"Writing {output_file_name}")
-        if deafrica_conflux.io.check_if_s3_uri(output_directory):
+        if check_if_s3_uri(output_directory):
             fs = fsspec.filesystem("s3")
         else:
             fs = fsspec.filesystem("file")
@@ -230,9 +242,7 @@ def get_waterbody_key(uid: str, session: Session):
         "centroid_lat": lat,
         "centroid_lon": lon,
     }
-    inst, _ = deafrica_conflux.db.get_or_create(
-        session, deafrica_conflux.db.Waterbody, wb_name=uid, defaults=defaults
-    )
+    inst, _ = get_or_create(session, Waterbody, wb_name=uid, defaults=defaults)
     return inst.wb_id
 
 
@@ -271,17 +281,17 @@ def stack_waterbodies_parquet_to_db(
 
     # connect to the db
     if not engine:
-        engine = deafrica_conflux.db.get_engine_waterbodies()
+        engine = get_engine_waterbodies()
 
     Session = sessionmaker(bind=engine)
     session = Session()
 
     # drop tables if requested
     if drop:
-        deafrica_conflux.db.drop_waterbody_tables(engine)
+        drop_waterbody_tables(engine)
 
     # ensure tables exist
-    deafrica_conflux.db.create_waterbody_tables(engine)
+    create_waterbody_tables(engine)
 
     if not uids:
         uids = set()
@@ -297,9 +307,9 @@ def stack_waterbodies_parquet_to_db(
 
     for pq_file_path in parquet_file_paths:
         # read the table in...
-        df = deafrica_conflux.io.read_table_from_parquet(pq_file_path)
+        df = read_table_from_parquet(pq_file_path)
         # parse the date...
-        date = deafrica_conflux.io.string_to_date(df.attrs["date"])
+        date = string_to_date(df.attrs["date"])
         # df is ids x bands
         # for each ID...
         obss = []
@@ -310,7 +320,7 @@ def stack_waterbodies_parquet_to_db(
                 uid_to_key[uid] = key
 
             key = uid_to_key[uid]
-            obs = deafrica_conflux.db.WaterbodyObservation(
+            obs = WaterbodyObservation(
                 wb_id=key,
                 wet_pixel_count=series.wet_pixel_count,
                 wet_percentage=series.wet_percentage,
@@ -375,22 +385,22 @@ def stack_waterbodies_db_to_csv(
 
     # connect to the db
     if not engine:
-        engine = deafrica_conflux.db.get_engine_waterbodies()
+        engine = get_engine_waterbodies()
 
     session_factory = sessionmaker(bind=engine)
     Session = scoped_session(session_factory)
 
     # Iterate over waterbodies.
 
-    def thread_run(wb: deafrica_conflux.db.Waterbody):
+    def thread_run(wb: Waterbody):
         session = Session()
 
         # get all observations
         _log.debug(f"Processing {wb.wb_name}")
         obs = (
-            session.query(deafrica_conflux.db.WaterbodyObservation)
-            .filter(deafrica_conflux.db.WaterbodyObservation.wb_id == wb.wb_id)
-            .order_by(deafrica_conflux.db.WaterbodyObservation.date.asc())
+            session.query(WaterbodyObservation)
+            .filter(WaterbodyObservation.wb_id == wb.wb_id)
+            .order_by(WaterbodyObservation.date.asc())
             .all()
         )
 
@@ -415,7 +425,7 @@ def stack_waterbodies_db_to_csv(
 
         output_file_name = os.path.join(output_directory, wb.wb_name[:4], wb.wb_name + ".csv")
 
-        if deafrica_conflux.io.check_if_s3_uri(output_file_name):
+        if check_if_s3_uri(output_file_name):
             fs = fsspec.filesystem("s3")
         else:
             fs = fsspec.filesystem("file")
@@ -428,14 +438,10 @@ def stack_waterbodies_db_to_csv(
     session = Session()
     if not uids:
         # query all
-        waterbodies = session.query(deafrica_conflux.db.Waterbody).all()
+        waterbodies = session.query(Waterbody).all()
     else:
         # query some
-        waterbodies = (
-            session.query(deafrica_conflux.db.Waterbody)
-            .filter(deafrica_conflux.db.Waterbody.wb_name.in_(uids))
-            .all()
-        )
+        waterbodies = session.query(Waterbody).filter(Waterbody.wb_name.in_(uids)).all()
 
     # generate the waterbodies list
     waterbodies = np.array_split(waterbodies, split_num)[index_num]
