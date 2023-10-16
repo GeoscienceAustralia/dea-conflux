@@ -210,15 +210,16 @@ def run_from_txt(
         else:
             _log.error(f"{id_} not successful")
 
-    # Write the failed dataset ids to a text file.
-    parent_folder, file_name = os.path.split(dataset_ids_file)
-    file, file_extension = os.path.splitext(file_name)
-    failed_datasets_text_file = os.path.join(
-        parent_folder, file + "_failed_dataset_ids" + file_extension
-    )
+    if failed_dataset_ids:
+        # Write the failed dataset ids to a text file.
+        parent_folder, file_name = os.path.split(dataset_ids_file)
+        file, file_extension = os.path.splitext(file_name)
+        failed_datasets_text_file = os.path.join(
+            parent_folder, file + "_failed_dataset_ids" + file_extension
+        )
 
-    with fs.open(failed_datasets_text_file, "a") as file:
-        for dataset_id in failed_dataset_ids:
-            file.write(f"{dataset_id}\n")
+        with fs.open(failed_datasets_text_file, "a") as file:
+            for dataset_id in failed_dataset_ids:
+                file.write(f"{dataset_id}\n")
 
-    _log.info(f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}.")
+        _log.info(f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}.")

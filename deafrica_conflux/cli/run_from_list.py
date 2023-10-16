@@ -185,7 +185,8 @@ def run_from_list(
             _log.info(f"{id_} successful")
         else:
             _log.error(f"{id_} not successful")
-
-    _log.info(f"Failed dataset IDs {failed_dataset_ids}")
+            
+    if failed_dataset_ids:
+        _log.info(f"Failed dataset IDs {failed_dataset_ids}")
 
     return 0
