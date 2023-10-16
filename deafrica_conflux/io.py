@@ -241,13 +241,17 @@ def write_table_to_parquet(
     file_name = make_parquet_file_name(drill_name, uuid, centre_date)
 
     if check_if_s3_uri(output_directory):
-        output_file_path = os.path.join(output_directory, folder_name, file_name)
         fs = fsspec.filesystem("s3")
     else:
-        parent_folder = os.path.join(output_directory, folder_name)
         fs = fsspec.filesystem("file")
+
+    # Check if the parent folder exists.
+    parent_folder = os.path.join(output_directory, folder_name)
+    if not check_dir_exists(parent_folder):
         fs.makedirs(parent_folder, exist_ok=True)
-        output_file_path = os.path.join(parent_folder, file_name)
+        _log.info(f"Created directory: {parent_folder}")
+
+    output_file_path = os.path.join(parent_folder, file_name)
 
     pyarrow.parquet.write_table(table=table_pa, where=output_file_path, compression="GZIP")
 
