@@ -204,7 +204,7 @@ def test_move_to_deadletter_queue(sqs_client):
 
     try:
         move_to_dead_letter_queue(
-            deadletter_queue_url=deadletter_queue_url,
+            dead_letter_queue_url=deadletter_queue_url,
             message_body=message_body,
             max_retries=max_retries,
             sqs_client=sqs_client,
