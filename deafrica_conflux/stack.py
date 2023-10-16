@@ -109,6 +109,7 @@ def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
     if check_if_s3_uri(path):
         pq_file_paths = [f"s3://{file}" for file in pq_file_paths]
 
+    _log.info(f"Found {len(pq_file_paths)} parquet files.")
     return pq_file_paths
 
 
