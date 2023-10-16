@@ -1,5 +1,6 @@
 import logging
 import os
+from importlib import import_module
 
 import click
 import datacube
@@ -22,10 +23,9 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
     help="Run deafrica-conflux on dataset ids from a text file.",
 )
 @click.option(
-    "--plugin-file",
-    "-p",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to Conflux plugin (.py).",
+    "--plugin-name",
+    type=str,
+    help="Name of the plugin. Plugin file must be in the deafrica_conflux/plugins/ directory.",
 )
 @click.option(
     "--dataset-ids-file",
@@ -76,7 +76,7 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
 )
 def run_from_txt(
-    plugin_file,
+    plugin_name,
     dataset_ids_file,
     polygons_vector_file,
     use_id,
@@ -98,8 +98,10 @@ def run_from_txt(
     _log = logging.getLogger(__name__)
 
     # Read the plugin as a Python module.
+    module = import_module(f"deafrica_conflux.plugins.{plugin_name}")
+    plugin_file = module.__file__
     plugin = run_plugin(plugin_file)
-    _log.info(f"Using plugin {plugin.__file__}")
+    _log.info(f"Using plugin {plugin_file}")
     validate_plugin(plugin)
 
     # Get the product name from the plugin.

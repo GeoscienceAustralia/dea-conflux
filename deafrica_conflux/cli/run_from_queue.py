@@ -1,4 +1,5 @@
 import logging
+from importlib import import_module
 
 import boto3
 import click
@@ -13,7 +14,6 @@ import deafrica_conflux.io
 import deafrica_conflux.queues
 import deafrica_conflux.stack
 from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.plugins import waterbodies_timeseries
 from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
 
 
@@ -21,6 +21,11 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
     "run-from-sqs-queue",
     no_args_is_help=True,
     help="Run deafrica-conflux on dataset ids from an SQS queue.",
+)
+@click.option(
+    "--plugin-name",
+    type=str,
+    help="Name of the plugin. Plugin file must be in the deafrica_conflux/plugins/ directory.",
 )
 @click.option(
     "--dataset-ids-queue",
@@ -81,6 +86,7 @@ from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
 )
 def run_from_sqs_queue(
+    plugin_name,
     dataset_ids_queue,
     polygons_vector_file,
     use_id,
@@ -101,7 +107,8 @@ def run_from_sqs_queue(
     _log = logging.getLogger(__name__)
 
     # Read the plugin as a Python module.
-    plugin_file = waterbodies_timeseries.__file__
+    module = import_module(f"deafrica_conflux.plugins.{plugin_name}")
+    plugin_file = module.__file__
     plugin = run_plugin(plugin_file)
     _log.info(f"Using plugin {plugin_file}")
     validate_plugin(plugin)
