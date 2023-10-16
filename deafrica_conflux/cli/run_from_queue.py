@@ -7,14 +7,19 @@ import datacube
 import geopandas as gpd
 from rasterio.errors import RasterioIOError
 
-import deafrica_conflux.db
-import deafrica_conflux.drill
-import deafrica_conflux.id_field
-import deafrica_conflux.io
-import deafrica_conflux.queues
-import deafrica_conflux.stack
 from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.db import get_engine_waterbodies
+from deafrica_conflux.drill import drill
+from deafrica_conflux.id_field import guess_id_field
+from deafrica_conflux.io import table_exists, write_table_to_parquet
 from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
+from deafrica_conflux.queues import (
+    delete_batch_with_retry,
+    get_queue_url,
+    move_to_dead_letter_queue,
+    receive_a_message,
+)
+from deafrica_conflux.stack import stack_waterbodies_parquet_to_db
 
 
 @click.command(
@@ -124,7 +129,7 @@ def run_from_sqs_queue(
         raise error
     else:
         # Guess the ID field.
-        id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
+        id_field = guess_id_field(polygons_gdf, use_id)
         _log.info(f"Guessed ID field: {id_field}")
 
         # Set the ID field as the index.
@@ -133,24 +138,20 @@ def run_from_sqs_queue(
     # Create the service client.
     sqs_client = boto3.client("sqs")
 
-    dataset_ids_queue_url = deafrica_conflux.queues.get_queue_url(
-        queue_name=dataset_ids_queue, sqs_client=sqs_client
-    )
+    dataset_ids_queue_url = get_queue_url(queue_name=dataset_ids_queue, sqs_client=sqs_client)
     # Get the dead-letter queue.
     dead_letter_queue_name = f"{dataset_ids_queue}-deadletter"
-    dead_letter_queue_url = deafrica_conflux.queues.get_queue_url(
-        queue_name=dead_letter_queue_name, sqs_client=sqs_client
-    )
+    dead_letter_queue_url = get_queue_url(queue_name=dead_letter_queue_name, sqs_client=sqs_client)
 
     if db:
-        engine = deafrica_conflux.db.get_engine_waterbodies()
+        engine = get_engine_waterbodies()
 
     dc = datacube.Datacube(app="deafrica-conflux-drill")
 
     retries = 0
     while retries <= max_retries:
         # Retrieve a single message from the dataset_ids_queue.
-        message = deafrica_conflux.queues.receive_a_message(
+        message = receive_a_message(
             queue_url=dataset_ids_queue_url,
             max_retries=max_retries,
             visibility_timeout=visibility_timeout,
@@ -175,7 +176,7 @@ def run_from_sqs_queue(
 
             if not overwrite:
                 _log.info(f"Checking existence of {dataset_id}")
-                exists = deafrica_conflux.io.table_exists(
+                exists = table_exists(
                     drill_name=product_name,
                     uuid=dataset_id,
                     centre_date=centre_date,
@@ -184,7 +185,7 @@ def run_from_sqs_queue(
 
             if overwrite or not exists:
                 try:
-                    table = deafrica_conflux.drill.drill(
+                    table = drill(
                         plugin=plugin,
                         polygons_gdf=polygons_gdf,
                         scene_uuid=dataset_id,
@@ -196,7 +197,7 @@ def run_from_sqs_queue(
                     # if always dump drill result, or drill result is not empty,
                     # dump that dataframe as PQ file
                     if (dump_empty_dataframe) or (not table.empty):
-                        pq_filename = deafrica_conflux.io.write_table_to_parquet(
+                        pq_filename = write_table_to_parquet(
                             drill_name=product_name,
                             uuid=dataset_id,
                             centre_date=centre_date,
@@ -205,7 +206,7 @@ def run_from_sqs_queue(
                         )
                         if db:
                             _log.info(f"Writing {pq_filename} to DB")
-                            deafrica_conflux.stack.stack_waterbodies_parquet_to_db(
+                            stack_waterbodies_parquet_to_db(
                                 parquet_file_paths=[pq_filename],
                                 verbose=verbose,
                                 engine=engine,
@@ -214,7 +215,7 @@ def run_from_sqs_queue(
                 except KeyError as keyerr:
                     _log.exception(f"Found {dataset_id} has KeyError: {str(keyerr)}")
                     _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
-                    deafrica_conflux.queues.move_to_dead_letter_queue(
+                    move_to_dead_letter_queue(
                         dead_letter_queue_url=dead_letter_queue_url,
                         message_body=dataset_id,
                         sqs_client=sqs_client,
@@ -223,7 +224,7 @@ def run_from_sqs_queue(
                 except TypeError as typeerr:
                     _log.exception(f"Found {dataset_id} has TypeError: {str(typeerr)}")
                     _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
-                    deafrica_conflux.queues.move_to_dead_letter_queue(
+                    move_to_dead_letter_queue(
                         dead_letter_queue_url=dead_letter_queue_url,
                         message_body=dataset_id,
                         sqs_client=sqs_client,
@@ -232,7 +233,7 @@ def run_from_sqs_queue(
                 except RasterioIOError as ioerror:
                     _log.exception(f"Found {dataset_id} has RasterioIOError: {str(ioerror)}")
                     _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
-                    deafrica_conflux.queues.move_to_dead_letter_queue(
+                    move_to_dead_letter_queue(
                         dead_letter_queue_url=dead_letter_queue_url,
                         message_body=dataset_id,
                         sqs_client=sqs_client,
@@ -247,7 +248,7 @@ def run_from_sqs_queue(
                 (
                     successfully_deleted,
                     failed_to_delete,
-                ) = deafrica_conflux.queues.delete_batch_with_retry(
+                ) = delete_batch_with_retry(
                     queue_url=dataset_ids_queue_url,
                     entries=entry_to_delete,
                     max_retries=max_retries,
