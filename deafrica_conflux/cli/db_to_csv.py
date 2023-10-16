@@ -1,7 +1,7 @@
 import click
 
-import deafrica_conflux.stack
 from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.stack import stack_waterbodies_db_to_csv
 
 
 @click.command("db-to-csv", no_args_is_help=True)
@@ -42,7 +42,7 @@ def db_to_csv(output_directory, verbose, jobs, index_num, split_num, remove_dupl
     """
     logging_setup(verbose)
 
-    deafrica_conflux.stack.stack_waterbodies_db_to_csv(
+    stack_waterbodies_db_to_csv(
         output_directory=output_directory,
         verbose=verbose > 0,
         remove_duplicated_data=remove_duplicated_data,

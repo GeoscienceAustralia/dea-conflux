@@ -6,13 +6,13 @@ import datacube
 import geopandas as gpd
 from rasterio.errors import RasterioIOError
 
-import deafrica_conflux.db
-import deafrica_conflux.drill
-import deafrica_conflux.id_field
-import deafrica_conflux.io
-import deafrica_conflux.stack
 from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.db import get_engine_waterbodies
+from deafrica_conflux.drill import drill
+from deafrica_conflux.id_field import guess_id_field
+from deafrica_conflux.io import table_exists, write_table_to_parquet
 from deafrica_conflux.plugins.utils import run_plugin, validate_plugin
+from deafrica_conflux.stack import stack_waterbodies_parquet_to_db
 
 
 @click.command(
@@ -108,7 +108,7 @@ def run_from_list(
         raise error
 
     # Guess the ID field.
-    id_field = deafrica_conflux.id_field.guess_id_field(polygons_gdf, use_id)
+    id_field = guess_id_field(polygons_gdf, use_id)
     _log.debug(f"Guessed ID field: {id_field}")
 
     # Set the ID field as the index.
@@ -119,7 +119,7 @@ def run_from_list(
     _log.info(f"Read {dataset_ids} from list.")
 
     if db:
-        engine = deafrica_conflux.db.get_engine_waterbodies()
+        engine = get_engine_waterbodies()
 
     dc = datacube.Datacube(app="deafrica-conflux-drill")
 
@@ -135,13 +135,11 @@ def run_from_list(
 
         if not overwrite:
             _log.info(f"Checking existence of {id_}")
-            exists = deafrica_conflux.io.table_exists(
-                product_name, id_, centre_date, output_directory
-            )
+            exists = table_exists(product_name, id_, centre_date, output_directory)
 
         if overwrite or not exists:
             try:
-                table = deafrica_conflux.drill.drill(
+                table = drill(
                     plugin,
                     polygons_gdf,
                     id_,
@@ -153,7 +151,7 @@ def run_from_list(
                 # if always dump drill result, or drill result is not empty,
                 # dump that dataframe as PQ file
                 if (dump_empty_dataframe) or (not table.empty):
-                    pq_filename = deafrica_conflux.io.write_table(
+                    pq_filename = write_table_to_parquet(
                         product_name,
                         id_,
                         centre_date,
@@ -162,7 +160,7 @@ def run_from_list(
                     )
                     if db:
                         _log.debug(f"Writing {pq_filename} to DB")
-                        deafrica_conflux.stack.stack_waterbodies_parquet_to_db(
+                        stack_waterbodies_parquet_to_db(
                             parquet_file_paths=[pq_filename],
                             verbose=verbose,
                             engine=engine,

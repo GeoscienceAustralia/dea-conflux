@@ -1,7 +1,7 @@
 import click
 
-import deafrica_conflux.stack
 from deafrica_conflux.cli.logs import logging_setup
+from deafrica_conflux.stack import StackMode, stack_parquet
 
 
 @click.command("stack", no_args_is_help=True)
@@ -44,8 +44,8 @@ def stack(parquet_path, pattern, output_directory, mode, verbose, drop, remove_d
 
     # Convert mode to StackMode
     mode_map = {
-        "waterbodies": deafrica_conflux.stack.StackMode.WATERBODIES,
-        "waterbodies_db": deafrica_conflux.stack.StackMode.WATERBODIES_DB,
+        "waterbodies": StackMode.WATERBODIES,
+        "waterbodies_db": StackMode.WATERBODIES_DB,
     }
 
     kwargs = {}
@@ -55,6 +55,6 @@ def stack(parquet_path, pattern, output_directory, mode, verbose, drop, remove_d
     elif mode == "waterbodies_db":
         kwargs["drop"] = drop
 
-    deafrica_conflux.stack.stack_parquet(
+    stack_parquet(
         path=parquet_path, pattern=pattern, mode=mode_map[mode], verbose=verbose, **kwargs
     )
