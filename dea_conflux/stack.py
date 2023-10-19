@@ -85,12 +85,7 @@ def find_csv_files(path: str, pattern: str = ".*") -> [str]:
     # before I finish the waterbodies run test.
     if path.startswith("s3://"):
         # Find CSV files on S3.
-
-        storage_options = dict(
-            anon=True, s3_additional_kwargs=dict(acl="bucket-owner-full-control")
-        )
-
-        fs = s3fs.S3FileSystem(**storage_options)
+        fs = s3fs.S3FileSystem(anon=True)
         files = fs.find(path)
         for file in files:
             _, ext = os.path.splitext(file)
@@ -145,11 +140,7 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
 
     if path.startswith("s3://"):
         # Find Parquet files on S3.
-        storage_options = dict(
-            anon=True, s3_additional_kwargs=dict(acl="bucket-owner-full-control")
-        )
-
-        fs = s3fs.S3FileSystem(**storage_options)
+        fs = s3fs.S3FileSystem(anon=True)
         files = fs.find(path)
         for file in files:
             _, ext = os.path.splitext(file)
@@ -678,6 +669,7 @@ def stack_waterbodies_db_to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,
             index=False,
+            storage_options={"acl": "bucket-owner-full-control"},
         )
 
         Session.remove()
