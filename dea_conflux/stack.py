@@ -85,7 +85,12 @@ def find_csv_files(path: str, pattern: str = ".*") -> [str]:
     # before I finish the waterbodies run test.
     if path.startswith("s3://"):
         # Find CSV files on S3.
-        fs = s3fs.S3FileSystem(anon=True)
+
+        storage_options = dict(
+            anon=True, s3_additional_kwargs=dict(ACL="bucket-owner-full-control")
+        )
+
+        fs = s3fs.S3FileSystem(**storage_options)
         files = fs.find(path)
         for file in files:
             _, ext = os.path.splitext(file)
@@ -140,7 +145,11 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
 
     if path.startswith("s3://"):
         # Find Parquet files on S3.
-        fs = s3fs.S3FileSystem(anon=True)
+        storage_options = dict(
+            anon=True, s3_additional_kwargs=dict(ACL="bucket-owner-full-control")
+        )
+
+        fs = s3fs.S3FileSystem(**storage_options)
         files = fs.find(path)
         for file in files:
             _, ext = os.path.splitext(file)
