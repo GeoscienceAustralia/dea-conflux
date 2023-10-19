@@ -9,8 +9,10 @@ import datetime
 import json
 import logging
 import os
+from io import BytesIO
 from pathlib import Path
 
+import boto3
 import pandas as pd
 import pyarrow
 import pyarrow.parquet
@@ -214,9 +216,27 @@ def write_table(
 
     output_path = output + foldername + filename
 
-    result = table_pa.to_pandas()
+    parquet_buffer = BytesIO()
+    pyarrow.parquet.write_table(table_pa, parquet_buffer)
 
-    result.to_parquet(output_path, storage_options={"ACL": "bucket-owner-full-control"},)
+    s3 = boto3.client("s3")
+
+    from urllib.parse import urlparse
+
+    # Parse the S3 URI
+    parsed_uri = urlparse(output_path)
+
+    # Extract the bucket name and object key
+    bucket_name = parsed_uri.netloc
+    object_key = parsed_uri.path.lstrip("/")
+
+    parquet_buffer.seek(0)  # Reset the buffer position
+    s3.put_object(
+        Bucket=bucket_name,
+        Key=object_key,
+        Body=parquet_buffer,
+        ACL="bucket-owner-full-control",  # Set the ACL to bucket-owner-full-control
+    )
 
     # pyarrow.parquet.write_table(table_pa, output_path, compression="GZIP")
     return output_path

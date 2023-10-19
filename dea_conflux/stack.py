@@ -15,8 +15,10 @@ import logging
 import multiprocessing
 import os
 import re
+from io import StringIO
 from pathlib import Path
 
+import boto3
 import fsspec
 import geohash
 import numpy as np
@@ -665,11 +667,28 @@ def stack_waterbodies_db_to_csv(
         # The pc_missing should not in final WaterBodies result
         df.drop(columns=["pc_missing"], inplace=True)
 
-        df.to_csv(
-            out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
-            header=True,
-            index=False,
-            storage_options={"ACL": "bucket-owner-full-control"},
+        csv_buffer = StringIO()
+        df.to_csv(csv_buffer, header=True, index=False)
+        csv_data = csv_buffer.getvalue()
+
+        from urllib.parse import urlparse
+
+        # Parse the S3 URI
+        parsed_uri = urlparse(
+            out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv"
+        )
+
+        # Extract the bucket name and object key
+        bucket_name = parsed_uri.netloc
+        object_key = parsed_uri.path.lstrip("/")
+
+        s3 = boto3.client("s3")
+
+        s3.put_object(
+            Bucket=bucket_name,
+            Key=object_key,
+            Body=csv_data,
+            ACL="bucket-owner-full-control",  # Set the ACL to bucket-owner-full-control
         )
 
         Session.remove()
