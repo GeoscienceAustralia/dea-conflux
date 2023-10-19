@@ -87,7 +87,7 @@ def find_csv_files(path: str, pattern: str = ".*") -> [str]:
         # Find CSV files on S3.
 
         storage_options = dict(
-            anon=True, s3_additional_kwargs=dict(ACL="bucket-owner-full-control")
+            anon=True, s3_additional_kwargs=dict(acl="bucket-owner-full-control")
         )
 
         fs = s3fs.S3FileSystem(**storage_options)
@@ -146,7 +146,7 @@ def find_parquet_files(path: str, pattern: str = ".*") -> [str]:
     if path.startswith("s3://"):
         # Find Parquet files on S3.
         storage_options = dict(
-            anon=True, s3_additional_kwargs=dict(ACL="bucket-owner-full-control")
+            anon=True, s3_additional_kwargs=dict(acl="bucket-owner-full-control")
         )
 
         fs = s3fs.S3FileSystem(**storage_options)
