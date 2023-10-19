@@ -669,7 +669,7 @@ def stack_waterbodies_db_to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv",
             header=True,
             index=False,
-            storage_options={"acl": "bucket-owner-full-control"},
+            storage_options={"ACL": "bucket-owner-full-control"},
         )
 
         Session.remove()
