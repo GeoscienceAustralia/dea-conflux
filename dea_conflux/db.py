@@ -16,7 +16,6 @@ from sqlalchemy import (
     String,
     create_engine,
 )
-from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.future import Engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.expression import ClauseElement
@@ -101,11 +100,7 @@ def get_or_create(session, model, defaults=None, **kwargs):
     """Query a row or create it if it doesn't exist."""
     # https://stackoverflow.com/questions/2546207/
     # does-sqlalchemy-have-an-equivalent-of-djangos-get-or-create
-
-    try:
-        instance = session.query(model).filter_by(**kwargs).one_or_none()
-    except MultipleResultsFound:
-        instance = session.query(model).filter_by(**kwargs).first()
+    instance = session.query(model).filter_by(**kwargs).one_or_none()
     if instance:
         return instance, False
     else:
