@@ -821,6 +821,12 @@ def pq_to_db_run_from_queue(
     Run dea-conflux on a PQ to DB from a queue.
     """
 
+    import pandas as pd
+
+    wb_ids_df = pd.read_csv(
+        "s3://dea-public-data-dev/projects/WaterBodies/wb_to_wb_id.csv"
+    )
+
     plugin = run_plugin(plugin)
     logger.info(f"Using plugin {plugin.__file__}")
     validate_plugin(plugin)
@@ -883,6 +889,7 @@ def pq_to_db_run_from_queue(
                     dea_conflux.stack.stack_waterbodies_db(
                         paths=[pq_path],
                         verbose=verbose,
+                        wb_ids_df=wb_ids_df,
                         engine=engine,
                         drop=False,
                     )
