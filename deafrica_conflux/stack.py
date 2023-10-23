@@ -33,6 +33,7 @@ from deafrica_conflux.db import (
     get_or_create,
 )
 from deafrica_conflux.io import (
+    CSV_EXTENSIONS,
     PARQUET_EXTENSIONS,
     check_if_s3_uri,
     read_table_from_parquet,
@@ -111,6 +112,56 @@ def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
 
     _log.info(f"Found {len(pq_file_paths)} parquet files.")
     return pq_file_paths
+
+
+def find_csv_files(path: str | Path, pattern: str = ".*") -> [str]:
+    """
+    Find CSV files matching a pattern.
+
+    Arguments
+    ---------
+    path : str | Path
+        Path (s3 or local) to search for CSV files.
+
+    pattern : str
+        Regex to match file names against.
+
+    Returns
+    -------
+    [str]
+        List of paths.
+    """
+    pattern = re.compile(pattern)
+
+    # "Support" pathlib Paths.
+    path = str(path)
+
+    if check_if_s3_uri(path):
+        # Find CSV files on S3.
+        file_system = fsspec.filesystem("s3")
+    else:
+        # Find CSV files localy.
+        file_system = fsspec.filesystem("file")
+
+    csv_file_paths = []
+
+    files = file_system.find(path)
+    for file in files:
+        _, file_extension = os.path.splitext(file)
+        if file_extension not in CSV_EXTENSIONS:
+            continue
+        else:
+            _, file_name = os.path.split(file)
+            if not pattern.match(file_name):
+                continue
+            else:
+                csv_file_paths.append(file)
+
+    if check_if_s3_uri(path):
+        csv_file_paths = [f"s3://{file}" for file in csv_file_paths]
+
+    _log.info(f"Found {len(csv_file_paths)} csv files.")
+    return csv_file_paths
 
 
 def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:
