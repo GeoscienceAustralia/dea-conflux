@@ -140,7 +140,7 @@ def table_exists(
         # local
         return os.path.exists(path)
 
-    return s3fs.S3FileSystem().exists(path), path
+    return s3fs.S3FileSystem().exists(path)
 
 
 def write_table(
