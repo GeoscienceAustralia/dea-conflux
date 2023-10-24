@@ -226,19 +226,20 @@ def write_table(
     # Parse the S3 URI
     parsed_uri = urlparse(output_path)
 
-    # Extract the bucket name and object key
-    bucket_name = parsed_uri.netloc
-    object_key = parsed_uri.path.lstrip("/")
+    if parsed_uri.schema == "s3":
+        # Extract the bucket name and object key
+        bucket_name = parsed_uri.netloc
+        object_key = parsed_uri.path.lstrip("/")
 
-    parquet_buffer.seek(0)  # Reset the buffer position
-    s3.put_object(
-        Bucket=bucket_name,
-        Key=object_key,
-        Body=parquet_buffer,
-        ACL="bucket-owner-full-control",  # Set the ACL to bucket-owner-full-control
-    )
-
-    # pyarrow.parquet.write_table(table_pa, output_path, compression="GZIP")
+        parquet_buffer.seek(0)  # Reset the buffer position
+        s3.put_object(
+            Bucket=bucket_name,
+            Key=object_key,
+            Body=parquet_buffer,
+            ACL="bucket-owner-full-control",  # Set the ACL to bucket-owner-full-control
+        )
+    else:
+        pyarrow.parquet.write_table(table_pa, output_path, compression="GZIP")
     return output_path
 
 
