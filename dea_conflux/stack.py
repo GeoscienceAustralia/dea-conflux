@@ -501,7 +501,6 @@ def get_waterbody_key(uid: str, session: Session):
 
 def stack_waterbodies_db(
     paths: [str],
-    wb_ids_df: pd.DataFrame,
     verbose: bool = False,
     engine: Engine = None,
     uids: {str} = None,
@@ -553,12 +552,7 @@ def stack_waterbodies_db(
     if verbose:
         uids_ = tqdm(uids)
     for uid in uids_:
-        # key = get_waterbody_key(uid, session)
-
-        key = list(wb_ids_df[wb_ids_df["wb_name"] == uid]["wb_id"])[0]
-
-        print("uid", uid, "key", key)
-
+        key = get_waterbody_key(uid, session)
         uid_to_key[uid] = key
 
     for path in paths:
@@ -572,9 +566,7 @@ def stack_waterbodies_db(
         for uid, series in df.iterrows():
             if uid not in uid_to_key:
                 # add this uid
-                key = list(wb_ids_df[wb_ids_df["wb_name"] == uid]["wb_id"])[0]
-
-                # key = get_waterbody_key(uid, session)
+                key = get_waterbody_key(uid, session)
                 uid_to_key[uid] = key
 
             key = uid_to_key[uid]
