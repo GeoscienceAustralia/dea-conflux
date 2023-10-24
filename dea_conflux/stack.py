@@ -678,7 +678,7 @@ def stack_waterbodies_db_to_csv(
             out_path + "/" + wb.wb_name[:4] + "/" + wb.wb_name + ".csv"
         )
 
-        if parsed_uri.schema == "s3":
+        if parsed_uri.scheme == "s3":
             # Extract the bucket name and object key
             bucket_name = parsed_uri.netloc
             object_key = parsed_uri.path.lstrip("/")

@@ -226,7 +226,7 @@ def write_table(
     # Parse the S3 URI
     parsed_uri = urlparse(output_path)
 
-    if parsed_uri.schema == "s3":
+    if parsed_uri.scheme == "s3":
         # Extract the bucket name and object key
         bucket_name = parsed_uri.netloc
         object_key = parsed_uri.path.lstrip("/")
