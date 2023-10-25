@@ -704,12 +704,12 @@ def nrt_run_from_queue(
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
 
             # if id_ is uuid
-            if len(id_) == 36:
-                centre_date = dc.index.datasets.get(id_).center_time
-            else:
+            if len(id_) != 36:
                 import json
 
                 id_ = json.loads(id_)["id"]
+
+            centre_date = dc.index.datasets.get(id_).center_time
 
             if not overwrite:
                 logger.info(f"Checking existence of {id_}")
