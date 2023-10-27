@@ -621,6 +621,8 @@ def receive_messages(
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
 
+    assert max_no_messages <= 10
+
     retries = 0
     while retries <= max_retries:
         try:
