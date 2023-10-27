@@ -6,12 +6,9 @@ Geoscience Australia
 2021
 """
 
-import collections
 import datetime
 import logging
-import multiprocessing
 import warnings
-from functools import partial
 from types import ModuleType
 
 import datacube
@@ -19,11 +16,10 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import shapely.geometry
-import tqdm
-import xarray as xr
 from datacube.model import Dataset
 from datacube.utils.geometry import Geometry
 from deafrica_tools.spatial import xr_rasterize
+from skimage.measure import regionprops
 
 _log = logging.getLogger(__name__)
 
@@ -156,75 +152,31 @@ def get_intersections(polygons_gdf: gpd.GeoDataFrame, ds_extent: Geometry) -> pd
     return pd.DataFrame(directions, index=ratios.index)
 
 
-def find_datasets_for_plugin(
-    dc: datacube.Datacube, plugin: ModuleType, scene_uuid: str, strict: bool = False
-) -> dict[str, Dataset]:
+def get_polygons_within_ds_extent(polygons_gdf: gpd.GeoDataFrame, ds: Dataset) -> gpd.GeoDataFrame:
     """
-    Find the datasets that a plugin requires given a related scene UUID.
-
-    Arguments
-    ---------
-    dc : Datacube
-        A Datacube to search.
-    plugin : module
-        Plugin defining input products.
-    scene_uuid : str
-        UUID of scene to look up.
-    strict : bool
-        Default False. Error on duplicate scenes (otherwise warn).
-
-    Returns
-    -------
-    dict[str, Dataset]
-        Dataset for each of the input products in the plugin.
+    Filter a set of polygons to include only polygons within (contained in)
+    the extent of a dataset.
     """
-    # Load the metadata of the specified scene.
-    metadata = dc.index.datasets.get(scene_uuid)
-    # Find the datasets that have the same centre time and
-    # fall within this extent.
-    datasets = {}
-    for input_product in plugin.input_products:
-        datasets_ = dc.find_datasets(
-            product=input_product, geopolygon=metadata.extent, time=metadata.center_time
-        )
-        if len(datasets_) > 1:
-            if strict:
-                raise ValueError(f"Found multiple datasets at same time for {scene_uuid}")
-            else:
-                warnings.warn(
-                    f"Found multiple datasets at same time for {scene_uuid}, "
-                    "choosing one arbitrarily",
-                    RuntimeWarning,
-                )
-        elif len(datasets_) == 0:
-            raise ValueError("Found no datasets associated with given scene")
-        datasets[input_product] = datasets_[0]
-    return datasets
+    # Get the extent of the dataset.
+    ds_extent = ds.extent
+    ds_extent_crs = ds_extent.crs
+    ds_extent_geom = ds_extent.geom
+    ds_extent_gdf = gpd.GeoDataFrame(geometry=[ds_extent_geom], crs=ds_extent_crs).to_crs(
+        polygons_gdf.crs
+    )
+
+    # Get all polygons that are contained withn the extent of the dataset.
+    polygon_ids_within_ds_extent = ds_extent_gdf.sjoin(
+        polygons_gdf, how="inner", predicate="contains"
+    )["index_right"].to_list()
+    polygons_within_ds_extent = polygons_gdf.loc[polygon_ids_within_ds_extent]
+
+    return polygons_within_ds_extent
 
 
-def dataset_to_dict(ds: xr.Dataset) -> dict:
-    """
-    Convert a 0d dataset into a dictionary.
-
-    Arguments
-    ---------
-    ds : xr.Dataset
-
-    Returns
-    -------
-    dict
-    """
-    ds_dict = ds.to_dict(data="list")
-    data_vars_dict = ds_dict["data_vars"]
-
-    data_dict = {}
-    for key, val in data_vars_dict.items():
-        data_dict[key] = val["data"]
-
-    return data_dict
-
-
-def polygons_in_ds_extent(polygons_gdf: gpd.GeoDataFrame, ds: Dataset) -> gpd.GeoDataFrame:
+def get_polygons_intersecting_ds_extent(
+    polygons_gdf: gpd.GeoDataFrame, ds: Dataset
+) -> gpd.GeoDataFrame:
     """
     Filter a set of polygons to only include polygons that intersect with
     the extent of a dataset.
@@ -240,131 +192,26 @@ def polygons_in_ds_extent(polygons_gdf: gpd.GeoDataFrame, ds: Dataset) -> gpd.Ge
     """
     # Get the extent of the dataset.
     ds_extent = ds.extent
-
-    # Reproject the extent of the dataset to match the set of polygons.
-    ds_extent = ds_extent.to_crs(polygons_gdf.crs)
-
-    # Get the shapely geometry of the reprojected extent of the dataset.
+    ds_extent_crs = ds_extent.crs
     ds_extent_geom = ds_extent.geom
-
-    # Filter the polygons.
-    filtered_polygons_gdf = polygons_gdf[polygons_gdf.geometry.intersects(ds_extent_geom)]
-
-    return filtered_polygons_gdf
-
-
-def polygons_centroids_in_ds_extent_bbox(
-    polygons_gdf: gpd.GeoDataFrame, ds: Dataset, buffer=True
-) -> gpd.GeoDataFrame:
-    """
-    Filter a set of polygons to only include polygons whose centroids intersect
-    with the (buffered) bounding box of the extent of a dataset.
-
-    Arguments
-    ---------
-    polygons_gdf : gpd.GeoDataFrame
-    ds : Dataset
-    buffer : bool
-        Optional (True).
-        Extend the bounding box of the extent of a dataset by the
-        width of the extent of the dataset.
-
-    Returns
-    -------
-    gpd.GeoDataFrame
-    """
-    # Get the extent of the dataset.
-    ds_extent = ds.extent
-
-    # Reproject the extent of the dataset to match the set of polygons.
-    ds_extent = ds_extent.to_crs(polygons_gdf.crs)
-
-    # Get the buffered bounding box of the extent of the dataset.
-    bbox = ds_extent.boundingbox
-    left, bottom, right, top = bbox
-
-    width = height = 0
-    if buffer:
-        width = right - left
-        height = top - bottom
-
-    buffered_bbox_geom = shapely.geometry.box(
-        left - width, bottom - height, right + width, top + height
+    ds_extent_gdf = gpd.GeoDataFrame(geometry=[ds_extent_geom], crs=ds_extent_crs).to_crs(
+        polygons_gdf.crs
     )
 
-    # Get the centroids of the polygons.
-    centroids = polygons_gdf.centroid
+    # Get all polygons that intersect with the extent of the dataset.
+    polygon_ids_intersecting_ds_extent = ds_extent_gdf.sjoin(
+        polygons_gdf, how="inner", predicate="intersects"
+    )["index_right"].to_list()
+    polygons_intersecting_ds_extent = polygons_gdf.loc[polygon_ids_intersecting_ds_extent]
 
-    # Filter the polygons.
-    filtered_polygons_gdf = polygons_gdf[centroids.intersects(buffered_bbox_geom)]
-
-    return filtered_polygons_gdf
+    return polygons_intersecting_ds_extent
 
 
-def check_ds_near_polygons(
-    polygons_gdf: gpd.GeoDataFrame,
-    ds: Dataset,
-):
+def filter_large_polygons(polygons_gdf: gpd.GeoDataFrame, ds: Dataset) -> gpd.GeoDataFrame:
     """
-    Use the 'polygons_in_ds_extent' and 'polygons_centroids_in_ds_extent_bbox'
-    functions to check if a dataset is near a set of polygons.
-    Returns the dataset's id if the dataset is near a set of polygons else
-    returns an empty string.
-
-    Parameters
-    ----------
-    polygons_gdf : gpd.GeoDataFrame
-    ds : Dataset
-
-    Returns
-    -------
-    str
-    """
-    if len(polygons_centroids_in_ds_extent_bbox(polygons_gdf, ds)) > 0:
-        if len(polygons_in_ds_extent(polygons_gdf, ds)) > 0:
-            return str(ds.id)
-        else:
-            return ""
-    else:
-        return ""
-
-
-def filter_datasets(
-    dss: list[Dataset], polygons_gdf: gpd.GeoDataFrame, worker_num: int = 1
-) -> list[str]:
-    """
-    Filter out datasets that are not near a set of polygons, using a
-    multi-process approach to run the check_ds_near_polygons function.
-
-    Arguments
-    ---------
-    dss : list[Dataset]
-    polygons_gdf : gpd.GeoDataFrame
-    worker_num : int
-
-    Returns
-    -------
-    list[str]
-        List of dataset ids for datasets near the set of polygons.
-    """
-    with multiprocessing.Pool(processes=worker_num) as pool:
-        filtered_datasets_ = list(
-            tqdm.tqdm(pool.imap(partial(check_ds_near_polygons, polygons_gdf), dss))
-        )
-
-    # Remove empty strings.
-    filtered_datasets = [item for item in filtered_datasets_ if item]
-
-    return filtered_datasets
-
-
-def polygons_in_tripled_ds_extent_bbox_boundary(
-    polygons_gdf: gpd.GeoDataFrame, ds: Dataset
-) -> gpd.GeoDataFrame:
-    """
-    Filter a set of polygons to remove polygons that intersect with the
-    boundary of a polygon three times the size of the bounding box of the extent
-    of a dataset.
+    Filter out large polygons from the set of polygons.
+    Large polygons are defined as polygons which are large than 3 scenes
+    in width and in height.
 
     Arguments
     ---------
@@ -385,7 +232,7 @@ def polygons_in_tripled_ds_extent_bbox_boundary(
     bbox = ds_extent.boundingbox
     left, bottom, right, top = bbox
 
-    # Create a polygon 3 times the size of the bounding box.
+    # Create a polygon 3 dataset extents in width and height.
     width = right - left
     height = top - bottom
 
@@ -406,9 +253,9 @@ def polygons_in_tripled_ds_extent_bbox_boundary(
 def drill(
     plugin: ModuleType,
     polygons_gdf: gpd.GeoDataFrame,
-    scene_uuid: str,
+    reference_dataset: Dataset,
     partial=True,
-    overedge=False,
+    overedge=True,
     dc: datacube.Datacube | None = None,
     time_buffer=datetime.timedelta(hours=1),
 ) -> pd.DataFrame:
@@ -421,11 +268,10 @@ def drill(
         A validated plugin to drill with.
 
     polygons_gdf : GeoDataFrame
-        A GeoDataFrame in the same CRS as the output_crs,
-        with the ID (column containing the polygons ids) as the index.
+        A GeoDataFrame with the ID (column containing the polygons ids) as the index.
 
-    scene_uuid : str
-        ID of scene to process.
+    reference_dataset : Dataset
+        Refernce dataset to process.
 
     partial : bool
         Optional (defaults to True). Whether to include polygons that partially
@@ -456,32 +302,27 @@ def drill(
         Columns = output bands
     """
 
-    # partial and overedge interact.
-    # we have two loading options (dc.load and scene-based),
-    # two polygon screening options (cautious and centroid),
-    # and two reporting options (report or not).
-
-    # loading:
-    #              | partial | not partial
-    # overedge     | dc.load | warn; scene
-    # not overedge | scene   | scene
-
-    # screening:
-    #              | partial  | not partial
-    # overedge     | cautious | centroid
-    # not overedge | cautious | centroid
-
-    # reporting:
-    #              | partial | not partial
-    # overedge     | not     | not
-    # not overedge | report  | not
-
+    # Validate partial and overedge parameters.
     if not partial:
         if overedge:
             _log.error("overedge=True expects partial=True")
             raise ValueError("overedge=True expects partial=True")
+
+    # TODO: Generalize to work with multiple products and
+    # products with multiple measurements.
+
+    # Check the plugin does not have multiple products to load.
+    # Using multiple products is not is not implemented.
+    if len(plugin.input_products.items()) > 1:
+        raise NotImplementedError("Expected one product in plugin")
+    else:
+        reference_product = reference_dataset.type.name
+        assert reference_product == list(plugin.input_products.keys())[0]
+        measurements = plugin.input_products[reference_product]
+        if len(measurements) > 1:
+            raise NotImplementedError("Expected 1 measurement in plugin")
         else:
-            raise NotImplementedError()
+            measurement = measurements[0]
 
     # Get a datacube if we don't have one already.
     if dc is None:
@@ -490,101 +331,133 @@ def drill(
     # Get the output crs and resolution from the plugin.
     output_crs = plugin.output_crs
     resolution = plugin.resolution
+    if hasattr(plugin, "resampling"):
+        resampling = plugin.resampling
+    else:
+        resampling = "nearest"
 
     # Reproject the polygons to the required CRS.
     polygons_gdf = polygons_gdf.to_crs(output_crs)
-    assert str(polygons_gdf.crs).lower() == str(output_crs).lower()
 
-    # Assign a one-indexed numeric column for the polygons.
-    # This will allow us to build a polygon enumerated raster.
-    attr_col = "_conflux_one_index"
-    # This mutates the (in-memory) polygons_gdf, but that's OK.
-    polygons_gdf[attr_col] = range(1, len(polygons_gdf.index) + 1)
-    conflux_one_index_to_id = {v: k for k, v in polygons_gdf[attr_col].to_dict().items()}
-
-    # Get the dataset we asked for.
-    reference_dataset = dc.index.datasets.get(scene_uuid)
-
-    # Filter out polygons that aren't anywhere near this scene.
-    _n_initial = len(polygons_gdf)
-    filtered_polygons_gdf = polygons_centroids_in_ds_extent_bbox(
-        polygons_gdf,
-        reference_dataset,
-        # ...and limit it to centroids in this scene if not partial.  # noqa: E128
-        buffer=partial,
-    )
-    _n_filtered_quick = len(filtered_polygons_gdf)
-    _log.debug(f"Quick filter removed {_n_initial - _n_filtered_quick} polygons")
-
-    # Remove things outside the box.
-    # We do this after the quick filter so the intersection is way faster.
-    filtered_polygons_gdf = polygons_in_ds_extent(filtered_polygons_gdf, reference_dataset)
-    _n_filtered_full = len(filtered_polygons_gdf)
-    _log.debug(f"Full filter removed {_n_filtered_quick - _n_filtered_full} polygons")
-
-    # If overedge, remove anything which intersects with a 3-scene
-    # width box.
-    if overedge:
-        filtered_polygons_gdf = polygons_in_tripled_ds_extent_bbox_boundary(
-            filtered_polygons_gdf, reference_dataset
+    # Filter the polygons based on the partial and overedge parameter.
+    if partial:
+        # Include polygons that partially overlap with the scene.
+        # i.e. only  include polygons that intersect with the dataset extent.
+        filtered_polygons_gdf = get_polygons_intersecting_ds_extent(polygons_gdf, reference_dataset)
+        _log.info(
+            f"Filtered out {len(polygons_gdf) - len(filtered_polygons_gdf)} polygons out of {len(polygons_gdf)} polygons."
         )
-        _log.debug(
-            f"Overedge filter removed {_n_filtered_full - len(filtered_polygons_gdf)} polygons"
+        if overedge:
+            # If overedge, remove anything which intersects with a 3-scene
+            # width box.
+            n = len(filtered_polygons_gdf)
+            filtered_polygons_gdf = filter_large_polygons(filtered_polygons_gdf, reference_dataset)
+            _log.info(
+                f"Overedge filter removed {n - len(filtered_polygons_gdf)} polygons larger than 3 scenes in width and height out of {n} polygons."
+            )
+    else:
+        # Do not include polygons that partially overlap with the scene.
+        # i.e. only include polygons within the dataset extent.
+        filtered_polygons_gdf = get_polygons_within_ds_extent(polygons_gdf, reference_dataset)
+        _log.info(
+            f"Filtered out {len(polygons_gdf)- len(filtered_polygons_gdf)} polygons out of {len(polygons_gdf)} polygons."
         )
 
     if len(filtered_polygons_gdf) == 0:
+        scene_uuid = str(reference_dataset.id)
         _log.warning(f"No polygons found in scene {scene_uuid}")
         return pd.DataFrame({})
 
-    # Load the image of the input scene so we can build the raster.
-    # TODO(MatthewJA): If this is also a dataset required for drilling,
-    # we will load it twice - and even worse, we'll load it with
-    # more bands than we need the first time! Ignore for MVP.
-    if not overedge:
-        # just load the scene we asked for
-        _log.debug("Loading datasets:")
-        _log.debug(f"\t{reference_dataset.id}")
-        reference_scene = dc.load(
-            datasets=[reference_dataset], output_crs=output_crs, resolution=resolution
-        )
-        # and grab the datasets we want too
-        datasets = find_datasets_for_plugin(dc, plugin, scene_uuid)
-    else:
-        # search for all the datasets we need to cover the area
-        # of the polygons.
-        reference_product = reference_dataset.type.name
+    # Load the reference dataset.
+    if overedge:
+        # Search for all the datasets neighbouring our reference dataset that we need to cover
+        # the area of the polygons.
 
+        # Get the bounding box for the polygons.
         geopolygon = Geometry(
             geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
             crs=filtered_polygons_gdf.crs,
         )
 
+        # TODO: Test using a 1 day
+        # Get the time range to use for searching for datasets neighbouring our reference dataset.
         time_span = (
             reference_dataset.center_time - time_buffer,
             reference_dataset.center_time + time_buffer,
         )
 
         req_datasets = dc.find_datasets(
-            product=reference_product, geopolygon=geopolygon, time=time_span
+            product=reference_product, geopolygon=geopolygon, time=time_span, ensure_location=True
         )
-        _log.info("Loading datasets:")
-        for ds_ in req_datasets:
-            _log.info(f"\t{ds_.id}")
 
-        _log.info(f"Going to load {len(req_datasets)} datasets")
-        # There really shouldn't be more than nine of these.
-        # But, they sometimes split into two scenes per tile in
-        # collection 2. So we'll insist there's <= 18.
-        assert len(req_datasets) <= 18
         reference_scene = dc.load(
-            product=reference_product,
+            datasets=req_datasets,
+            measurements=measurements,
             geopolygon=geopolygon,
             time=time_span,
             output_crs=output_crs,
             resolution=resolution,
+            group_by="solar_day",
+            resampling=resampling,
         )
 
+        _log.info(
+            f"Loaded the {len(req_datasets)} required datasets to cover all the polygons: {', '.join([str(dataset.id) for dataset in req_datasets])} ."
+        )
+
+    else:
+        # Load the reference scene.
+        reference_scene = dc.load(
+            datasets=[reference_dataset],
+            measurements=measurements,
+            output_crs=output_crs,
+            resolution=resolution,
+            resampling=resampling,
+        )
+
+        _log.info(f"Loaded the reference dataset {str(reference_dataset.id)} .")
+
     _log.info(f"Reference scene is {reference_scene.sizes}")
+
+    # Transform the loaded data.
+    # Force warnings to raise exceptions.
+    # This means users have to explicitly ignore warnings.
+    ds = reference_scene.isel(time=0)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        ds_transformed = plugin.transform(ds)[measurement]
+
+    # Assign a one-indexed numeric column for the polygons.
+    # This will allow us to build a polygon enumerated raster.
+    attr_col = "_conflux_one_index"
+    # This mutates the (in-memory) polygons_gdf, but that's OK.
+    filtered_polygons_gdf[attr_col] = range(1, len(filtered_polygons_gdf.index) + 1)
+    conflux_one_index_to_id = {v: k for k, v in filtered_polygons_gdf[attr_col].to_dict().items()}
+
+    # Build the enumerated polygon raster.
+    polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
+
+    # Get the summaries.
+    # Convert the xarrat.DataArrays to a numpy array for image processing.
+    np_polygon_raster = polygon_raster.to_numpy().astype(int)
+
+    np_ds_transformed = ds_transformed.to_numpy().astype(float)
+
+    # For each polygon, perform the summary.
+    props = regionprops(
+        label_image=np_polygon_raster,
+        intensity_image=np_ds_transformed,
+        extra_properties=(plugin.summarise,),
+    )
+
+    summary_df_list = []
+    for region_prop in props:
+        polygon_summary_df = region_prop.summarise
+        polygon_index = conflux_one_index_to_id[region_prop.label]
+        polygon_summary_df.index = [polygon_index]
+        summary_df_list.append(polygon_summary_df)
+
+    summary_df = pd.concat(summary_df_list, ignore_index=False)
 
     # Detect intersections.
     # We only have to do this if partial and not overedge.
@@ -601,86 +474,7 @@ def drill(
                 "West": "conflux_w",
             },
         )
-
-    # Build the enumerated polygon raster.
-    polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
-
-    # Load the images.
-    if hasattr(plugin, "resampling"):
-        resampling = plugin.resampling
-    else:
-        resampling = "nearest"
-
-    bands = {}
-    for product, measurements in plugin.input_products.items():
-        for band in measurements:
-            assert band not in bands, f"Duplicate band: {product}{band}"
-        query = dict(
-            measurements=measurements,
-            output_crs=output_crs,
-            resolution=resolution,
-            resampling=resampling,
-        )
-        if not overedge:
-            query["datasets"] = [datasets[product]]
-        else:
-            query["product"] = product
-            query["geopolygon"] = geopolygon
-            query["time"] = time_span
-            query["group_by"] = "solar_day"
-        _log.debug(f"Query: {repr(query)}")
-        da = dc.load(**query)
-        for band in measurements:
-            bands[band] = da[band]
-    ds = xr.Dataset(bands).isel(time=0)
-
-    # Transform the data.
-    # Force warnings to raise exceptions.
-    # This means users have to explicitly ignore warnings.
-    with warnings.catch_warnings():
-        warnings.filterwarnings("error")
-        ds_transformed = plugin.transform(ds)
-    transformed_bands = list(ds_transformed.keys())
-
-    # For each polygon, perform the summary.
-    summaries = {}  # ID -> summary
-
-    # Instead of masking for each polygon,
-    # find _all_ polygon indices at once.
-    flat_bands = xr.Dataset(
-        data_vars={
-            band: xr.DataArray(ds_transformed[band].values.ravel(), dims=["idx"])
-            for band in transformed_bands
-        }
-    )
-    flat_ids = polygon_raster.values.ravel()
-
-    id_to_indexes = collections.defaultdict(list)  # id -> [idx]
-    for i, v in enumerate(flat_ids):
-        if v > 0:
-            id_to_indexes[v].append(i)
-
-    for oid in id_to_indexes:
-        if oid == 0:
-            continue
-
-        values = flat_bands.isel(idx=id_to_indexes[oid])
-        # Force warnings to raise exceptions.
-        with warnings.catch_warnings():
-            warnings.filterwarnings("error")
-            summary = plugin.summarise(values, resolution)
-        # Convert that summary (a 0d dataset) into a dict.
-        summary = dataset_to_dict(summary)
-        summaries[oid] = summary
-
-    def map_with_err(k):
-        # KeyError if the index is missing
-        return conflux_one_index_to_id[k]
-
-    summary_df = pd.DataFrame({conflux_one_index_to_id[int(k)]: summaries[k] for k in summaries}).T
-
-    # Merge in the edge information.
-    if partial and not overedge:
+        # Merge in the edge information.
         summary_df = summary_df.join(
             # left join only includes objects with some
             # representation in the scene
