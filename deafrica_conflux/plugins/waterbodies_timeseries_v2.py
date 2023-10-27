@@ -1,6 +1,6 @@
-import xarray as xr
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 product_name = "waterbodies"
 version = "0.0.1"
@@ -46,9 +46,8 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
 
 
 def summarise(region_mask, intensity_image):
-   
     masked_intensity_image = intensity_image[region_mask]
-    
+
     # Area of one pixel in metres squared
     # Use absolute value to remove any negative sign from resolution tuple
     px_area = abs(resolution[0] * resolution[1])
@@ -77,7 +76,7 @@ def summarise(region_mask, intensity_image):
     pc_dry = (px_dry / px_total) * 100.0
     pc_invalid = (px_invalid / px_total) * 100.0
 
-    # If the proportion of the waterbody missing is greater than 10%, 
+    # If the proportion of the waterbody missing is greater than 10%,
     # set the values for pc_wet and pc_dry to nan.
     if pc_invalid > 10.0:
         pc_wet = np.nan
@@ -85,15 +84,15 @@ def summarise(region_mask, intensity_image):
 
     # Return all calculated values as a DataFrame.
     results = {
-            "pc_wet": [pc_wet],
-            "px_wet": [px_wet],
-            "area_wet_m2": [area_wet],
-            "pc_dry": [pc_dry],
-            "px_dry": [px_dry],
-            "area_dry_m2": [area_dry],
-            "pc_invalid":[ pc_invalid],
-            "px_invalid": [px_invalid],
-            "area_invalid_m2": [area_invalid],
-        }
+        "pc_wet": [pc_wet],
+        "px_wet": [px_wet],
+        "area_wet_m2": [area_wet],
+        "pc_dry": [pc_dry],
+        "px_dry": [px_dry],
+        "area_dry_m2": [area_dry],
+        "pc_invalid": [pc_invalid],
+        "px_invalid": [px_invalid],
+        "area_invalid_m2": [area_invalid],
+    }
     results_df = pd.DataFrame(results)
     return results_df
