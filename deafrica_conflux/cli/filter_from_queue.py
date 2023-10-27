@@ -45,7 +45,6 @@ def filter_from_queue(
     polygons_split_by_region_directory,
     use_id,
     visibility_timeout,
-    num_worker,
 ):
     """
     Run deafrica-conflux filter dataset based on scene ids from a queue.
