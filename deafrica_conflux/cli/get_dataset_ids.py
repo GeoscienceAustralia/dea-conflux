@@ -18,7 +18,7 @@ from deafrica_conflux.queues import batch_messages
     no_args_is_help=True,
 )
 @click.option("-v", "--verbose", count=True)
-@click.argument("product", type=str)
+@click.option("--product", type=str, help="Datacube product to search datasets for.")
 @click.option(
     "--temporal-range",
     type=str,
