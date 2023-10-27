@@ -8,6 +8,7 @@ deafrica-tools>=2.1.2 --extra-index-url="https://packages.dea.ga.gov.au"
 fsspec
 geopandas
 numpy
+odc-stats
 pandas
 pyarrow
 python-geohash

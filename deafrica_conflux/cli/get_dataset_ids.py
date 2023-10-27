@@ -1,121 +1,112 @@
 import logging
 import os
-import sys
-import urllib
 
 import click
+import datacube
 import fsspec
-import geopandas as gpd
-from datacube.ui import click as ui
+from datacube.model import Range
+from odc.stats.model import DateTimeRange
 
 from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.drill import filter_datasets
-from deafrica_conflux.hopper import find_datasets
-from deafrica_conflux.id_field import guess_id_field
-from deafrica_conflux.io import check_file_exists, check_if_s3_uri
+from deafrica_conflux.hopper import check_ds_region, find_datasets
+from deafrica_conflux.io import check_dir_exists, check_if_s3_uri, find_parquet_files
+from deafrica_conflux.queues import batch_messages
 
 
 @click.command(
     "get-dataset-ids",
     no_args_is_help=True,
 )
-@click.argument("product", type=str)
-@ui.parsed_search_expressions
 @click.option("-v", "--verbose", count=True)
+@click.option("--product", type=str, help="Datacube product to search datasets for.")
 @click.option(
-    "--polygons-vector-file",
+    "--temporal-range",
     type=str,
-    help="Path to the vector file defining the polygon(s) to run polygon drill on to filter datasets.",
+    help=(
+        "Only extract datasets for a given time range," "Example '2020-05--P1M' month of May 2020"
+    ),
 )
 @click.option(
-    "--use-id",
-    "-u",
+    "--polygons-split-by-region-directory",
     type=str,
-    default=None,
-    help="Optional. Unique key id in polygons vector file.",
+    help="Path to the directory containing the parquet files which contain polygons grouped by product region.",
 )
 @click.option(
-    "--output-file-path",
-    type=click.Path(),
-    help="File URI or S3 URI of the text file to write the dataset ids to.",
-)
-@click.option(
-    "--num-worker",
-    type=int,
-    help="The number of processes to filter datasets.",
-    default=4,
+    "--output-directory",
+    type=str,
+    help="Path to the directory to write the dataset ids text files to.",
 )
 def get_dataset_ids(
-    product,
-    expressions,
     verbose,
-    polygons_vector_file,
-    use_id,
+    product,
+    temporal_range,
+    polygons_split_by_region_directory,
     output_file_path,
-    num_worker,
+    output_directory,
 ):
     """
-    Get dataset IDs based on an expression.
+    Get dataset IDs..
     """
-    # Support pathlib paths.
-    output_file_path = str(output_file_path)
-
+    # Set up logger.
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
-    dss = find_datasets(expressions, [product])
+    # Support pathlib paths.
+    polygons_split_by_region_directory = str(polygons_split_by_region_directory)
+    output_directory = str(output_directory)
 
-    if polygons_vector_file is not None:
-        # Read the vector file.
-        try:
-            polygons_gdf = gpd.read_file(polygons_vector_file)
-        except Exception as error:
-            _log.exception(f"Could not read the file {polygons_vector_file}")
-            raise error
-        else:
-            # Guess the ID field.
-            id_field = guess_id_field(polygons_gdf, use_id)
-            _log.info(f"Guessed ID field: {id_field}")
+    # Get the region codes from the polygon files.
+    pq_files = find_parquet_files(path=polygons_split_by_region_directory, pattern=".*")
+    region_codes = [os.path.splitext(os.path.basename(i))[0] for i in pq_files]
+    _log.info(f"Found {len(region_codes)} regions.")
+    _log.debug(f"Found regions: {region_codes}")
 
-            # Set the ID field as the index.
-            polygons_gdf.set_index(id_field, inplace=True)
+    # Connect to the datacube.
+    dc = datacube.Datacube(app="FindDatasetIDs")
 
-            _log.info(f"Polygons vector file RAM usage: {sys.getsizeof(polygons_gdf)} bytes.")
+    # Parse the temporal range.
+    temporal_range_ = DateTimeRange(temporal_range)
+    # Create the query to find the datasets.
+    query = {"time": Range(begin=temporal_range_.start, end=temporal_range_.end)}
 
-            # Reprojection is done to avoid UserWarning: Geometry is in a geographic CRS.
-            # when using filter_datasets when polygons are in "EPSG:4326" crs.
-            polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
+    # Find the datasets using the product names and time range.
+    dss = find_datasets(query=query, products=[product], dc=dc)
+    dss_ = list(dss)
+    _log.info(
+        f"Found {len(dss_)} datasets for the product {product} in the time range {temporal_range_.start.strftime('%Y-%m-%d %X')} to {temporal_range_.end.strftime('%Y-%m-%d %X')}"
+    )
 
-            _log.info(
-                f"Filtering out datasets that are not near the polygons in {polygons_vector_file}"
-            )
-            dataset_ids = filter_datasets(dss, polygons_gdf, worker_num=num_worker)
+    # Filter the found datasets using the region code.
+    filtered_dataset_ids_ = [check_ds_region(region_codes, ds) for ds in dss_]
+    filtered_dataset_ids = [item for item in filtered_dataset_ids_ if item]
+    _log.info(f"Filter by region code removed {len(dss_) - len(filtered_dataset_ids)} datasets")
+    _log.info(f"Dataset ids count: {len(filtered_dataset_ids)}")
+
+    sqs_message_limit = 120000
+    _log.info(
+        f"Grouping dataset ids in batches of {sqs_message_limit} due to sqs in message limit."
+    )
+    batched_dataset_ids = batch_messages(messages=filtered_dataset_ids, n=sqs_message_limit)
+
+    dataset_ids_directory = os.path.join(output_directory, "conflux_dataset_ids")
+
+    # Get the file system to use.
+    if check_if_s3_uri(dataset_ids_directory):
+        fs = fsspec.filesystem("s3")
     else:
-        dataset_ids = [str(ds.id) for ds in dss]
+        fs = fsspec.filesystem("file")
 
-    _log.info(f"Found {len(dataset_ids)} datasets.")
+    # Check if the directory exists.
+    if not check_dir_exists(dataset_ids_directory):
+        fs.mkdirs(dataset_ids_directory, exist_ok=True)
+        _log.info(f"Created the output directory {dataset_ids_directory}")
 
-    # Check if the output file exists.
-    if check_file_exists(output_file_path):
-        _log.error(f"{output_file_path} exists!")
-        raise FileExistsError(f"{output_file_path} exists!")
-    else:
-        if check_if_s3_uri(output_file_path):
-            fs = fsspec.filesystem("s3")
-            _log.info("Dataset ids will be saved to a s3 text file")
-        else:
-            fs = fsspec.filesystem("file")
-            _log.info("Dataset ids will be saved to a local text file")
-            parsed_output_fp = urllib.parse.urlparse(output_file_path).path
-            absolute_output_fp = os.path.abspath(parsed_output_fp)
-            path_head, path_tail = os.path.split(absolute_output_fp)
-            if path_head:
-                if not fs.exists(path_head):
-                    fs.mkdirs(path_head, exist_ok=True)
-                    _log.info(f"Local folder {path_head} created.")
-
-        with fs.open(output_file_path, "w") as file:
-            for dataset_id in dataset_ids:
+    # Write the dataset ids into text file.
+    for idx, batch in enumerate(batched_dataset_ids):
+        batch_file_name = os.path.join(
+            dataset_ids_directory, f"{product}_{temporal_range}_batch{idx+1}.txt"
+        )
+        with fs.open(batch_file_name, "w") as file:
+            for dataset_id in batch:
                 file.write(f"{dataset_id}\n")
-
-        _log.info(f"Dataset IDs written to: {output_file_path}.")
+        _log.info(f"Dataset IDs written to: {batch_file_name}.")

@@ -13,7 +13,6 @@ import datetime
 import enum
 import logging
 import os
-import re
 from pathlib import Path
 
 import fsspec
@@ -33,8 +32,8 @@ from deafrica_conflux.db import (
     get_or_create,
 )
 from deafrica_conflux.io import (
-    PARQUET_EXTENSIONS,
     check_if_s3_uri,
+    find_parquet_files,
     read_table_from_parquet,
     string_to_date,
 )
@@ -61,56 +60,6 @@ def stack_format_date(date: datetime.datetime) -> str:
     """
     # e.g. 1987-05-24T01:30:18Z
     return date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def find_parquet_files(path: str | Path, pattern: str = ".*") -> [str]:
-    """
-    Find Parquet files matching a pattern.
-
-    Arguments
-    ---------
-    path : str | Path
-        Path (s3 or local) to search for Parquet files.
-
-    pattern : str
-        Regex to match file names against.
-
-    Returns
-    -------
-    [str]
-        List of paths.
-    """
-    pattern = re.compile(pattern)
-
-    # "Support" pathlib Paths.
-    path = str(path)
-
-    if check_if_s3_uri(path):
-        # Find Parquet files on S3.
-        file_system = fsspec.filesystem("s3")
-    else:
-        # Find Parquet files localy.
-        file_system = fsspec.filesystem("file")
-
-    pq_file_paths = []
-
-    files = file_system.find(path)
-    for file in files:
-        _, file_extension = os.path.splitext(file)
-        if file_extension not in PARQUET_EXTENSIONS:
-            continue
-        else:
-            _, file_name = os.path.split(file)
-            if not pattern.match(file_name):
-                continue
-            else:
-                pq_file_paths.append(file)
-
-    if check_if_s3_uri(path):
-        pq_file_paths = [f"s3://{file}" for file in pq_file_paths]
-
-    _log.info(f"Found {len(pq_file_paths)} parquet files.")
-    return pq_file_paths
 
 
 def remove_timeseries_duplicates(df: pd.DataFrame) -> pd.DataFrame:

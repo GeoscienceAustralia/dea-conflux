@@ -27,33 +27,34 @@ from deafrica_conflux.stack import stack_waterbodies_parquet_to_db
     no_args_is_help=True,
     help="Run deafrica-conflux on dataset ids from a text file.",
 )
-@click.option(
-    "--plugin-name",
-    type=str,
-    help="Name of the plugin. Plugin file must be in the deafrica_conflux/plugins/ directory.",
-)
+@click.option("-v", "--verbose", count=True)
 @click.option(
     "--dataset-ids-file",
     type=click.Path(),
     help="Text file to read dataset IDs from to run deafrica-conflux on.",
 )
 @click.option(
-    "--polygons-vector-file",
-    type=click.Path(),
+    "--plugin-name",
+    type=str,
+    help="Name of the plugin. Plugin file must be in the \
+        deafrica_conflux/plugins/ directory.",
+)
+@click.option(
+    "--polygons-directory",
+    type=str,
     # Don't mandate existence since this might be s3://.
-    help="Path to the vector file defining the polygon(s) to run polygon drill on.",
+    help="Directory containing the parquet files for the polygons to perform the drill on \
+    split by product regions.",
 )
 @click.option(
     "--use-id",
-    "-u",
     type=str,
-    default=None,
+    default="",
     help="Optional. Unique key id in polygons vector file.",
 )
 @click.option(
     "--output-directory",
-    "-o",
-    type=click.Path(),
+    type=str,
     default=None,
     # Don't mandate existence since this might be s3://.
     help="REQUIRED. File URI or S3 URI to the output directory.",
@@ -73,23 +74,22 @@ from deafrica_conflux.stack import stack_waterbodies_parquet_to_db
     default=False,
     help="Rerun scenes that have already been processed.",
 )
-@click.option("-v", "--verbose", count=True)
 @click.option("--db/--no-db", default=False, help="Write to the Waterbodies database.")
 @click.option(
     "--dump-empty-dataframe/--not-dump-empty-dataframe",
-    default=True,
+    default=False,
     help="Not matter DataFrame is empty or not, always as it as Parquet file.",
 )
 def run_from_txt(
-    plugin_name,
+    verbose,
     dataset_ids_file,
-    polygons_vector_file,
+    plugin_name,
+    polygons_directory,
     use_id,
     output_directory,
     partial,
-    overwrite,
     overedge,
-    verbose,
+    overwrite,
     db,
     dump_empty_dataframe,
 ):
@@ -98,7 +98,10 @@ def run_from_txt(
     """
     # "Support" pathlib Paths.
     dataset_ids_file = str(dataset_ids_file)
+    polygons_directory = str(polygons_directory)
+    output_directory = str(output_directory)
 
+    # Set up logger.
     logging_setup(verbose)
     _log = logging.getLogger(__name__)
 
@@ -109,81 +112,89 @@ def run_from_txt(
     _log.info(f"Using plugin {plugin_file}")
     validate_plugin(plugin)
 
-    # Get the product name from the plugin.
-    product_name = plugin.product_name
-
-    try:
-        polygons_gdf = gpd.read_file(polygons_vector_file)
-    except Exception as error:
-        _log.exception(f"Could not read file {polygons_vector_file}")
-        raise error
-
-    # Guess the ID field.
-    id_field = guess_id_field(polygons_gdf, use_id)
-    _log.debug(f"Guessed ID field: {id_field}")
-
-    # Set the ID field as the index.
-    polygons_gdf.set_index(id_field, inplace=True)
-
-    # Read dataset ids.
-
-    # Check if the text file exists.
+    # Check if the text file containing the dataset ids exists.
     if not check_file_exists(dataset_ids_file):
         _log.error(f"Could not find text file {dataset_ids_file}!")
         raise FileNotFoundError(f"Could not find text file {dataset_ids_file}!")
-
-    # Read ID/s from the S3 URI or File URI.
-    if check_if_s3_uri(dataset_ids_file):
-        fs = fsspec.filesystem("s3")
     else:
-        fs = fsspec.filesystem("file")
+        # Read ID/s from the S3 URI or File URI.
+        if check_if_s3_uri(dataset_ids_file):
+            fs = fsspec.filesystem("s3")
+        else:
+            fs = fsspec.filesystem("file")
 
-    with fs.open(dataset_ids_file, "r") as file:
-        dataset_ids = [line.strip() for line in file]
-    _log.info(f"Read {dataset_ids} from file.")
+        with fs.open(dataset_ids_file, "r") as file:
+            dataset_ids = [line.strip() for line in file]
+        _log.info(f"Read {dataset_ids} from file.")
 
     if db:
         engine = get_engine_waterbodies()
 
+    # Connect to the datacube.
     dc = datacube.Datacube(app="deafrica-conflux-drill")
+
+    # Get the product name from the plugin.
+    product_name = plugin.product_name
 
     # Process each ID.
     # Loop through the scenes to produce parquet files.
     failed_dataset_ids = []
-    for i, id_ in enumerate(dataset_ids):
-        success_flag = True
+    for i, dataset_id in enumerate(dataset_ids):
+        _log.info(f"Processing {dataset_id} ({i + 1}/{len(dataset_ids)})")
 
-        _log.info(f"Processing {id_} ({i + 1}/{len(dataset_ids)})")
+        # Load the dataset using the dataset id.
+        reference_dataset = dc.index.datasets.get(dataset_id)
 
-        centre_date = dc.index.datasets.get(id_).center_time
+        # Get the region code for the dataset.
+        region_code = reference_dataset.metadata.region_code
 
+        # Get the center time for the dataset
+        centre_time = reference_dataset.center_time
+
+        # Use the center time to check if a parquet file for the dataset already
+        # exists in the output directory.
         if not overwrite:
-            _log.info(f"Checking existence of {id_}")
-            exists = table_exists(product_name, id_, centre_date, output_directory)
+            _log.info(f"Checking existence of {dataset_id}")
+            exists = table_exists(product_name, dataset_id, centre_time, output_directory)
 
         if overwrite or not exists:
             try:
+                # Load the water body polygons for the region
+                polygons_vector_file = os.path.join(polygons_directory, f"{region_code}.parquet")
+                try:
+                    polygons_gdf = gpd.read_parquet(polygons_vector_file)
+                except Exception as error:
+                    _log.exception(f"Could not read file {polygons_vector_file}")
+                    raise error
+                else:
+                    # Guess the ID field.
+                    id_field = guess_id_field(polygons_gdf, use_id)
+                    _log.debug(f"Guessed ID field: {id_field}")
+
+                    # Set the ID field as the index.
+                    polygons_gdf.set_index(id_field, inplace=True)
+
+                # Perform the polygon drill on the dataset
                 table = drill(
-                    plugin,
-                    polygons_gdf,
-                    id_,
+                    plugin=plugin,
+                    polygons_gdf=polygons_gdf,
+                    reference_dataset=reference_dataset,
                     partial=partial,
                     overedge=overedge,
                     dc=dc,
                 )
 
-                # if always dump drill result, or drill result is not empty,
-                # dump that dataframe as PQ file
+                # Write the table to a parquet file.
                 if (dump_empty_dataframe) or (not table.empty):
                     pq_filename = write_table_to_parquet(
-                        product_name,
-                        id_,
-                        centre_date,
-                        table,
-                        output_directory,
+                        drill_name=product_name,
+                        uuid=dataset_id,
+                        centre_date=centre_time,
+                        table=table,
+                        output_directory=output_directory,
                     )
                     if db:
-                        _log.debug(f"Writing {pq_filename} to DB")
+                        _log.info(f"Writing {pq_filename} to database")
                         stack_waterbodies_parquet_to_db(
                             parquet_file_paths=[pq_filename],
                             verbose=verbose,
@@ -191,37 +202,31 @@ def run_from_txt(
                             drop=False,
                         )
             except KeyError as keyerr:
-                _log.exception(f"Found {id_} has KeyError: {str(keyerr)}")
-                failed_dataset_ids.append(id_)
-                success_flag = False
+                _log.exception(f"Found {dataset_id} has KeyError: {str(keyerr)}")
+                failed_dataset_ids.append(dataset_id)
             except TypeError as typeerr:
-                _log.exception(f"Found {id_} has TypeError: {str(typeerr)}")
-                failed_dataset_ids.append(id_)
-                success_flag = False
+                _log.exception(f"Found {dataset_id} has TypeError: {str(typeerr)}")
+                failed_dataset_ids.append(dataset_id)
             except RasterioIOError as ioerror:
-                _log.exception(f"Found {id_} has RasterioIOError: {str(ioerror)}")
-                failed_dataset_ids.append(id_)
-                success_flag = False
+                _log.exception(f"Found {dataset_id} has RasterioIOError: {str(ioerror)}")
+                failed_dataset_ids.append(dataset_id)
+            else:
+                _log.info(f"{dataset_id} successful")
         else:
-            _log.info(f"{id_} already exists, skipping")
+            _log.info(f"{dataset_id} already exists, skipping")
 
-        if success_flag:
-            _log.info(f"{id_} successful")
-        else:
-            _log.error(f"{id_} not successful")
+        if failed_dataset_ids:
+            # Write the failed dataset ids to a text file.
+            parent_folder, file_name = os.path.split(dataset_ids_file)
+            file, file_extension = os.path.splitext(file_name)
+            failed_datasets_text_file = os.path.join(
+                parent_folder, file + "_failed_dataset_ids" + file_extension
+            )
 
-    if failed_dataset_ids:
-        # Write the failed dataset ids to a text file.
-        parent_folder, file_name = os.path.split(dataset_ids_file)
-        file, file_extension = os.path.splitext(file_name)
-        failed_datasets_text_file = os.path.join(
-            parent_folder, file + "_failed_dataset_ids" + file_extension
-        )
+            with fs.open(failed_datasets_text_file, "a") as file:
+                for dataset_id in failed_dataset_ids:
+                    file.write(f"{dataset_id}\n")
 
-        with fs.open(failed_datasets_text_file, "a") as file:
-            for dataset_id in failed_dataset_ids:
-                file.write(f"{dataset_id}\n")
-
-        _log.info(
-            f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}."
-        )
+            _log.info(
+                f"Failed dataset IDs {failed_dataset_ids} written to: {failed_datasets_text_file}."
+            )

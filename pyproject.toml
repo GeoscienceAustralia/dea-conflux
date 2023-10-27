@@ -37,6 +37,7 @@ dependencies= [
     "fsspec",
     "geopandas",
     "numpy",
+    "odc-stats",
     "pandas",
     "pyarrow",
     "python-geohash",

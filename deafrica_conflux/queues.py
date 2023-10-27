@@ -587,10 +587,11 @@ def delete_batch_with_retry(
     return successfully_deleted, entries
 
 
-def receive_a_message(
+def receive_messages(
     queue_url: str,
     max_retries: int = 10,
     visibility_timeout: int = 3600,  # 1 hour
+    max_no_messages: int = 10,
     sqs_client: SQSClient | None = None,
 ) -> dict:
     """
@@ -601,48 +602,52 @@ def receive_a_message(
     queue_url : str
         URL of the SQS queue to receive message from.
     max_retries : int, optional
-        Maximum number of times to retry to receive a messages., by default 10
+        Maximum number of times to retry to receive a messages, by default 10
     visibility_timeout : int, optional
-         The duration (in seconds) that the received message is hidden from subsequent
-         retrieve requests after being retrieved by a `ReceiveMessage` request., by default 3600
+        The duration (in seconds) that the received message is hidden from subsequent
+        retrieve requests after being retrieved by a `ReceiveMessage` request, by default 3600
+    max_no_messages : int, optional
+        The maximum number of messages to return, by default 10
+    sqs_client : SQSClient | None, optional
+        A low-level client representing Amazon Simple Queue Service (SQS), by default None
 
     Returns
     -------
     dict
-        A single message from the queue.
+        Messages from the queue.
     """
 
     # Get the service client.
     if sqs_client is None:
         sqs_client = boto3.client("sqs")
 
+    assert max_no_messages <= 10
+
     retries = 0
     while retries <= max_retries:
         try:
-            # Retrieve a single message from the queue.
+            # Retrieve messages from the queue.
             receive_response = sqs_client.receive_message(
                 QueueUrl=queue_url,
                 AttributeNames=["All"],
-                MaxNumberOfMessages=1,
+                MaxNumberOfMessages=max_no_messages,
                 VisibilityTimeout=visibility_timeout,
             )
         except ClientError as error:
             _log.exception(f"Could not receive a message from queue {queue_url}")
             raise error
         else:
-            received_message = receive_response.get("Messages", None)
+            received_messages = receive_response.get("Messages", None)
 
-            if received_message is None:
+            if received_messages is None:
                 retries += 1
             else:
                 break  # Reset the count
 
-    if received_message is not None:
-        assert len(received_message) == 1
-        # Get the message body from the retrieved message.
-        message = received_message[0]
-        _log.info(f"Received message {message} from queue {queue_url}")
-        return message
+    if received_messages is not None:
+        assert len(received_messages) <= max_no_messages
+        _log.info(f"Received messages {received_messages} from queue {queue_url}")
+        return received_messages
     else:
         _log.error(f"Received no message from queue {queue_url}")
         return None
