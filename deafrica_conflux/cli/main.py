@@ -10,6 +10,7 @@ from deafrica_conflux.cli.push_to_queue import push_to_sqs_queue
 from deafrica_conflux.cli.run_from_list import run_from_list
 from deafrica_conflux.cli.run_from_queue import run_from_sqs_queue
 from deafrica_conflux.cli.run_from_txt import run_from_txt
+from deafrica_conflux.cli.split_polygons_by_region import split_polygons_by_region
 from deafrica_conflux.cli.stack import stack
 
 
@@ -19,6 +20,7 @@ def main():
     pass
 
 
+main.add_command(split_polygons_by_region)
 main.add_command(get_dataset_ids)
 main.add_command(run_from_list)
 main.add_command(run_from_txt)
@@ -29,3 +31,4 @@ main.add_command(stack)
 main.add_command(db_to_csv)
 main.add_command(delete_sqs_queue)
 main.add_command(filter_from_queue)
+main.add_command(split_polygons_by_region)
