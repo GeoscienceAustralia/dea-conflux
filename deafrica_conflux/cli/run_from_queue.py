@@ -256,6 +256,15 @@ def run_from_sqs_queue(
                         sqs_client=sqs_client,
                     )
                     success_flag = False
+                except ValueError as valueerror:
+                    _log.exception(f"Found {dataset_id} has ValueError: {str(valueerror)}")
+                    _log.error(f"Moving {dataset_id} to deadletter queue {dead_letter_queue_url}")
+                    move_to_dead_letter_queue(
+                        dead_letter_queue_url=dead_letter_queue_url,
+                        message_body=dataset_id,
+                        sqs_client=sqs_client,
+                    )
+                    success_flag = False
             else:
                 _log.info(f"{dataset_id} already exists, skipping")
 

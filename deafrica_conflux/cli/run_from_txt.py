@@ -210,6 +210,9 @@ def run_from_txt(
             except RasterioIOError as ioerror:
                 _log.exception(f"Found {dataset_id} has RasterioIOError: {str(ioerror)}")
                 failed_dataset_ids.append(dataset_id)
+            except ValueError as valueerror:
+                _log.exception(f"Found {dataset_id} has ValueError: {str(valueerror)}")
+                failed_dataset_ids.append(dataset_id)
             else:
                 _log.info(f"{dataset_id} successful")
         else:

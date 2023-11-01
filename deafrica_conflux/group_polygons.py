@@ -114,7 +114,7 @@ def split_polygons_by_region(
     # Filter to remove regions with no intersecting polygons.
     filtered_regions = [region for region in regions_ if region.iloc[0].intersecting_polygons_ids]
 
-    filtered_regions_gdf = pd.concat(filtered_regions, ignore_index=True)
+    filtered_regions_gdf = pd.concat(filtered_regions, ignore_index=False)
 
     if not check_dir_exists(output_directory):
         if check_if_s3_uri(output_directory):
