@@ -702,12 +702,13 @@ def nrt_run_from_queue(
             success_flag = True
 
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
-
+            logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
+            
             # if id_ is uuid
             if len(id_) != 36:
                 import json
 
-                id_ = json.loads(id_)["id"]
+                id_ = json.loads(json.loads(id_)["Message"])["id"]
 
             centre_date = dc.index.datasets.get(id_).center_time
 
