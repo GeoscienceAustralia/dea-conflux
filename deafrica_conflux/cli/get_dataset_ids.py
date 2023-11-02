@@ -41,7 +41,6 @@ def get_dataset_ids(
     product,
     temporal_range,
     polygons_split_by_region_directory,
-    output_file_path,
     output_directory,
 ):
     """
