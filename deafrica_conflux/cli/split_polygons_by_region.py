@@ -4,7 +4,7 @@ import click
 import geopandas as gpd
 
 from deafrica_conflux.cli.logs import logging_setup
-from deafrica_conflux.group_polygons import split_polygons_by_region
+from deafrica_conflux.group_polygons import get_polygon_length, split_polygons_by_region
 from deafrica_conflux.id_field import guess_id_field
 
 
@@ -57,6 +57,29 @@ def split_polygons(
         # Set the ID field as the index.
         polygons_gdf.set_index(id_field, inplace=True)
 
+    # Get the original crs of the polygons
+    original_crs = polygons_gdf.crs
+    # Get the orginal count of the polygons.
+    original_count = len(polygons_gdf)
+
+    # Reproject to a projected CRS.
+    polygons_gdf = polygons_gdf.to_crs("EPSG:6933")
+    assert polygons_gdf.crs.is_projected
+
+    # Get the length of each polygon.
+    polygons_gdf["polygon_length_m"] = polygons_gdf["geometry"].apply(get_polygon_length)
+
+    # Filter out polygons whose length is larger than a single Landsat scene
+    ls_scene_length = 185 * 1000
+    filtered_polygons_gdf = polygons_gdf[polygons_gdf["polygon_length_m"] <= ls_scene_length]
+    _log.info(
+        f"Filtered out {original_count - len(filtered_polygons_gdf)} polygons out of {original_count} polygons"
+    )
+
+    # Reproject back to the original crs.
+    filtered_polygons_gdf = filtered_polygons_gdf.to_crs(original_crs)
+
+    # Split the filtered polygons by region.
     split_polygons_fps = split_polygons_by_region(  # noqa F841
         product=product, polygons_gdf=polygons_gdf, output_directory=output_directory
     )
