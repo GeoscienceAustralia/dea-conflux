@@ -250,6 +250,33 @@ def filter_large_polygons(polygons_gdf: gpd.GeoDataFrame, ds: Dataset) -> gpd.Ge
     return filtered_polygons_gdf
 
 
+def remove_duplicate_datasets(required_datasets: list[Dataset]) -> list[Dataset]:
+    """
+    Remove duplicate datasets based on region code and creation date.
+    Picks the most recently created dataset.
+
+    Parameters
+    ----------
+    required_datasets : list
+        List of datasets to filter.
+
+    Returns
+    -------
+    list
+        List of filtered datasets.
+    """
+    filtered_req_datasets = []
+
+    ds_region_codes = list(set([ds.metadata.region_code for ds in required_datasets]))
+    for regioncode in ds_region_codes:
+        matching_ds = [ds for ds in required_datasets if ds.metadata.region_code == regioncode]
+        matching_ds_sorted = sorted(matching_ds, key=lambda x: x.metadata.creation_dt, reverse=True)
+        keep = matching_ds_sorted[0]
+        filtered_req_datasets.append(keep)
+
+    return filtered_req_datasets
+
+
 def drill(
     plugin: ModuleType,
     polygons_gdf: gpd.GeoDataFrame,
@@ -379,7 +406,6 @@ def drill(
             crs=filtered_polygons_gdf.crs,
         )
 
-        # TODO: Test using a 1 day
         # Get the time range to use for searching for datasets neighbouring our reference dataset.
         time_span = (
             reference_dataset.center_time - time_buffer,
@@ -389,6 +415,7 @@ def drill(
         req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span, ensure_location=True
         )
+        req_datasets = remove_duplicate_datasets(req_datasets)
 
         reference_scene = dc.load(
             datasets=req_datasets,
