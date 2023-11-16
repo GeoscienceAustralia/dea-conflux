@@ -284,7 +284,6 @@ def drill(
     partial=True,
     overedge=True,
     dc: datacube.Datacube | None = None,
-    time_buffer=datetime.timedelta(hours=1),
 ) -> pd.DataFrame:
     """
     Perform a polygon drill.
@@ -407,6 +406,10 @@ def drill(
         )
 
         # Get the time range to use for searching for datasets neighbouring our reference dataset.
+
+        # The 1 hour buffer ensures we are only finding neighbouring datasets on the same path.
+        time_buffer = datetime.timedelta(hours=1)
+
         time_span = (
             reference_dataset.center_time - time_buffer,
             reference_dataset.center_time + time_buffer,
