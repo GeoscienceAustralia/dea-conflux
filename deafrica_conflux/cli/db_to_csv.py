@@ -42,7 +42,7 @@ def db_to_csv(output_directory, verbose, jobs, index_num, split_num, remove_dupl
     """
     logging_setup(verbose)
 
-    stack_waterbodies_db_micto_csv(
+    stack_waterbodies_db_to_csv(
         output_directory=output_directory,
         verbose=verbose > 0,
         remove_duplicated_data=remove_duplicated_data,
