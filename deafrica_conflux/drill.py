@@ -467,16 +467,10 @@ def drill(
     # Build the enumerated polygon raster.
     polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
 
-    # Get the summaries.
-    # Convert the xarrat.DataArrays to a numpy array for image processing.
-    np_polygon_raster = polygon_raster.to_numpy().astype(int)
-
-    np_ds_transformed = ds_transformed.to_numpy().astype(float)
-
     # For each polygon, perform the summary.
     props = regionprops(
-        label_image=np_polygon_raster,
-        intensity_image=np_ds_transformed,
+        label_image=polygon_raster.values,
+        intensity_image=ds_transformed.values,
         extra_properties=(plugin.summarise,),
     )
 
