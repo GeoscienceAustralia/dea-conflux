@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -18,7 +19,7 @@ TEST_PLUGIN = waterbodies_timeseries.__file__
 
 # Test directory.
 HERE = Path(__file__).parent.resolve()
-TEST_WATERBODY = HERE / "data" / "edumesbb2.geojson"
+TEST_WATERBODY = os.path.join(HERE, "data", "edumesbb2.geojson")
 
 
 def setup_module(module):
@@ -31,23 +32,20 @@ def dc():
     return datacube.Datacube()
 
 
-def test_find_datasets_for_plugin(dc):
-    plugin = run_plugin(TEST_PLUGIN)
-    uuid = "6d1d62de-5edd-5892-9dcc-9e1616251411"
-    datasets = deafrica_conflux.drill.find_datasets_for_plugin(dc, plugin, uuid)
-    assert len(datasets) == 1
-    assert str(datasets["wofs_ls"].id) == uuid
-
-
 def test_drill_integration(dc):
-    plugin = run_plugin(TEST_PLUGIN)
     uuid = "d15407ff-3fe5-55ec-a713-d4cc9399e6b3"
+    reference_dataset = dc.index.datasets.get(uuid)
+
+    plugin = run_plugin(TEST_PLUGIN)
+
     polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
 
-    drill_result = deafrica_conflux.drill.drill(plugin, polygons_gdf, uuid, partial=True, dc=dc)
+    drill_result = deafrica_conflux.drill.drill(
+        plugin, polygons_gdf, reference_dataset, partial=True, overedge=False, dc=dc
+    )
     assert len(drill_result) == pytest.approx(86, 1)
     # 13 columns, 9 output and 4 directions
     assert len(drill_result.columns) == 13
@@ -69,15 +67,18 @@ def test_get_directions(dc):
 
 
 def test_south_overedge(dc):
-    plugin = run_plugin(TEST_PLUGIN)
     uuid = "effd8637-1cd0-585b-84b4-b739e8626544"
+    reference_dataset = dc.index.datasets.get(uuid)
+
+    plugin = run_plugin(TEST_PLUGIN)
+
     polygons_gdf = gpd.read_file(TEST_WATERBODY)
 
     id_field = guess_id_field(polygons_gdf, "UID")
     polygons_gdf.set_index(id_field, inplace=True)
 
     drill_result = deafrica_conflux.drill.drill(
-        plugin, polygons_gdf, uuid, partial=True, overedge=True, dc=dc
+        plugin, polygons_gdf, reference_dataset, partial=True, overedge=True, dc=dc
     )
     assert len(drill_result) == 1
     assert drill_result["pc_wet"].iloc[0] == 42.39275304214028

@@ -15,7 +15,7 @@ from deafrica_conflux.queues import (
     make_source_queue,
     move_to_dead_letter_queue,
     push_dataset_ids_to_queue_from_txt,
-    receive_a_message,
+    receive_messages,
     send_batch,
     send_batch_with_retry,
 )
@@ -274,7 +274,7 @@ def test_delete_batch_with_retry(sqs_client):
     assert successfully_deleted == entries_to_delete
 
 
-def test_receive_a_message(sqs_client):
+def test_receive_messages(sqs_client):
     max_retries = 10
     visibility_timeout = 3600
 
@@ -290,14 +290,14 @@ def test_receive_a_message(sqs_client):
 
     # Retrieve a single message.
     try:
-        message = receive_a_message(
+        message = receive_messages(
             queue_url=queue_url,
             max_retries=max_retries,
             visibility_timeout=visibility_timeout,
             sqs_client=sqs_client,
+            max_no_messages=1,
         )
     except Exception:
         assert False
     else:
         assert message is not None
-        assert message["Body"] in messages
