@@ -244,6 +244,9 @@ def test_push_dataset_ids_to_queue_from_local_txt(sqs_client):
     else:
         assert True
 
+    # Clean up.
+    fs.rm(TEST_TEXT_FILE)
+
 
 def test_delete_batch_with_retry(sqs_client):
     # Create queue.
