@@ -28,11 +28,8 @@ jobs:
 
     - name: Run deafrica-conflux test
       run: |
-          docker-compose exec -T conflux bash -c "coverage run -m pytest ."
-          docker-compose exec -T conflux bash -c "coverage report -m"
-          docker-compose exec -T conflux bash -c "coverage xml"
-          docker-compose exec -T conflux bash -c "coverage html"
-          make down
+          make run-tests
+          make clean
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

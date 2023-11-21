@@ -250,6 +250,33 @@ def filter_large_polygons(polygons_gdf: gpd.GeoDataFrame, ds: Dataset) -> gpd.Ge
     return filtered_polygons_gdf
 
 
+def remove_duplicate_datasets(required_datasets: list[Dataset]) -> list[Dataset]:
+    """
+    Remove duplicate datasets based on region code and creation date.
+    Picks the most recently created dataset.
+
+    Parameters
+    ----------
+    required_datasets : list
+        List of datasets to filter.
+
+    Returns
+    -------
+    list
+        List of filtered datasets.
+    """
+    filtered_req_datasets = []
+
+    ds_region_codes = list(set([ds.metadata.region_code for ds in required_datasets]))
+    for regioncode in ds_region_codes:
+        matching_ds = [ds for ds in required_datasets if ds.metadata.region_code == regioncode]
+        matching_ds_sorted = sorted(matching_ds, key=lambda x: x.metadata.creation_dt, reverse=True)
+        keep = matching_ds_sorted[0]
+        filtered_req_datasets.append(keep)
+
+    return filtered_req_datasets
+
+
 def drill(
     plugin: ModuleType,
     polygons_gdf: gpd.GeoDataFrame,
@@ -257,7 +284,6 @@ def drill(
     partial=True,
     overedge=True,
     dc: datacube.Datacube | None = None,
-    time_buffer=datetime.timedelta(hours=1),
 ) -> pd.DataFrame:
     """
     Perform a polygon drill.
@@ -379,8 +405,11 @@ def drill(
             crs=filtered_polygons_gdf.crs,
         )
 
-        # TODO: Test using a 1 day
         # Get the time range to use for searching for datasets neighbouring our reference dataset.
+
+        # The 1 hour buffer ensures we are only finding neighbouring datasets on the same path.
+        time_buffer = datetime.timedelta(hours=1)
+
         time_span = (
             reference_dataset.center_time - time_buffer,
             reference_dataset.center_time + time_buffer,
@@ -389,6 +418,7 @@ def drill(
         req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span, ensure_location=True
         )
+        req_datasets = remove_duplicate_datasets(req_datasets)
 
         reference_scene = dc.load(
             datasets=req_datasets,
@@ -437,16 +467,10 @@ def drill(
     # Build the enumerated polygon raster.
     polygon_raster = xr_rasterize(filtered_polygons_gdf, reference_scene, attr_col)
 
-    # Get the summaries.
-    # Convert the xarrat.DataArrays to a numpy array for image processing.
-    np_polygon_raster = polygon_raster.to_numpy().astype(int)
-
-    np_ds_transformed = ds_transformed.to_numpy().astype(float)
-
     # For each polygon, perform the summary.
     props = regionprops(
-        label_image=np_polygon_raster,
-        intensity_image=np_ds_transformed,
+        label_image=polygon_raster.values,
+        intensity_image=ds_transformed.values,
         extra_properties=(plugin.summarise,),
     )
 
