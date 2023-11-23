@@ -400,6 +400,7 @@ def drill(
         # the area of the polygons.
 
         # Get the bounding box for the polygons.
+        _log.debug("Getting bounding box for the polygons...")
         geopolygon = Geometry(
             geom=shapely.geometry.box(*filtered_polygons_gdf.total_bounds),
             crs=filtered_polygons_gdf.crs,
@@ -414,12 +415,22 @@ def drill(
             reference_dataset.center_time - time_buffer,
             reference_dataset.center_time + time_buffer,
         )
+        _log.debug(
+            f"Time range to use for searching for datasets neighbouring our reference dataset {time_span}."
+        )
 
         req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span, ensure_location=True
         )
-        req_datasets = remove_duplicate_datasets(req_datasets)
+        _log.debug(
+            f"Found {len(req_datasets)} required datasets to cover all the polygons: {', '.join([str(dataset.id) for dataset in req_datasets])} ."
+        )
 
+        count = len(req_datasets)
+        req_datasets = remove_duplicate_datasets(req_datasets)
+        _log.debug(f"Removed {count - len(req_datasets)} duplicate datasets.")
+
+        _log.debug("Loading required datasets ...")
         reference_scene = dc.load(
             datasets=req_datasets,
             measurements=measurements,
