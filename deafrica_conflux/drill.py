@@ -419,16 +419,18 @@ def drill(
             f"Time range to use for searching for datasets neighbouring our reference dataset {time_span}."
         )
 
-        req_datasets_ = dc.find_datasets(
+        req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span, ensure_location=True
         )
         _log.debug(
-            f"Found the {len(req_datasets_)} required datasets to cover all the polygons: {', '.join([str(dataset.id) for dataset in req_datasets_])} ."
+            f"Found {len(req_datasets)} required datasets to cover all the polygons: {', '.join([str(dataset.id) for dataset in req_datasets])} ."
         )
 
-        req_datasets = remove_duplicate_datasets(req_datasets_)
-        _log.debug(f"Removed {len(req_datasets_) - len(req_datasets)} duplicate datasets.")
+        count = len(req_datasets)
+        req_datasets = remove_duplicate_datasets(req_datasets)
+        _log.debug(f"Removed {count - len(req_datasets)} duplicate datasets.")
 
+        _log.debug("Loading required datasets ...")
         reference_scene = dc.load(
             datasets=req_datasets,
             measurements=measurements,
