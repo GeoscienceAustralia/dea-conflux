@@ -419,6 +419,7 @@ def drill(
             f"Time range to use for searching for datasets neighbouring our reference dataset {time_span}."
         )
 
+        _log.debug("Finding datasets covering the bounding box of the polygons...")
         req_datasets = dc.find_datasets(
             product=reference_product, geopolygon=geopolygon, time=time_span, ensure_location=True
         )
