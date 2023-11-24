@@ -81,12 +81,6 @@ def get_dataset_ids(
     _log.info(f"Filter by region code removed {len(dss_) - len(filtered_dataset_ids)} datasets")
     _log.info(f"Dataset ids count: {len(filtered_dataset_ids)}")
 
-    sqs_message_limit = 120000
-    _log.info(
-        f"Grouping dataset ids in batches of {sqs_message_limit} due to sqs in message limit."
-    )
-    batched_dataset_ids = batch_messages(messages=filtered_dataset_ids, n=sqs_message_limit)
-
     dataset_ids_directory = os.path.join(output_directory, "conflux_dataset_ids")
 
     # Get the file system to use.
@@ -101,11 +95,8 @@ def get_dataset_ids(
         _log.info(f"Created the output directory {dataset_ids_directory}")
 
     # Write the dataset ids into text file.
-    for idx, batch in enumerate(batched_dataset_ids):
-        batch_file_name = os.path.join(
-            dataset_ids_directory, f"{product}_{temporal_range}_batch{idx+1}.txt"
-        )
-        with fs.open(batch_file_name, "w") as file:
-            for dataset_id in batch:
-                file.write(f"{dataset_id}\n")
-        _log.info(f"Dataset IDs written to: {batch_file_name}.")
+    output_file_name = os.path.join(dataset_ids_directory, f"{product}_{temporal_range}.txt")
+    with fs.open(output_file_name, "w") as file:
+        for dataset_id in filtered_dataset_ids:
+            file.write(f"{dataset_id}\n")
+    _log.info(f"Dataset IDs written to: {output_file_name}.")

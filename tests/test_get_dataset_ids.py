@@ -45,7 +45,7 @@ def test_get_dataset_ids_write_to_local_file(runner, capsys: pytest.CaptureFixtu
         f"--product={product}",
         f"--temporal-range={temporal_range}",
         f"--polygons-split-by-region-directory={polygons_split_by_region_directory}",
-        f"--output-directory={output_directory}"
+        f"--output-directory={output_directory}",
     ]
 
     with capsys.disabled() as disabled:  # noqa F841
@@ -53,8 +53,10 @@ def test_get_dataset_ids_write_to_local_file(runner, capsys: pytest.CaptureFixtu
 
     assert result.exit_code == 0
 
-    output_file_path = os.path.join(output_directory, "conflux_dataset_ids", f"{product}_{temporal_range}_batch1.txt")
-        
+    output_file_path = os.path.join(
+        output_directory, "conflux_dataset_ids", f"{product}_{temporal_range}.txt"
+    )
+
     fs = fsspec.filesystem("file")
     with fs.open(output_file_path, "r") as f:
         dataset_ids = f.readlines()
