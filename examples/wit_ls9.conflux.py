@@ -68,13 +68,13 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     output_rast["npv"] = npv
 
     # Mask noncontiguous data, low solar incidence angle, cloud, and water out of the wet category
-    # by disabling those flags 
+    # by disabling those flags
     mask = (wo_ds.water & 0b01100011) == 0
     # not apply poly_raster cause we will do it before summarise
 
     open_water = wo_ds.water & (1 << 7) > 0
     
-    # Thresholding 
+    # Thresholding
     # set wet pixels where not masked and above threshold of -350
     wet = tcw.where(mask) > -350
 
@@ -100,7 +100,7 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
 
 def summarise(inputs: xr.Dataset) -> xr.Dataset:
 
-    # calculate percentage missing 
+    # calculate percentage missing
     pc_missing = 1 - (np.nansum(inputs.mask.values) / len(inputs.mask.values))
     # inputs = inputs.where(pc_missing < 0.1)
 
