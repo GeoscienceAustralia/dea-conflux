@@ -25,7 +25,6 @@ RUN mkdir -p /conf
 COPY requirements.txt /conf/
 COPY constraints.txt /conf/
 RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt
-RUN pip install --upgrade pip setuptools
 
 # Copy source code and install it
 RUN mkdir -p /code
