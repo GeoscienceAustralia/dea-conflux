@@ -14,19 +14,18 @@ RUN apt-get update && \
       htop \
       wget \
       unzip \
-      tmux \
       python3-pip \
       libpq-dev python-dev \
     && apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/{apt,dpkg,cache,log}
 
-
 # Pip installation
 RUN mkdir -p /conf
 COPY requirements.txt /conf/
 COPY constraints.txt /conf/
 RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt
+RUN pip install --upgrade pip setuptools
 
 # Copy source code and install it
 RUN mkdir -p /code
@@ -34,7 +33,7 @@ WORKDIR /code
 ADD . /code
 
 RUN echo "Installing dea-conflux through the Dockerfile."
-RUN pip install --extra-index-url="https://packages.dea.ga.gov.au" .
+RUN pip install .
 
 RUN pip freeze && pip check
 
