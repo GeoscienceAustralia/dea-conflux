@@ -21,10 +21,11 @@ RUN apt-get update && \
     rm -rf /var/lib/{apt,dpkg,cache,log}
 
 # Pip installation
+RUN pip install --upgrade pip setuptools
 RUN mkdir -p /conf
 COPY requirements.txt /conf/
 COPY constraints.txt /conf/
-RUN pip install --upgrade pip setuptools -r /conf/requirements.txt -c /conf/constraints.txt
+RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt
 
 # Copy source code and install it
 RUN mkdir -p /code
