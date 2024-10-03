@@ -21,11 +21,12 @@ RUN apt-get update && \
     rm -rf /var/lib/{apt,dpkg,cache,log}
 
 # Pip installation
-RUN pip install --upgrade pip setuptools
+# RUN pip install --upgrade pip==23.1 setuptools==59.7.0
 RUN mkdir -p /conf
 COPY requirements.txt /conf/
 COPY constraints.txt /conf/
 RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt
+RUN pip install --upgrade pip==23.1 setuptools==59.7.0
 
 # Copy source code and install it
 RUN mkdir -p /code
@@ -33,7 +34,7 @@ WORKDIR /code
 ADD . /code
 
 RUN echo "Installing dea-conflux through the Dockerfile."
-RUN pip install .
+RUN pip install . -c /conf/constraints.txt
 
 RUN pip freeze && pip check
 
