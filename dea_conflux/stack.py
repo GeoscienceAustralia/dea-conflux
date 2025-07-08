@@ -196,7 +196,7 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
 
     # Remove entries within 60s, deals with edge cases where duplicates wrap across midnight UTC
 
-    if "date" in df.columns:
+    if "date" in df.columns and len(df) > 1:
         df['TIMEDIFF'] = pd.to_datetime(df['date'].shift(-1)) - pd.to_datetime(df['date'])
         df = df[~(df['TIMEDIFF'] < timedelta(seconds=60))]
         df = df.drop(columns=["TIMEDIFF"])
