@@ -27,7 +27,8 @@ WIT_POLYGON_ID = "r4ucrn3y1_v2"
 
 TEST_PLUGIN_OK = HERE / "data" / "sum_wet.conflux.py"
 TEST_PLUGIN_COMBINED = HERE / "data" / "sum_pv_wet.conflux.py"
-TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / "sum_wet_missing_transform.conflux.py"
+TEST_PLUGIN_MISSING_TRANSFORM = HERE / "data" / \
+    "sum_wet_missing_transform.conflux.py"
 
 TEST_WB_PQ_DATA = HERE / "data" / "canberra_waterbodies_pq"
 TEST_WB_PQ_DATA_FILE = (
@@ -41,6 +42,8 @@ TEST_WIT_PQ_DATA_FILE = (
     / "wit_ls5_aa7116e4-b27d-466b-b987-7c99f7f29b63_19870523-234949-486906.pq"
 )
 
+TEST_WIT_DUPLICATES_PQ_DATA = HERE / "data" / "wit_r3bz75m73_pq"
+TEST_WIT_DUPLICATES_POLYGON_ID = "r3bz75m73"
 TEST_WIT_CSV_DATA = HERE / "data" / "qld_waterbodies_csv"
 TEST_WIT_CSV_DATA_FILE = TEST_WIT_CSV_DATA / "r4e3jw0v8_v2.csv"
 
@@ -106,6 +109,21 @@ def test_wit_stacking(tmp_path):
     )  # bs, npv, pc_missing, pv, water, wet, date, feature_id, norm_pv, norm_npv, norm_bs
 
 
+def test_wit_duplicate_stacking(tmp_path):
+    dea_conflux.stack.stack(
+        TEST_WIT_DUPLICATES_PQ_DATA,
+        mode=dea_conflux.stack.StackMode.WITTOOLING,
+        output_dir=f"{tmp_path}/testout",
+    )
+    outpath = tmp_path / "testout" / f"{TEST_WIT_DUPLICATES_POLYGON_ID}.csv"
+    assert outpath.exists()
+    csv = pd.read_csv(outpath)
+    assert len(csv) == 4
+    assert (
+        len(csv.columns) == 11
+    )  # bs, npv, pc_missing, pv, water, wet, date, feature_id, norm_pv, norm_npv, norm_bs
+
+
 def test_wit_single_file_stacking(tmp_path):
     dea_conflux.stack.stack(
         path=TEST_WIT_CSV_DATA,
@@ -130,7 +148,8 @@ def test_find_parquet_files_s3(mock_aws_response):
             "LocationConstraint": "ap-southeast-2",
         },
     )
-    parquet_keys = ["hello.pq", "hello/world.pq", "hello/world/this/is.parquet"]
+    parquet_keys = ["hello.pq", "hello/world.pq",
+                    "hello/world/this/is.parquet"]
     not_parquet_keys = ["not_parquet", "hello/alsonotparquet"]
     parquet_keys_constrained = [
         "hello/world/missme.pq",
@@ -145,7 +164,8 @@ def test_find_parquet_files_s3(mock_aws_response):
         assert f"s3://{bucket_name}/{key}" not in res
 
     # Repeat that test with a constraint.
-    res = dea_conflux.stack.find_parquet_files(f"s3://{bucket_name}", pattern="[^m]*$")
+    res = dea_conflux.stack.find_parquet_files(
+        f"s3://{bucket_name}", pattern="[^m]*$")
     for key in parquet_keys:
         assert f"s3://{bucket_name}/{key}" in res
     for key in not_parquet_keys + parquet_keys_constrained:
