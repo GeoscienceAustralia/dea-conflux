@@ -33,6 +33,12 @@ import dea_conflux.io
 from dea_conflux.db import Engine
 from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
+import dea_tools.bandindices
+import dea_tools.datahandling
+from dea_tools.spatial import xr_rasterize
+from dea_tools.dask import create_local_dask_cluster
+import dea_tools.wetlands
+
 logger = logging.getLogger(__name__)
 
 
@@ -223,6 +229,7 @@ def load_pq_file(path):
         date = dea_conflux.io.string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         df.loc[:, "date"] = date
+        df.loc[:, "ard_product"] = str(path).split("/")[-1].split("_")[-3]
     return df
 
 
@@ -243,6 +250,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     """
     # feature_id, single_polygon_df = item
     filename = f"{outpath}/{feature_id}.csv"
+    
 
     if remove_duplicated_data:
         # Remove the timeseries duplicated data
@@ -279,11 +287,17 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
+    single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
+    single_polygon_df = single_polygon_df.reset_index()
+    single_polygon_df['date']=pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
+    print(single_polygon_df)
+    dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
 
     # remove the temp column
     single_polygon_df.drop(
         ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
     )
+
 
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
@@ -368,7 +382,6 @@ def stack_wit_tooling(
     paths: [str],
     output_dir: str,
     remove_duplicated_data: bool = True,
-    verbose: bool = False,
 ):
     """Stack wit tooling parquet result files into CSVs.
 
