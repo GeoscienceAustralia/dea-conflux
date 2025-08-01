@@ -35,8 +35,6 @@ from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
 import dea_tools.bandindices
 import dea_tools.datahandling
-from dea_tools.spatial import xr_rasterize
-from dea_tools.dask import create_local_dask_cluster
 import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
@@ -323,6 +321,7 @@ def stack_wit_tooling_to_single_file(
 
     verbose : bool
     """
+    
     polygon_df_list = []
     logger.info("Reading...")
 
