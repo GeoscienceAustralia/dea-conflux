@@ -248,7 +248,6 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     """
     # feature_id, single_polygon_df = item
     filename = f"{outpath}/{feature_id}.csv"
-    
 
     if remove_duplicated_data:
         # Remove the timeseries duplicated data
@@ -287,7 +286,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
         )
     single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
     single_polygon_df = single_polygon_df.reset_index()
-    single_polygon_df['date']=pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
+    single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
     print(single_polygon_df)
     dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
 
@@ -295,8 +294,6 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     single_polygon_df.drop(
         ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
     )
-
-
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
