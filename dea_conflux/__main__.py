@@ -19,7 +19,6 @@ import fsspec
 import geopandas as gpd
 from datacube.ui import click as ui
 from rasterio.errors import RasterioIOError
-
 import dea_conflux.__version__
 import dea_conflux.db
 import dea_conflux.drill
@@ -28,7 +27,6 @@ import dea_conflux.io
 import dea_conflux.queues
 import dea_conflux.stack
 from dea_conflux.types import CRS
-
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
@@ -70,7 +68,7 @@ def id_field_values_is_unique(shapefile_path: str, id_field) -> bool:
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile_path} to check id field.")
-    gdf = gpd.read_file(shapefile_path, driver="ESRI Shapefile")
+    gdf = gpd.read_file(shapefile_path)
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
     return len(set(gdf[id_field])) == len(gdf)
@@ -176,7 +174,7 @@ def load_and_reproject_shapefile(
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
-    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    shapefile = gpd.read_file(shapefile)
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
 
@@ -332,7 +330,6 @@ def run_one(
     Run dea-conflux on one scene.
     """
     logging_setup(verbose)
-
     # Read the plugin as a Python module.
     plugin = run_plugin(plugin)
     logger.info(f"Using plugin {plugin.__file__}")
@@ -1384,7 +1381,7 @@ def db_to_csv(
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
-    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    shapefile = gpd.read_file(shapefile)
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
 
