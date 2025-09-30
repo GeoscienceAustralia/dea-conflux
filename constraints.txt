@@ -18,7 +18,7 @@ distributed==2021.12.0
 exceptiongroup==1.1.3
 Fiona==1.9.4.post1
 fsspec==2021.11.1
-GDAL==3.4.1
+GDAL==3.6.1
 geopandas==0.13.2
 greenlet==1.1.2
 HeapDict==1.0.1
@@ -41,8 +41,8 @@ pandas==1.3.5
 partd==1.2.0
 pluggy==1.3.0
 psutil==5.8.0
-psycopg2==2.9.2
-psycopg2-binary==2.9.2
+psycopg2==2.9.9
+psycopg2-binary==2.9.9
 py-partiql-parser==0.3.6
 pyarrow==13.0.0
 pycparser==2.21
