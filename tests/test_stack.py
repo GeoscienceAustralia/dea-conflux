@@ -52,8 +52,7 @@ TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
 
 
 def setup_module(module):
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-    logging.getLogger("").handlers = []
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,force=True)
 
 
 @pytest.fixture()
