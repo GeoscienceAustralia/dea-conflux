@@ -37,7 +37,8 @@ TEST_C3_WO_NTH_ID = "e043bffd-05c5-55c3-8740-a973842f7a05"
 
 def setup_module(module):
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-    logging.getLogger("").handlers = []
+    logger = logging.getLogger(__name__)
+    logger.handlers[0].stream.write = print
 
 
 @pytest.fixture(scope="module")
