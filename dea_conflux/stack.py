@@ -330,16 +330,15 @@ def stack_wit_tooling_to_single_file(
     logger.info("Reading...")
     # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
     # then we assume they already had the norm_pv, norm_npv, norm_bs there.
-    if __name__ == "__main__":
-        with tqdm(total=len(paths)) as bar:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=multiprocessing.cpu_count() * 16
-            ) as executor:
-                polygon_df_list = []
-                futures = {executor.submit(pd.read_csv, path): path for path in paths}
-                for future in concurrent.futures.as_completed(futures):
-                    polygon_df_list.append(future.result())
-                    bar.update(1)
+    with tqdm(total=len(paths)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count() * 16
+        ) as executor:
+            polygon_df_list = []
+            futures = {executor.submit(pd.read_csv, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                polygon_df_list.append(future.result())
+                bar.update(1)
 
     if len(polygon_df_list) == 0:
         logger.warning("Cannot find any available WIT result.")
@@ -404,14 +403,13 @@ def stack_wit_tooling(
     logger.info("Reading...")
     # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
     # then we assume they already had the norm_pv, norm_npv, norm_bs there.
-    if __name__ == "__main__":
-        with tqdm(total=len(paths)) as bar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-                wit_df_list = []
-                futures = {executor.submit(load_pq_file, path): path for path in paths}
-                for future in concurrent.futures.as_completed(futures):
-                    wit_df_list.append(future.result())
-                    bar.update(1)
+    with tqdm(total=len(paths)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
+            wit_df_list = []
+            futures = {executor.submit(load_pq_file, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                wit_df_list.append(future.result())
+                bar.update(1)
 
     if len(wit_df_list) == 0:
         logger.warning("Cannot find any available WIT result.")
@@ -437,24 +435,23 @@ def stack_wit_tooling(
 
     # delete the temp result to release RAM
     del wit_result
-    if __name__ == "__main__":
-        with tqdm(total=len(feature_ids)) as bar:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=multiprocessing.cpu_count()
-            ) as executor:
-                futures = {
-                    executor.submit(
-                        save_df_as_csv,
-                        polygon_groups.get_group(feature_id),
-                        feature_id,
-                        output_dir,
-                        remove_duplicated_data,
-                    ): feature_id
-                    for feature_id in feature_ids
-                }
-                for future in concurrent.futures.as_completed(futures):
-                    _ = future.result()
-                    bar.update(1)
+    with tqdm(total=len(feature_ids)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count()
+        ) as executor:
+            futures = {
+                executor.submit(
+                    save_df_as_csv,
+                    polygon_groups.get_group(feature_id),
+                    feature_id,
+                    output_dir,
+                    remove_duplicated_data,
+                ): feature_id
+                for feature_id in feature_ids
+            }
+            for future in concurrent.futures.as_completed(futures):
+                _ = future.result()
+                bar.update(1)
 
 
 def stack_waterbodies(
