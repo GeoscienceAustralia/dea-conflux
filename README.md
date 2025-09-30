@@ -7,7 +7,10 @@
 This is a prototype tool for processing bulk polygon drills.
 
 - License: Apache 2.0
-- Contact:sai.ma@ga.gov.au , bex.dunn@ga.gov.au
+- Contact:
+  bex.dunn@ga.gov.au
+  abeer.mahendroo@ga.gov.au
+  earth.observation@ga.gov.au (subject: Attn Inland Water)
 
 ## Installation
 
