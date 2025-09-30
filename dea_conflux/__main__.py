@@ -27,6 +27,7 @@ import dea_conflux.io
 import dea_conflux.queues
 import dea_conflux.stack
 from dea_conflux.types import CRS
+
 logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
@@ -700,7 +701,7 @@ def nrt_run_from_queue(
 
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
-            
+
             # if id_ is uuid
             if len(id_) != 36:
                 import json
