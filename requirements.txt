@@ -1,7 +1,7 @@
 boto3==1.20.24
 datacube==1.8.6
 psycopg2-binary==2.9.2
-pyproj==3.2.1
+pyproj==3.7.0
 python-geohash==0.8.5
 s3fs==0.4.2
 SQLAlchemy==1.4.27
