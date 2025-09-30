@@ -8,7 +8,7 @@ import botocore
 import moto
 import pandas as pd
 import pytest
-from moto import mock_s3
+from moto import mock_aws
 
 import dea_conflux.db
 import dea_conflux.stack
@@ -137,7 +137,7 @@ def test_wit_single_file_stacking(tmp_path):
     assert out_pq_path.exists()
 
 
-@mock_s3
+@mock_aws
 def test_find_parquet_files_s3(mock_aws_response):
     # Set up some Parquet files to find.
     s3 = boto3.resource("s3", region_name="ap-southeast-2")

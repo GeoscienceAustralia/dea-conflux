@@ -1,6 +1,6 @@
 import pytest
 from click import ClickException
-from moto import mock_sqs
+from moto import mock_aws
 
 from dea_conflux.queues import get_queue, move_to_deadletter_queue, verify_name
 
@@ -8,7 +8,7 @@ from dea_conflux.queues import get_queue, move_to_deadletter_queue, verify_name
 ARD_UUID = "b17ad657-00fa-4abe-91a6-07fd24895e5d"
 
 
-@mock_sqs
+@mock_aws
 def test_get_queue():
     import boto3
 
@@ -24,7 +24,7 @@ def test_verify_name():
     assert "DEA conflux queues must start with waterbodies_ or wit_" in str(e_info)
 
 
-@mock_sqs
+@mock_aws
 def test_move_to_deadletter_queue():
     import boto3
 
