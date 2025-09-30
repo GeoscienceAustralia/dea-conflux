@@ -388,12 +388,13 @@ def filter_dataset(dss, shapefile, worker_num=1):
     -------
     filtered_datasets: [str]
     """
-    with multiprocessing.Pool(processes=worker_num) as pool:
-        filtered_datasets = list(
-            tqdm.tqdm(pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss))
-        )
-
-    return [e for e in filtered_datasets if e]
+    if __name__ == '__main__':
+        with multiprocessing.Pool(processes=worker_num) as pool:
+            filtered_datasets = list(
+                tqdm.tqdm(pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss))
+            )
+    
+        return [e for e in filtered_datasets if e]
 
 
 def polygon_in_dataset(ds, shapefile):
