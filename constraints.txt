@@ -30,8 +30,6 @@ dask-glm==0.3.2
 dask-image==2024.5.3
 dask-ml==2025.1.0
 datacube==1.8.19
-dea-conflux @ file:///code
-dea-tools==0.4.6
 deprecat==2.1.3
 distributed==2025.9.1
 eo-tides==0.8.3
