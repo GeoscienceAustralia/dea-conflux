@@ -45,7 +45,7 @@ GDAL==3.6.3
 GeoAlchemy2==0.18.0
 geographiclib==2.1
 geomad==1.0.0
-geopandas==1.1.1
+geopandas==0.14.4
 geopy==2.4.1
 greenlet==3.2.4
 idna==3.10
