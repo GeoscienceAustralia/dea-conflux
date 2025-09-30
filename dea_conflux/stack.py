@@ -385,6 +385,7 @@ def stack_wit_tooling(
     paths: [str],
     output_dir: str,
     remove_duplicated_data: bool = True,
+    verbose: bool = False,
 ):
     """Stack wit tooling parquet result files into CSVs.
 
