@@ -11,7 +11,7 @@ on:
       - 'Dockerfile'
 
   release:
-    types: [created, edited]
+    types: [published, edited]
 
 env:
   IMAGE_NAME: geoscienceaustralia/dea-conflux
