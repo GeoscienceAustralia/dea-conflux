@@ -76,7 +76,7 @@ netCDF4==1.7.2
 networkx==3.4.2
 numba==0.62.1
 numexpr==2.13.0
-numpy==2.2.6
+numpy==1.26.4
 odc-algo==1.1.1
 odc-geo==0.4.10
 odc-io==0.2.2
@@ -128,7 +128,7 @@ scikit-learn==1.7.2
 scipy==1.15.3
 seaborn==0.13.2
 setuptools-scm==9.2.0
-shapely==2.1.2
+shapely==2.0.6
 simplejson==3.20.2
 six==1.17.0
 slicerator==1.1.0
