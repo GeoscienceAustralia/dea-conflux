@@ -1,14 +1,12 @@
 FROM ghcr.io/osgeo/gdal:ubuntu-small-3.10.0
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8
-RUN apt-get update && \
-    apt-get install -y python3-pip ... && \
-    pip install pipx
-    pipx install uv && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies for Python and uv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install uv (Python dependency manager)
+RUN pip3 install uv
     
 # Set pipx binaries in path
 ENV PATH="/root/.local/bin:${PATH}"
