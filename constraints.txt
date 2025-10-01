@@ -1,2 +1,4 @@
 geopandas==0.13.2
 aiobotocore==2.15.1
+fiona==1.9.4
+
