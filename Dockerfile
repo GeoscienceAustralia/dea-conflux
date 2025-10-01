@@ -5,11 +5,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install uv (Python dependency manager)
-RUN pip3 install uv
-    
-# Set pipx binaries in path
-ENV PATH="/root/.local/bin:${PATH}"
+# The installer requires curl (and certificates) to download the release archive
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+
+# Download the latest installer
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+
+# Run the installer then remove it
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/root/.local/bin/:$PATH"
 
 # Use uv to install dependencies
 COPY constraints.txt /conf/
