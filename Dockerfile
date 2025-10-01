@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8
 RUN apt-get update && \
-    apt-get install -y python3-pipx python3-<pkg1> python3-<pkg2> ... && \
+    apt-get install -y python3-pipx ... && \
     pipx install uv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
