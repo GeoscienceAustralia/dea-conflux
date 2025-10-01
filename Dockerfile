@@ -20,6 +20,7 @@ ENV PATH="/root/.local/bin/:$PATH"
 # Use uv to install dependencies
 COPY constraints.txt /conf/
 COPY requirements.txt /conf/
+RUN uv venv
 RUN uv pip install -r /conf/requirements.txt -c /conf/constraints.txt
 
 # Copy source code and install it
