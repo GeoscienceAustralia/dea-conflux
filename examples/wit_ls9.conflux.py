@@ -73,7 +73,7 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     # not apply poly_raster cause we will do it before summarise
 
     open_water = wo_ds.water & (1 << 7) > 0
-    
+
     # Thresholding
     # set wet pixels where not masked and above threshold of -350
     wet = tcw.where(mask) > -350
