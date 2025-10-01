@@ -9,7 +9,7 @@ RUN apt-get update && \
     pipx install uv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
+    
 # Set pipx binaries in path
 ENV PATH="/root/.local/bin:${PATH}"
 
