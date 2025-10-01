@@ -19,11 +19,6 @@ jobs:
     - name: Pre-pull layers
       run: docker compose pull
 
-    - name: Activate Docker cache
-      uses: satackey/action-docker-layer-caching@v0.0.8
-      # Ignore the failure of a step and avoid terminating the job.
-      continue-on-error: true
-
     - name: Build dea-conflux image
       run: |
         docker compose build

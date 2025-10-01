@@ -1,8 +1,9 @@
-boto3==1.20.24
+boto3==1.35.23
 datacube==1.9.9
-psycopg2-binary==2.9.2
-pyproj==3.2.1
+psycopg2-binary==2.9.9
+pyproj==3.7.0
 python-geohash==0.8.5
-s3fs==0.4.2
-SQLAlchemy==1.4.27
-dea-tools==0.4.6
+s3fs==2024.9.0
+SQLAlchemy==1.4.49
+dea-tools==0.3.5
+seaborn==0.13.2

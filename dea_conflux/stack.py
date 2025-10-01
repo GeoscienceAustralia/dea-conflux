@@ -34,10 +34,10 @@ from dea_conflux.db import Engine
 from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 import dea_tools.bandindices
 import dea_tools.datahandling
-if __name__ == '__main__':
-    import dea_tools.wetlands
+import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
+
 
 class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
@@ -200,8 +200,10 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
     # Remove entries within 60s, deals with edge cases where duplicates wrap across midnight UTC
 
     if "date" in df.columns and len(df) > 1:
-        df['TIMEDIFF'] = pd.to_datetime(df['date'].shift(-1)) - pd.to_datetime(df['date'])
-        df = df[~(df['TIMEDIFF'] < timedelta(seconds=60))]
+        df["TIMEDIFF"] = pd.to_datetime(df["date"].shift(-1)) - pd.to_datetime(
+            df["date"]
+        )
+        df = df[~(df["TIMEDIFF"] < timedelta(seconds=60))]
         df = df.drop(columns=["TIMEDIFF"])
 
     # Remember to remove the temp column day in result_df
@@ -283,11 +285,15 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
-    single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
+    single_polygon_df = single_polygon_df[~(single_polygon_df["pc_missing"] > 0.1)]
     single_polygon_df = single_polygon_df.reset_index()
-    single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
+    single_polygon_df["date"] = pd.to_datetime(
+        single_polygon_df["date"]
+    ).dt.tz_localize(None)
     print(single_polygon_df)
-    dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
+    dea_tools.wetlands.display_wit_stack_with_df(
+        single_polygon_df, feature_id, feature_id, x_axis_labels="years"
+    )
 
     # remove the temp column
     single_polygon_df.drop(
@@ -317,21 +323,20 @@ def stack_wit_tooling_to_single_file(
 
     verbose : bool
     """
-    
+
     polygon_df_list = []
     logger.info("Reading...")
     # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
     # then we assume they already had the norm_pv, norm_npv, norm_bs there.
-    if __name__ == '__main__':
-        with tqdm(total=len(paths)) as bar:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=multiprocessing.cpu_count() * 16
-            ) as executor:
-                polygon_df_list = []
-                futures = {executor.submit(pd.read_csv, path): path for path in paths}
-                for future in concurrent.futures.as_completed(futures):
-                    polygon_df_list.append(future.result())
-                    bar.update(1)
+    with tqdm(total=len(paths)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count() * 16
+        ) as executor:
+            polygon_df_list = []
+            futures = {executor.submit(pd.read_csv, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                polygon_df_list.append(future.result())
+                bar.update(1)
 
     if len(polygon_df_list) == 0:
         logger.warning("Cannot find any available WIT result.")
@@ -377,6 +382,7 @@ def stack_wit_tooling(
     paths: [str],
     output_dir: str,
     remove_duplicated_data: bool = True,
+    verbose: bool = False,
 ):
     """Stack wit tooling parquet result files into CSVs.
 
@@ -395,14 +401,13 @@ def stack_wit_tooling(
     logger.info("Reading...")
     # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
     # then we assume they already had the norm_pv, norm_npv, norm_bs there.
-    if __name__ == '__main__':
-        with tqdm(total=len(paths)) as bar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-                wit_df_list = []
-                futures = {executor.submit(load_pq_file, path): path for path in paths}
-                for future in concurrent.futures.as_completed(futures):
-                    wit_df_list.append(future.result())
-                    bar.update(1)
+    with tqdm(total=len(paths)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
+            wit_df_list = []
+            futures = {executor.submit(load_pq_file, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                wit_df_list.append(future.result())
+                bar.update(1)
 
     if len(wit_df_list) == 0:
         logger.warning("Cannot find any available WIT result.")
@@ -428,24 +433,23 @@ def stack_wit_tooling(
 
     # delete the temp result to release RAM
     del wit_result
-    if __name__ == '__main__':
-        with tqdm(total=len(feature_ids)) as bar:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=multiprocessing.cpu_count()
-            ) as executor:
-                futures = {
-                    executor.submit(
-                        save_df_as_csv,
-                        polygon_groups.get_group(feature_id),
-                        feature_id,
-                        output_dir,
-                        remove_duplicated_data,
-                    ): feature_id
-                    for feature_id in feature_ids
-                }
-                for future in concurrent.futures.as_completed(futures):
-                    _ = future.result()
-                    bar.update(1)
+    with tqdm(total=len(feature_ids)) as bar:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=multiprocessing.cpu_count()
+        ) as executor:
+            futures = {
+                executor.submit(
+                    save_df_as_csv,
+                    polygon_groups.get_group(feature_id),
+                    feature_id,
+                    output_dir,
+                    remove_duplicated_data,
+                ): feature_id
+                for feature_id in feature_ids
+            }
+            for future in concurrent.futures.as_completed(futures):
+                _ = future.result()
+                bar.update(1)
 
 
 def stack_waterbodies(

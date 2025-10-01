@@ -1,0 +1,8 @@
+# This is the CODEOWNERS file that defines a set of default reviewers
+# for any pull requests in this repository 
+# dea-conflux is the repository
+# this file last updated by @BexDunn on 30-09-2025
+
+# Default reviewers for the entire repository
+*       @BexDunn @margaretharrison @LaurenSchenk1 @colourmeamused
+
