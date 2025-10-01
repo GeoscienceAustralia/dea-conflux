@@ -2,7 +2,7 @@ FROM ghcr.io/osgeo/gdal:ubuntu-small-3.10.0
 
 # Install system dependencies for Python and uv
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential fish git vim htop wget unzip python3 python3-pip python3-venv curl && \
+    build-essential fish git vim htop wget unzip python3 python3-pip python3-venv python3-dev curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # The installer requires curl (and certificates) to download the release archive
