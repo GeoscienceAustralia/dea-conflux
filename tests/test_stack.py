@@ -118,8 +118,10 @@ def test_wit_duplicate_stacking(tmp_path):
     csv = pd.read_csv(outpath)
     assert len(csv) == 4
     assert (
-        len(csv.columns) == 11
-    )  # bs, npv, pc_missing, pv, water, wet, date, feature_id, norm_pv, norm_npv, norm_bs
+        len(csv.columns) == 14 #three new columns in conflux CSV output 
+    )
+    # 'level_0', 'bs', 'npv', 'pc_missing', 'pv', 'water', 'wet', 'date',
+    #'ard_product', 'feature_id', 'norm_pv', 'norm_npv', 'norm_bs', 'off_value'
 
 
 def test_wit_single_file_stacking(tmp_path):
