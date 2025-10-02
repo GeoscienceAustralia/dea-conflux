@@ -27,7 +27,7 @@ jobs:
       run: |
           docker compose up -d
           ./tests/setup_test_datacube.sh
-          docker compose exec -T conflux bash -c "pip install -e ."
+          docker compose exec -T conflux bash -c "uv pip install -e ."
 
     - name: Run dea-conflux test
       run: |
