@@ -20,11 +20,16 @@ ENV PATH="/root/.local/bin/:$PATH"
 # Makes installation faster
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
-ENV PATH="/usr/app/.venv/bin:$PATH" VIRTUAL_ENV="/usr/app/.venv"
+RUN uv venv /opt/venv
+# Use the virtual environment automatically
+ENV VIRTUAL_ENV=/opt/venv
+# Place entry points in the environment at the front of the path
+ENV PATH="/opt/venv/bin:$PATH"
 # Use uv to install dependencies
-COPY constraints.txt /conf/
+RUN mkdir -p /conf
 COPY requirements.txt /conf/
-RUN uv venv && uv pip install -r /conf/requirements.txt -c /conf/constraints.txt
+COPY constraints.txt /conf/
+RUN uv pip install -r /conf/requirements.txt -c /conf/constraints.txt
 
 # Copy source code and install it
 RUN mkdir -p /code
@@ -32,7 +37,7 @@ WORKDIR /code
 ADD . /code
 
 RUN echo "Installing dea-conflux through the Dockerfile."
-RUN uv pip install . -c /conf/constraints.txt
+RUN uv pip install -e . -c /conf/constraints.txt
 
 RUN uv pip freeze && uv pip check
 
