@@ -16,7 +16,10 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 
 # Ensure the installed binary is on the `PATH`
 ENV PATH="/root/.local/bin/:$PATH"
-
+# Makes installation faster
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV PATH="/usr/app/.venv/bin:$PATH"
 # Use uv to install dependencies
 COPY constraints.txt /conf/
 COPY requirements.txt /conf/
