@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # The installer requires curl (and certificates) to download the release archive
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
 
+# Adding uv as package manager based on https://devblogs.microsoft.com/ise/dockerizing-uv/
 # Download the latest installer
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
 
@@ -19,12 +20,11 @@ ENV PATH="/root/.local/bin/:$PATH"
 # Makes installation faster
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
-ENV PATH="/usr/app/.venv/bin:$PATH"
+ENV PATH="/usr/app/.venv/bin:$PATH" VIRTUAL_ENV="/usr/app/.venv"
 # Use uv to install dependencies
 COPY constraints.txt /conf/
 COPY requirements.txt /conf/
-RUN uv venv
-RUN uv pip install -r /conf/requirements.txt -c /conf/constraints.txt
+RUN uv venv && uv pip install -r /conf/requirements.txt -c /conf/constraints.txt
 
 # Copy source code and install it
 RUN mkdir -p /code
