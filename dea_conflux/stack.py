@@ -34,7 +34,8 @@ from dea_conflux.db import Engine
 from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 import dea_tools.bandindices
 import dea_tools.datahandling
-import dea_tools.wetlands
+if __name__ == '__main__':
+    import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
 
