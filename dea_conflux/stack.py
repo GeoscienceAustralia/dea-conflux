@@ -285,14 +285,14 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
-    single_polygon_df = single_polygon_df[~(single_polygon_df["pc_missing"] > 0.1)]
-    single_polygon_df = single_polygon_df.reset_index()
-    single_polygon_df["date"] = pd.to_datetime(
-        single_polygon_df["date"]
+    # cleaning up single_polygon_df output for stack plot generation 
+    single_polygon_df_for_stackplot = single_polygon_df[~(single_polygon_df["pc_missing"] > 0.1)]
+    single_polygon_df_for_stackplot = single_polygon_df_for_stackplot.reset_index()
+    single_polygon_df_for_stackplot["date"] = pd.to_datetime(
+        single_polygon_df_for_stackplot["date"]
     ).dt.tz_localize(None)
-    print(single_polygon_df)
     dea_tools.wetlands.display_wit_stack_with_df(
-        single_polygon_df, feature_id, feature_id, x_axis_labels="years"
+        single_polygon_df_for_stackplot, feature_id, feature_id, x_axis_labels="years"
     )
 
     # remove the temp column
