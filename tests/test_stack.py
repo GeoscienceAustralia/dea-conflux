@@ -1,6 +1,5 @@
 import datetime
 import logging
-import sys
 from pathlib import Path
 
 import boto3
@@ -48,7 +47,6 @@ TEST_WIT_CSV_DATA_FILE = TEST_WIT_CSV_DATA / "r4e3jw0v8_v2.csv"
 
 TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
 TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
-
 
 
 @pytest.fixture()
