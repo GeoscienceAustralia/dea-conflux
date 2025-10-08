@@ -69,7 +69,7 @@ def id_field_values_is_unique(shapefile_path: str, id_field) -> bool:
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile_path} to check id field.")
-    gdf = gpd.read_file(shapefile_path)
+    gdf = gpd.read_file(shapefile_path, driver="ESRI Shapefile")
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
     return len(set(gdf[id_field])) == len(gdf)
