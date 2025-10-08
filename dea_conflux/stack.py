@@ -285,7 +285,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
-    # cleaning up single_polygon_df output for stack plot generation 
+    # cleaning up single_polygon_df output for stack plot generation
     single_polygon_df_for_stackplot = single_polygon_df[~(single_polygon_df["pc_missing"] > 0.1)]
     single_polygon_df_for_stackplot = single_polygon_df_for_stackplot.reset_index()
     single_polygon_df_for_stackplot["date"] = pd.to_datetime(
