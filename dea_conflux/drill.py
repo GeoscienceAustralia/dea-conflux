@@ -19,10 +19,10 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio.features
-import shapely.geometry
 import tqdm
 import xarray as xr
 from datacube.utils.geometry import assign_crs
+from shapely import LineString, Polygon, box
 
 from dea_conflux.types import CRS
 
@@ -106,10 +106,10 @@ def _get_directions(og_geom, int_geom):
 
     Arguments
     ---------
-    og_geom : shapely.geometry.Polygon
+    og_geom : Polygon
         Original polygon.
 
-    int_geom : shapely.geometry.Polygon
+    int_geom : Polygon
         Polygon after intersecting with extent.
 
     Returns
@@ -127,7 +127,7 @@ def _get_directions(og_geom, int_geom):
     for line_ in boundary_intersection_lines:
         coords = list(line_.coords)
         for a, b in zip(coords[:-1], coords[1:]):
-            boundary_intersection_lines_.append(shapely.geometry.LineString((a, b)))
+            boundary_intersection_lines_.append(LineString((a, b)))
     boundary_intersection_lines = boundary_intersection_lines_
 
     boundary_directions = set()
@@ -183,7 +183,7 @@ def _get_directions(og_geom, int_geom):
 
 
 def get_intersections(
-    gdf: gpd.GeoDataFrame, extent: shapely.geometry.Polygon
+    gdf: gpd.GeoDataFrame, extent: Polygon
 ) -> gpd.GeoDataFrame:
     """Find which polygons intersect with an extent and in what direction.
 
@@ -192,7 +192,7 @@ def get_intersections(
     gdf : gpd.GeoDataFrame
         Set of polygons.
 
-    extent : shapely.geometry.Polygon
+    extent : Polygon
         Extent polygon to check intersection against.
 
     Returns
@@ -364,7 +364,7 @@ def filter_shapefile_intersections(
     width = right - left
     height = top - bottom
 
-    testbox = shapely.geometry.Polygon(
+    testbox = Polygon(
         [
             (left - width, bottom - height),
             (left - width, top + height),
@@ -572,7 +572,7 @@ def drill(
         # of the polygons.
         reference_product = reference_dataset.type.name
         geopolygon = datacube.utils.geometry.Geometry(
-            shapely.geometry.box(*shapefile.total_bounds), crs=shapefile.crs
+            box(*shapefile.total_bounds), crs=shapefile.crs
         )
         time_span = (
             reference_dataset.center_time - time_buffer,
