@@ -1,4 +1,4 @@
-FROM osgeo/gdal:ubuntu-small-3.4.1
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.6.3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
@@ -15,7 +15,7 @@ RUN apt-get update && \
       wget \
       unzip \
       python3-pip \
-      libpq-dev python-dev \
+      libpq-dev python3 \
     && apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/{apt,dpkg,cache,log}
