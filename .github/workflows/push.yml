@@ -52,11 +52,13 @@ jobs:
         image_tag: latest,${{ env.RELEASE }}
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
+      if: github.event_name != 'release'
       with:
         role-to-assume: arn:aws:iam::538673716275:role/dea-conflux_github-actions-role
         aws-region: ap-southeast-2
     - name: Push image to ECR
       uses: whoan/docker-build-with-cache-action@master
+      if: github.event_name != 'release'
       with:
         context: ./docker
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
