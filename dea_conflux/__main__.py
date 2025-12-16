@@ -19,7 +19,6 @@ import fsspec
 import geopandas as gpd
 from datacube.ui import click as ui
 from rasterio.errors import RasterioIOError
-
 import dea_conflux.__version__
 import dea_conflux.db
 import dea_conflux.drill
@@ -176,7 +175,7 @@ def load_and_reproject_shapefile(
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
-    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    shapefile = gpd.read_file(shapefile)
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
 
@@ -332,7 +331,6 @@ def run_one(
     Run dea-conflux on one scene.
     """
     logging_setup(verbose)
-
     # Read the plugin as a Python module.
     plugin = run_plugin(plugin)
     logger.info(f"Using plugin {plugin.__file__}")
@@ -703,7 +701,7 @@ def nrt_run_from_queue(
 
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
             logger.info(f"Processing {id_} ({i + 1}/{len(ids)})")
-            
+
             # if id_ is uuid
             if len(id_) != 36:
                 import json
@@ -1384,7 +1382,7 @@ def db_to_csv(
     has_s3 = "s3" in gpd.io.file._VALID_URLS
     gpd.io.file._VALID_URLS.discard("s3")
     logger.info(f"Attempting to read {shapefile} to load polgyons.")
-    shapefile = gpd.read_file(shapefile, driver="ESRI Shapefile")
+    shapefile = gpd.read_file(shapefile)
     if has_s3:
         gpd.io.file._VALID_URLS.add("s3")
 

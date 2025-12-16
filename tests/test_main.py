@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-from moto import mock_s3, mock_sqs
+from moto import mock_aws
 
 import dea_conflux.__main__ as main_module
 from dea_conflux.__main__ import main
@@ -115,7 +115,7 @@ def test_run_one(run_main):
     print(run_one_result)
 
 
-@mock_sqs
+@mock_aws
 def test_run_from_queue(run_main, tmp_path):
     queue_name = "waterbodies_queue_name"
     import boto3
@@ -166,7 +166,7 @@ def test_run_from_queue(run_main, tmp_path):
     print(overwrite)
 
 
-@mock_s3
+@mock_aws
 def test_get_ids(run_main):
 
     import boto3
@@ -209,7 +209,7 @@ def test_get_ids(run_main):
     print(get_ids_result)
 
 
-@mock_sqs
+@mock_aws
 def test_filter_from_queue(run_main):
     queue_name = "waterbodies_queue_name"
     raw_queue_name = queue_name + "_raw"
@@ -238,7 +238,7 @@ def test_filter_from_queue(run_main):
     print(filter_result)
 
 
-@mock_sqs
+@mock_aws
 def test_make_s3_queue(run_main):
     make_queue_result = run_main(
         ["make", "waterbodies_queue_name"], expect_success=True
@@ -246,7 +246,7 @@ def test_make_s3_queue(run_main):
     print(make_queue_result)
 
 
-@mock_sqs
+@mock_aws
 def test_push_to_s3_queue(run_main):
 
     import os
@@ -270,7 +270,7 @@ def test_push_to_s3_queue(run_main):
     os.remove(file_name)
 
 
-@mock_sqs
+@mock_aws
 def test_delete_s3_queue(run_main):
     queue_name = "waterbodies_queue_name"
     import boto3
