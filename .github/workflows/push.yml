@@ -15,7 +15,9 @@ on:
 
 env:
   IMAGE_NAME: geoscienceaustralia/dea-conflux
-
+permissions:
+ id-token: write
+ contents: read
 jobs:
   push:
     runs-on: ubuntu-latest
