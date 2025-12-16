@@ -42,14 +42,14 @@ jobs:
       run: |
         git fetch --all --tags
         echo "RELEASE=$(git describe --tags)" >> $GITHUB_ENV
-    - name: Build and Push unstable Docker Image for push to main
-      uses: whoan/docker-build-with-cache-action@v4
-      if: github.event_name != 'release'
-      with:
-        image_name: ${{ env.IMAGE_NAME }}
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        image_tag: latest,${{ env.RELEASE }}
+    # - name: Build and Push unstable Docker Image for push to main
+    #   uses: whoan/docker-build-with-cache-action@v4
+    #   if: github.event_name != 'release'
+    #   with:
+    #     image_name: ${{ env.IMAGE_NAME }}
+    #     username: ${{ secrets.DOCKER_USERNAME }}
+    #     password: ${{ secrets.DOCKER_PASSWORD }}
+    #     image_tag: latest,${{ env.RELEASE }}
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       if: github.event_name != 'release'
