@@ -63,7 +63,7 @@ def transform(inputs: xr.Dataset) -> xr.Dataset:
     output_rast["pv"] = pv
     output_rast["npv"] = npv
 
-    mask = (wo_ds.water & 0b01100011) == 0
+    mask = (wo_ds.water & 0b01100111) == 0
     # not apply poly_raster cause we will do it before summarise
 
     open_water = wo_ds.water & (1 << 7) > 0
