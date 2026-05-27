@@ -35,8 +35,6 @@ from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
 import dea_tools.bandindices
 import dea_tools.datahandling
-from dea_tools.spatial import xr_rasterize
-from dea_tools.dask import create_local_dask_cluster
 import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
@@ -205,7 +203,6 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
         df = df[~(df['TIMEDIFF'] < timedelta(seconds=60))]
         df = df.drop(columns=["TIMEDIFF"])
 
-
     # Remember to remove the temp column day in result_df
     return df.drop(columns=["DAY"])
 
@@ -249,12 +246,10 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     """
     # feature_id, single_polygon_df = item
     filename = f"{outpath}/{feature_id}.csv"
-    
 
     if remove_duplicated_data:
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
-
     single_polygon_df["feature_id"] = single_polygon_df.index
     single_polygon_df.reset_index(inplace=True)
 
@@ -288,15 +283,13 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
         )
     single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
     single_polygon_df = single_polygon_df.reset_index()
-    single_polygon_df['date']=pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
+    single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
     print(single_polygon_df)
     dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
-
     # remove the temp column
     single_polygon_df.drop(
         ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
     )
-
 
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
