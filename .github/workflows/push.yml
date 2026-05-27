@@ -11,11 +11,13 @@ on:
       - 'Dockerfile'
 
   release:
-    types: [created, edited]
+    types: [published, edited]
 
 env:
   IMAGE_NAME: geoscienceaustralia/dea-conflux
-
+permissions:
+ id-token: write
+ contents: read
 jobs:
   push:
     runs-on: ubuntu-latest
@@ -42,11 +44,33 @@ jobs:
       run: |
         git fetch --all --tags
         echo "RELEASE=$(git describe --tags)" >> $GITHUB_ENV
-    - name: Build and Push unstable Docker Image for push to main
-      uses: whoan/docker-build-with-cache-action@v4
+    # - name: Build and Push unstable Docker Image for push to main
+    #   uses: whoan/docker-build-with-cache-action@v4
+    #   if: github.event_name != 'release'
+    #   with:
+    #     image_name: ${{ env.IMAGE_NAME }}
+    #     username: ${{ secrets.DOCKER_USERNAME }}
+    #     password: ${{ secrets.DOCKER_PASSWORD }}
+    #     image_tag: latest,${{ env.RELEASE }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
       if: github.event_name != 'release'
       with:
+        role-to-assume: arn:aws:iam::538673716275:role/dea-conflux_github-actions-role
+        aws-region: ap-southeast-2
+    - name: Push image to ECR with release tag
+      uses: whoan/docker-build-with-cache-action@master
+      if: github.event_name != 'release'
+      with:
+        registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        image_tag: latest,${{ env.RELEASE }}
+        image_tag: ${{ env.RELEASE }}
+        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
+    - name: Push image to ECR with latest tag
+      uses: whoan/docker-build-with-cache-action@master
+      if: github.event_name != 'release'
+      with:
+        registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
+        image_name: ${{ env.IMAGE_NAME }}
+        image_tag: latest
+        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
