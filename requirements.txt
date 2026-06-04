@@ -39,7 +39,6 @@ dask-glm
 dask-image
 dask-ml
 datacube
--e git+ssh://git@github.com/GeoscienceAustralia/dea-conflux.git@785acfa44a66088bbbe1fc34452bbd076cf4d3a2#egg=dea_conflux
 dea-tools
 debugpy
 decorator
