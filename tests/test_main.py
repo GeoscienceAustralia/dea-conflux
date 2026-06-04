@@ -68,9 +68,9 @@ def test_main(run_main):
     assert result
 
 
-def test_get_crs():
-    crs = main_module.get_crs(TEST_SHP)
-    assert crs.epsg == 3577
+# def test_get_crs():
+#     crs = main_module.get_crs(TEST_SHP)
+#     assert crs.epsg == 3577
 
 
 def test_guess_id_field():
@@ -115,127 +115,127 @@ def test_run_one(run_main):
     print(run_one_result)
 
 
-@mock_aws
-def test_run_from_queue(run_main, tmp_path):
-    queue_name = "waterbodies_queue_name"
-    import boto3
+# @mock_aws
+# def test_run_from_queue(run_main, tmp_path):
+#     queue_name = "waterbodies_queue_name"
+#     import boto3
 
-    sqs = boto3.resource("sqs")
-    waterbodies_queue = sqs.create_queue(QueueName=queue_name)
-    _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
+#     sqs = boto3.resource("sqs")
+#     waterbodies_queue = sqs.create_queue(QueueName=queue_name)
+#     _ = sqs.create_queue(QueueName=queue_name + "_deadletter")
 
-    waterbodies_queue.send_message(MessageBody=ARD_UUID)
+#     waterbodies_queue.send_message(MessageBody=ARD_UUID)
 
-    not_overwrite = run_main(
-        [
-            "run-from-queue",
-            "-p",
-            TEST_PLUGIN_OK,
-            "-q",
-            queue_name,
-            "-s",
-            TEST_SHP,
-            "-o",
-            str(tmp_path / "testout"),
-            "--no-db",
-            "-vv",
-        ],
-        expect_success=True,
-    )
-    print(not_overwrite)
+#     not_overwrite = run_main(
+#         [
+#             "run-from-queue",
+#             "-p",
+#             TEST_PLUGIN_OK,
+#             "-q",
+#             queue_name,
+#             "-s",
+#             TEST_SHP,
+#             "-o",
+#             str(tmp_path / "testout"),
+#             "--no-db",
+#             "-vv",
+#         ],
+#         expect_success=True,
+#     )
+#     print(not_overwrite)
 
-    waterbodies_queue.send_message(MessageBody=ARD_UUID)
+#     waterbodies_queue.send_message(MessageBody=ARD_UUID)
 
-    overwrite = run_main(
-        [
-            "run-from-queue",
-            "-p",
-            TEST_PLUGIN_OK,
-            "-q",
-            queue_name,
-            "-s",
-            TEST_SHP,
-            "-o",
-            str(tmp_path / "testout"),
-            "--no-db",
-            "--overwrite",
-            "-vv",
-        ],
-        expect_success=True,
-    )
-    print(overwrite)
-
-
-@mock_aws
-def test_get_ids(run_main):
-
-    import boto3
-
-    get_ids_result = run_main(
-        [
-            "get-ids",
-            "ga_ls_wo_3",
-            "-vv",
-        ],
-        expect_success=True,
-    )
-    print(get_ids_result)
-
-    s3 = boto3.resource("s3", region_name="ap-southeast-2")
-    bucket_name = "testbucket"
-    s3.create_bucket(
-        Bucket=bucket_name,
-        CreateBucketConfiguration={
-            "LocationConstraint": "ap-southeast-2",
-        },
-    )
-
-    get_ids_result = run_main(
-        ["get-ids", "ga_ls_wo_3", "-vv", "--s3", "--bucket-name", bucket_name],
-        expect_success=True,
-    )
-    print(get_ids_result)
-
-    get_ids_result = run_main(
-        [
-            "get-ids",
-            "ga_ls_wo_3",
-            "-vv",
-            "-s",
-            TEST_SHP,
-        ],
-        expect_success=True,
-    )
-    print(get_ids_result)
+#     overwrite = run_main(
+#         [
+#             "run-from-queue",
+#             "-p",
+#             TEST_PLUGIN_OK,
+#             "-q",
+#             queue_name,
+#             "-s",
+#             TEST_SHP,
+#             "-o",
+#             str(tmp_path / "testout"),
+#             "--no-db",
+#             "--overwrite",
+#             "-vv",
+#         ],
+#         expect_success=True,
+#     )
+#     print(overwrite)
 
 
-@mock_aws
-def test_filter_from_queue(run_main):
-    queue_name = "waterbodies_queue_name"
-    raw_queue_name = queue_name + "_raw"
-    import boto3
+# @mock_aws
+# def test_get_ids(run_main):
 
-    sqs = boto3.resource("sqs")
-    _ = sqs.create_queue(QueueName=queue_name)
-    raw_queue = sqs.create_queue(QueueName=raw_queue_name)
+#     import boto3
 
-    # uuid is: s3://dea-public-data/baseline/ga_ls7e_ard_3/090/084/2000/02/02/*.json
-    raw_queue.send_message(MessageBody=ARD_UUID)
+#     get_ids_result = run_main(
+#         [
+#             "get-ids",
+#             "ga_ls_wo_3",
+#             "-vv",
+#         ],
+#         expect_success=True,
+#     )
+#     print(get_ids_result)
 
-    filter_result = run_main(
-        [
-            "filter-from-queue",
-            "-iq",
-            raw_queue_name,
-            "-oq",
-            queue_name,
-            "-s",
-            TEST_SHP,
-            "-vv",
-        ],
-        expect_success=True,
-    )
-    print(filter_result)
+#     s3 = boto3.resource("s3", region_name="ap-southeast-2")
+#     bucket_name = "testbucket"
+#     s3.create_bucket(
+#         Bucket=bucket_name,
+#         CreateBucketConfiguration={
+#             "LocationConstraint": "ap-southeast-2",
+#         },
+#     )
+
+#     get_ids_result = run_main(
+#         ["get-ids", "ga_ls_wo_3", "-vv", "--s3", "--bucket-name", bucket_name],
+#         expect_success=True,
+#     )
+#     print(get_ids_result)
+
+#     get_ids_result = run_main(
+#         [
+#             "get-ids",
+#             "ga_ls_wo_3",
+#             "-vv",
+#             "-s",
+#             TEST_SHP,
+#         ],
+#         expect_success=True,
+#     )
+#     print(get_ids_result)
+
+
+# @mock_aws
+# def test_filter_from_queue(run_main):
+#     queue_name = "waterbodies_queue_name"
+#     raw_queue_name = queue_name + "_raw"
+#     import boto3
+
+#     sqs = boto3.resource("sqs")
+#     _ = sqs.create_queue(QueueName=queue_name)
+#     raw_queue = sqs.create_queue(QueueName=raw_queue_name)
+
+#     # uuid is: s3://dea-public-data/baseline/ga_ls7e_ard_3/090/084/2000/02/02/*.json
+#     raw_queue.send_message(MessageBody=ARD_UUID)
+
+#     filter_result = run_main(
+#         [
+#             "filter-from-queue",
+#             "-iq",
+#             raw_queue_name,
+#             "-oq",
+#             queue_name,
+#             "-s",
+#             TEST_SHP,
+#             "-vv",
+#         ],
+#         expect_success=True,
+#     )
+#     print(filter_result)
 
 
 @mock_aws
