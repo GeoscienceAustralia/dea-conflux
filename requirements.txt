@@ -7,6 +7,7 @@ aiosignal
 alembic
 annotated-types
 antimeridian
+antlr4-python3-runtime
 arrow
 asf_tools
 astropy
@@ -14,6 +15,8 @@ astropy-iers-data
 asttokens
 async-timeout
 attrs
+aws-sam-translator
+aws-xray-sdk
 bokeh
 boto3
 botocore
@@ -21,6 +24,7 @@ branca
 cachetools
 certifi
 cffi
+cfn-lint
 cftime
 charset-normalizer
 claude
@@ -39,11 +43,13 @@ dask-glm
 dask-image
 dask-ml
 datacube
+-e git+ssh://git@github.com/GeoscienceAustralia/dea-conflux.git@8a13d2387cb011f3ddfd3844cc5bf064bc7cfcc6#egg=dea_conflux
 dea-tools
 debugpy
 decorator
 deprecat
 distributed
+docker
 docutils
 eo-tides
 exceptiongroup
@@ -63,6 +69,7 @@ geojson
 geomad
 geopandas
 geopy
+graphql-core
 greenlet
 hydrosar
 idna
@@ -77,13 +84,18 @@ jedi
 Jinja2
 jmespath
 joblib
+joserfc
+jsonpatch
+jsonpath-ng
 jsonpointer
 jsonschema
+jsonschema-path
 jsonschema-specifications
 jupyter_client
 jupyter_core
 kiwisolver
 lark
+lazy-object-proxy
 lazy_loader
 llvmlite
 locket
@@ -95,8 +107,10 @@ MarkupSafe
 matplotlib
 matplotlib-inline
 moto
+mpmath
 msgpack
 multidict
+multipart
 multipledispatch
 narwhals
 nest-asyncio
@@ -110,11 +124,14 @@ odc-geo
 odc-io
 odc-loader
 odc-stac
+openapi-schema-validator
+openapi-spec-validator
 OWSLib
 packaging
 pandas
 parso
 partd
+pathable
 pexpect
 pillow
 PIMS
@@ -130,6 +147,7 @@ py-partiql-parser
 pyarrow
 pycparser
 pydantic
+pydantic-settings
 pydantic_core
 pyerfa
 Pygments
@@ -150,6 +168,7 @@ pyzmq
 rasterio
 rasterstats
 referencing
+regex
 requests
 responses
 rfc3339-validator
@@ -172,6 +191,7 @@ sortedcontainers
 sparse
 SQLAlchemy
 stack-data
+sympy
 tblib
 threadpoolctl
 tifffile

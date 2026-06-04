@@ -7,6 +7,7 @@ aiosignal==1.4.0
 alembic==1.18.4
 annotated-types==0.7.0
 antimeridian==0.4.4
+antlr4-python3-runtime==4.13.2
 arrow==1.4.0
 asf_tools==0.8.4
 astropy==6.1.7
@@ -14,6 +15,8 @@ astropy-iers-data==0.2025.11.10.0.38.31
 asttokens==3.0.1
 async-timeout==5.0.1
 attrs==25.4.0
+aws-sam-translator==1.103.0
+aws-xray-sdk==2.15.0
 bokeh==3.9.0
 boto3==1.42.91
 botocore==1.42.91
@@ -21,6 +24,7 @@ branca==0.8.2
 cachetools==6.2.2
 certifi==2025.11.12
 cffi==2.0.0
+cfn-lint==1.41.0
 cftime==1.6.5
 charset-normalizer==3.4.4
 claude==0.4.11
@@ -39,11 +43,13 @@ dask-glm==0.4.0
 dask-image==2025.11.0
 dask-ml==2025.1.0
 datacube==1.9.18
+-e git+ssh://git@github.com/GeoscienceAustralia/dea-conflux.git@8a13d2387cb011f3ddfd3844cc5bf064bc7cfcc6#egg=dea_conflux
 dea-tools==0.4.9
 debugpy==1.8.17
 decorator==5.2.1
 deprecat==2.1.3
 distributed==2025.11.0
+docker==7.1.0
 docutils==0.22.4
 eo-tides==0.10.4
 exceptiongroup==1.3.0
@@ -63,6 +69,7 @@ geojson==3.2.0
 geomad==1.0.0
 geopandas==1.1.1
 geopy==2.4.1
+graphql-core==3.2.8
 greenlet==3.5.0
 hydrosar==1.0.0
 idna==3.11
@@ -77,13 +84,18 @@ jedi==0.19.2
 Jinja2==3.1.6
 jmespath==1.0.1
 joblib==1.5.3
+joserfc==1.7.0
+jsonpatch==1.33
+jsonpath-ng==1.8.0
 jsonpointer==3.1.1
 jsonschema==4.25.1
+jsonschema-path==0.4.6
 jsonschema-specifications==2025.9.1
 jupyter_client==8.6.3
 jupyter_core==5.9.1
 kiwisolver==1.5.0
 lark==1.3.1
+lazy-object-proxy==1.12.0
 lazy_loader==0.4
 llvmlite==0.45.1
 locket==1.0.0
@@ -95,8 +107,10 @@ MarkupSafe==3.0.3
 matplotlib==3.10.9
 matplotlib-inline==0.2.1
 moto==5.1.22
+mpmath==1.3.0
 msgpack==1.1.2
 multidict==6.7.1
+multipart==1.3.1
 multipledispatch==1.0.0
 narwhals==2.21.2
 nest-asyncio==1.6.0
@@ -110,11 +124,14 @@ odc-geo==0.5.1
 odc-io==0.2.2
 odc-loader==0.6.4
 odc-stac==0.5.2
+openapi-schema-validator==0.8.1
+openapi-spec-validator==0.8.5
 OWSLib==0.35.0
 packaging==25.0
 pandas==2.3.3
 parso==0.8.5
 partd==1.4.2
+pathable==0.5.0
 pexpect==4.9.0
 pillow==12.0.0
 PIMS==0.7
@@ -129,8 +146,9 @@ pure_eval==0.2.3
 py-partiql-parser==0.6.3
 pyarrow==24.0.0
 pycparser==3.0
-pydantic==2.13.4
-pydantic_core==2.46.4
+pydantic==2.12.4
+pydantic-settings==2.14.1
+pydantic_core==2.41.5
 pyerfa==2.0.1.5
 Pygments==2.19.2
 pyogrio==0.11.1
@@ -150,6 +168,7 @@ pyzmq==27.1.0
 rasterio==1.4.4
 rasterstats==0.20.0
 referencing==0.37.0
+regex==2026.5.9
 requests==2.32.5
 responses==0.26.0
 rfc3339-validator==0.1.4
@@ -172,6 +191,7 @@ sortedcontainers==2.4.0
 sparse==0.17.0
 SQLAlchemy==2.0.49
 stack-data==0.6.3
+sympy==1.14.0
 tblib==3.2.2
 threadpoolctl==3.6.0
 tifffile==2025.5.10
