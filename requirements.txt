@@ -140,6 +140,7 @@ pluggy
 prompt_toolkit
 propcache
 psutil
+psycopg2-binary
 ptyprocess
 pure_eval
 py-partiql-parser
