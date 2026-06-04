@@ -20,10 +20,10 @@ if __name__ == "__main__":
             "pyarrow",
             "fsspec",
             "s3fs",
-            "moto[s3]",
+            "moto[all]",
             "tqdm",
             "SQLAlchemy",
-            # "python-geohash",
+            "python-geohash",
         ],
         entry_points={
             "console_scripts": ["dea-conflux=dea_conflux.__main__:main"],
