@@ -15,6 +15,7 @@ from types import ModuleType
 from typing import Union
 
 import datacube
+import geohash
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -388,12 +389,15 @@ def filter_dataset(dss, shapefile, worker_num=1):
     -------
     filtered_datasets: [str]
     """
-    with multiprocessing.Pool(processes=worker_num) as pool:
-        filtered_datasets = list(
-            tqdm.tqdm(pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss))
-        )
+    if __name__ == "__main__":
+        with multiprocessing.Pool(processes=worker_num) as pool:
+            filtered_datasets = list(
+                tqdm.tqdm(
+                    pool.imap(partial(polygon_in_dataset, shapefile=shapefile), dss)
+                )
+            )
 
-    return [e for e in filtered_datasets if e]
+        return [e for e in filtered_datasets if e]
 
 
 def polygon_in_dataset(ds, shapefile):
@@ -692,6 +696,19 @@ def drill(
     summary_df = pd.DataFrame(
         {one_index_to_id[int(k)]: summaries[k] for k in summaries}
     ).T
+
+    # Add geohash_wetland_id for WIT plugins.
+    if hasattr(plugin, "product_name") and plugin.product_name.startswith("wit_"):
+        result_ids = summary_df.index
+        present = shapefile.loc[shapefile.index.isin(result_ids)]
+        centroids_projected = present.geometry.centroid
+        centroids_4326 = (
+            gpd.GeoSeries(centroids_projected, crs=shapefile.crs)
+            .to_crs(epsg=4326)
+        )
+        summary_df["geohash_wetland_id"] = [
+            geohash.encode(c.y, c.x, precision=12) for c in centroids_4326
+        ]
 
     # Merge in the edge information.
     if partial and not overedge:

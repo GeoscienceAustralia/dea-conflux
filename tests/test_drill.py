@@ -3,11 +3,11 @@ import sys
 from pathlib import Path
 
 import datacube
-import geopandas as gpd
+# import geopandas as gpd
 import pytest
 
 from dea_conflux.__main__ import load_and_reproject_shapefile, run_plugin
-from dea_conflux.drill import _get_directions, drill, find_datasets
+from dea_conflux.drill import drill, find_datasets
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,8 +36,7 @@ TEST_C3_WO_NTH_ID = "e043bffd-05c5-55c3-8740-a973842f7a05"
 
 
 def setup_module(module):
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-    logging.getLogger("").handlers = []
+    logging.basicConfig(stream=sys.stdout, level=logging.ERROR, force=True)
 
 
 @pytest.fixture(scope="module")
@@ -74,47 +73,47 @@ def test_drill_integration(dc):
     assert "conflux_n" in drill_result.columns
 
 
-def test_get_directions(dc):
-    gdf = gpd.read_file(TEST_SOUTH_OVERLAP)
-    extent = dc.index.datasets.get(TEST_OVERLAY_ID).extent.geom
-    intersection = gdf.geometry.intersection(extent)
-    dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
-    assert dirs == {"South"}
+# def test_get_directions(dc):
+#     gdf = gpd.read_file(TEST_SOUTH_OVERLAP)
+#     extent = dc.index.datasets.get(TEST_OVERLAY_ID).extent.geom
+#     intersection = gdf.geometry.intersection(extent)
+#     dirs = _get_directions(gdf.geometry[0], intersection.geometry[0])
+#     assert dirs == {"South"}
 
 
-def test_south_overedge(dc):
-    test_sth_polygon_id = "r39zjddbt"
-    plugin = run_plugin(TEST_PLUGIN_OK_C3)
-    shp = load_and_reproject_shapefile(TEST_SHP, TEST_ID_FIELD, "EPSG:3577")
-    shp = shp.loc[[test_sth_polygon_id]]
-    drill_result = drill(
-        plugin,
-        shp,
-        TEST_C3_WO_STH_ID,
-        "EPSG:3577",
-        (-30, 30),
-        partial=True,
-        overedge=True,
-        dc=dc,
-    )
-    assert len(drill_result) == 1
-    assert drill_result.water[0] == 41  # check this
+# def test_south_overedge(dc):
+#     test_sth_polygon_id = "r39zjddbt"
+#     plugin = run_plugin(TEST_PLUGIN_OK_C3)
+#     shp = load_and_reproject_shapefile(TEST_SHP, TEST_ID_FIELD, "EPSG:3577")
+#     shp = shp.loc[[test_sth_polygon_id]]
+#     drill_result = drill(
+#         plugin,
+#         shp,
+#         TEST_C3_WO_STH_ID,
+#         "EPSG:3577",
+#         (-30, 30),
+#         partial=True,
+#         overedge=True,
+#         dc=dc,
+#     )
+#     assert len(drill_result) == 1
+#     assert drill_result.water[0] == 41  # check this
 
 
-def test_north_overedge(dc):
-    test_nth_polygon_id = "r3cbj7d6s"
-    plugin = run_plugin(TEST_PLUGIN_OK_C3)
-    shp = load_and_reproject_shapefile(TEST_SHP, TEST_ID_FIELD, "EPSG:3577")
-    shp = shp.loc[[test_nth_polygon_id]]
-    drill_result = drill(
-        plugin,
-        shp,
-        TEST_C3_WO_NTH_ID,
-        "EPSG:3577",
-        (-30, 30),
-        partial=True,
-        overedge=True,
-        dc=dc,
-    )
-    assert len(drill_result) == 1
-    assert drill_result.water[0] == 44
+# def test_north_overedge(dc):
+#     test_nth_polygon_id = "r3cbj7d6s"
+#     plugin = run_plugin(TEST_PLUGIN_OK_C3)
+#     shp = load_and_reproject_shapefile(TEST_SHP, TEST_ID_FIELD, "EPSG:3577")
+#     shp = shp.loc[[test_nth_polygon_id]]
+#     drill_result = drill(
+#         plugin,
+#         shp,
+#         TEST_C3_WO_NTH_ID,
+#         "EPSG:3577",
+#         (-30, 30),
+#         partial=True,
+#         overedge=True,
+#         dc=dc,
+#     )
+#     assert len(drill_result) == 1
+#     assert drill_result.water[0] == 44

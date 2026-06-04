@@ -33,6 +33,10 @@ import dea_conflux.io
 from dea_conflux.db import Engine
 from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
+import dea_tools.bandindices
+import dea_tools.datahandling
+import dea_tools.wetlands
+
 logger = logging.getLogger(__name__)
 
 
@@ -194,11 +198,11 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
     # The pc_missing the less the better, so we only keep the first one
     df = df.drop_duplicates("DAY", keep="first")
 
-    # Remove entries within 60s, deals with edge cases where duplicates wrap across midnight UTC
-
     if "date" in df.columns and len(df) > 1:
-        df['TIMEDIFF'] = pd.to_datetime(df['date'].shift(-1)) - pd.to_datetime(df['date'])
-        df = df[~(df['TIMEDIFF'] < timedelta(seconds=60))]
+        df["TIMEDIFF"] = pd.to_datetime(df["date"].shift(-1)) - pd.to_datetime(
+            df["date"]
+        )
+        df = df[~(df["TIMEDIFF"] < timedelta(seconds=60))]
         df = df.drop(columns=["TIMEDIFF"])
 
     # Remember to remove the temp column day in result_df
@@ -223,6 +227,7 @@ def load_pq_file(path):
         date = dea_conflux.io.string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         df.loc[:, "date"] = date
+        df.loc[:, "ard_product"] = str(path).split("/")[-1].split("_")[-3]
     return df
 
 
@@ -247,7 +252,6 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     if remove_duplicated_data:
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
-
     single_polygon_df["feature_id"] = single_polygon_df.index
     single_polygon_df.reset_index(inplace=True)
 
@@ -279,12 +283,15 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
-
+    single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
+    single_polygon_df = single_polygon_df.reset_index()
+    single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
+    print(single_polygon_df)
+    dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
     # remove the temp column
     single_polygon_df.drop(
         ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
     )
-
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
@@ -309,9 +316,9 @@ def stack_wit_tooling_to_single_file(
 
     verbose : bool
     """
+
     polygon_df_list = []
     logger.info("Reading...")
-
     # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
     # then we assume they already had the norm_pv, norm_npv, norm_bs there.
     with tqdm(total=len(paths)) as bar:
@@ -385,7 +392,8 @@ def stack_wit_tooling(
     """
     wit_df_list = []
     logger.info("Reading...")
-
+    # Note: the stack_wit_tooling_to_single_file() input files are CSV file, which generate by save_df_as_csv()
+    # then we assume they already had the norm_pv, norm_npv, norm_bs there.
     with tqdm(total=len(paths)) as bar:
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
             wit_df_list = []
@@ -418,7 +426,6 @@ def stack_wit_tooling(
 
     # delete the temp result to release RAM
     del wit_result
-
     with tqdm(total=len(feature_ids)) as bar:
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=multiprocessing.cpu_count()

@@ -1,4 +1,4 @@
-FROM osgeo/gdal:ubuntu-small-3.4.1
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.11.4
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
@@ -15,27 +15,32 @@ RUN apt-get update && \
       wget \
       unzip \
       python3-pip \
-      libpq-dev python-dev \
+      libpq-dev python3 \
+      python3-venv \
     && apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/{apt,dpkg,cache,log}
 
+# Create a virtual environment
+RUN python3 -m venv /opt/venv
+
+# Permanently add the virtual environment to the execution PATH
+ENV PATH="/opt/venv/bin:$PATH"
 # Pip installation
 # RUN pip install --upgrade pip==23.1 setuptools==59.7.0
 RUN mkdir -p /conf
 COPY requirements.txt /conf/
 COPY constraints.txt /conf/
-RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt
-RUN pip install --upgrade pip==23.1 setuptools==59.7.0
-
+RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt 
+# RUN pip install --upgrade pip==23.1 setuptools==59.7.0 
 # Copy source code and install it
 RUN mkdir -p /code
+RUN git config --global --add safe.directory /code
 WORKDIR /code
 ADD . /code
 
 RUN echo "Installing dea-conflux through the Dockerfile."
 RUN pip install . -c /conf/constraints.txt
-
 RUN pip freeze && pip check
 
 # Make sure it's working
