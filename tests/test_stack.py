@@ -3,12 +3,12 @@ import logging
 import sys
 from pathlib import Path
 
-import boto3
+# import boto3
 import botocore
 import moto
 import pandas as pd
 import pytest
-from moto import mock_aws
+# from moto import mock_aws
 
 import dea_conflux.db
 import dea_conflux.stack

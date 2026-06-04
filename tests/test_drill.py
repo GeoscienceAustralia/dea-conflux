@@ -3,11 +3,11 @@ import sys
 from pathlib import Path
 
 import datacube
-import geopandas as gpd
+# import geopandas as gpd
 import pytest
 
 from dea_conflux.__main__ import load_and_reproject_shapefile, run_plugin
-from dea_conflux.drill import _get_directions, drill, find_datasets
+from dea_conflux.drill import drill, find_datasets
 
 logging.basicConfig(level=logging.INFO)
 
