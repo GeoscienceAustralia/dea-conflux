@@ -35,6 +35,7 @@ RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt
 # RUN pip install --upgrade pip==23.1 setuptools==59.7.0 
 # Copy source code and install it
 RUN mkdir -p /code
+RUN git config --global --add safe.directory /code
 WORKDIR /code
 ADD . /code
 
