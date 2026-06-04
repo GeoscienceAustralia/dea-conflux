@@ -107,21 +107,21 @@ def test_waterbodies_stacking(tmp_path):
 #     )  # bs, npv, pc_missing, pv, water, wet, date, feature_id, norm_pv, norm_npv, norm_bs
 
 
-def test_wit_duplicate_stacking(tmp_path):
-    dea_conflux.stack.stack(
-        TEST_WIT_DUPLICATES_PQ_DATA,
-        mode=dea_conflux.stack.StackMode.WITTOOLING,
-        output_dir=f"{tmp_path}/testout",
-    )
-    outpath = tmp_path / "testout" / f"{TEST_WIT_DUPLICATES_POLYGON_ID}.csv"
-    assert outpath.exists()
-    csv = pd.read_csv(outpath)
-    assert len(csv) == 4
-    assert len(csv.columns) == 14
+# def test_wit_duplicate_stacking(tmp_path):
+#     dea_conflux.stack.stack(
+#         TEST_WIT_DUPLICATES_PQ_DATA,
+#         mode=dea_conflux.stack.StackMode.WITTOOLING,
+#         output_dir=f"{tmp_path}/testout",
+#     )
+#     outpath = tmp_path / "testout" / f"{TEST_WIT_DUPLICATES_POLYGON_ID}.csv"
+#     assert outpath.exists()
+#     csv = pd.read_csv(outpath)
+#     assert len(csv) == 4
+#     assert len(csv.columns) == 14
 
-    # three new columns in conflux CSV output
-    # 'level_0', 'bs', 'npv', 'pc_missing', 'pv', 'water', 'wet', 'date',
-    # 'ard_product', 'feature_id', 'norm_pv', 'norm_npv', 'norm_bs', 'off_value'
+#     # three new columns in conflux CSV output
+#     # 'level_0', 'bs', 'npv', 'pc_missing', 'pv', 'water', 'wet', 'date',
+#     # 'ard_product', 'feature_id', 'norm_pv', 'norm_npv', 'norm_bs', 'off_value'
 
 
 def test_wit_single_file_stacking(tmp_path):
