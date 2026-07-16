@@ -39,6 +39,14 @@ import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
 
+WIT_CSV_COLUMN_RENAMES = {
+    "feature_id": "nwi_id",
+    "pv": "green_vegetation",
+    "npv": "dry_vegetation",
+    "bs": "bare_soil",
+    "wet": "wetness",
+}
+
 
 class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
@@ -292,6 +300,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     single_polygon_df.drop(
         ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
     )
+    single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
