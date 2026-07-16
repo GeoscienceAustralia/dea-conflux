@@ -92,6 +92,43 @@ def test_waterbodies_stacking(tmp_path):
     assert len(csv.columns) == 4  # 3 bands + date
 
 
+def test_wit_csv_column_names_match_data_dictionary(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        dea_conflux.stack.dea_tools.wetlands,
+        "display_wit_stack_with_df",
+        lambda *args, **kwargs: None,
+    )
+    source = pd.DataFrame(
+        {
+            "water": [0.2],
+            "wet": [0.1],
+            "pv": [0.3],
+            "npv": [0.2],
+            "bs": [0.1],
+            "date": ["2026-02-24T23:56:28Z"],
+            "pc_missing": [0.0],
+        },
+        index=pd.Index([WIT_POLYGON_ID], name="source_id"),
+    )
+
+    output = dea_conflux.stack.save_df_as_csv(
+        source,
+        WIT_POLYGON_ID,
+        str(tmp_path),
+        remove_duplicated_data=False,
+    )
+
+    csv = pd.read_csv(output)
+    assert {
+        "nwi_id",
+        "green_vegetation",
+        "dry_vegetation",
+        "bare_soil",
+        "wetness",
+    }.issubset(csv.columns)
+    assert not {"feature_id", "pv", "npv", "bs", "wet"}.intersection(csv.columns)
+
+
 # def test_wit_stacking(tmp_path):
 #     dea_conflux.stack.stack(
 #         TEST_WIT_PQ_DATA,
