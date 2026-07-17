@@ -47,6 +47,26 @@ WIT_CSV_COLUMN_RENAMES = {
     "wet": "wetness",
 }
 
+# Column order matches the Wetlands Insight Tool (WIT) data dictionary (Table 2).
+# pc_missing is appended last as it is not in the data dictionary but retained
+# for QA purposes. Any other unlisted columns are appended after pc_missing.
+WIT_CSV_COLUMN_ORDER = [
+    "nwi_id",
+    "date",
+    "green_vegetation",
+    "dry_vegetation",
+    "bare_soil",
+    "wetness",
+    "water",
+    "veg_areas",
+    "overall_veg_num",
+    "norm_bs",
+    "norm_pv",
+    "norm_npv",
+    "off_value",
+    "pc_missing",
+]
+
 
 class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
@@ -235,7 +255,7 @@ def load_pq_file(path):
         date = dea_conflux.io.string_to_date(df.attrs["date"])
         date = stack_format_date(date)
         df.loc[:, "date"] = date
-        df.loc[:, "ard_product"] = str(path).split("/")[-1].split("_")[-3]
+        # df.loc[:, "ard_product"] = str(path).split("/")[-1].split("_")[-3]
     return df
 
 
@@ -292,15 +312,21 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
     single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
-    single_polygon_df = single_polygon_df.reset_index()
+    single_polygon_df = single_polygon_df.reset_index(drop=True)
     single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
+    # Compute off_value: 100 where data quality is low (SLC-off gap or fewer
+    # than 4 observations within any 365-day window), 0 otherwise.
+    single_polygon_df = dea_tools.wetlands.generate_low_quality_data_periods(single_polygon_df)
     print(single_polygon_df)
     dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
-    # remove the temp column
-    single_polygon_df.drop(
-        ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
-    )
+    # Drop only the temporary reset_index column; veg_areas and overall_veg_num
+    # are retained as they are defined in the WIT data dictionary.
+    single_polygon_df.drop(["index"], axis=1, inplace=True)
     single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)
+    # Reorder to match WIT_CSV_COLUMN_ORDER; any unlisted columns go at the end.
+    ordered = [c for c in WIT_CSV_COLUMN_ORDER if c in single_polygon_df.columns]
+    extras = [c for c in single_polygon_df.columns if c not in WIT_CSV_COLUMN_ORDER]
+    single_polygon_df = single_polygon_df[ordered + extras]
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
