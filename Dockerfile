@@ -1,47 +1,67 @@
-FROM ghcr.io/osgeo/gdal:ubuntu-small-3.11.4
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.11.4 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    PATH="/opt/venv/bin:$PATH"
 
-# Apt installation
+# Keep compilers, development headers, and venv tooling out of the runtime image.
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
       build-essential \
-      fish \
       git \
-      vim \
-      htop \
-      wget \
-      unzip \
+      libpq-dev \
+      python3 \
+      python3-dev \
       python3-pip \
-      libpq-dev python3 \
       python3-venv \
-    && apt-get autoclean && \
-    apt-get autoremove && \
-    rm -rf /var/lib/{apt,dpkg,cache,log}
+    && rm -rf /var/lib/apt/lists/*
 
-# Create a virtual environment
 RUN python3 -m venv /opt/venv
 
-# Permanently add the virtual environment to the execution PATH
-ENV PATH="/opt/venv/bin:$PATH"
-# Pip installation
-# RUN pip install --upgrade pip==23.1 setuptools==59.7.0
-RUN mkdir -p /conf
-COPY requirements.txt /conf/
-COPY constraints.txt /conf/
-RUN pip install -r /conf/requirements.txt -c /conf/constraints.txt 
-# RUN pip install --upgrade pip==23.1 setuptools==59.7.0 
-# Copy source code and install it
-RUN mkdir -p /code
-RUN git config --global --add safe.directory /code
+WORKDIR /build
+
+COPY requirements.txt constraints.txt /conf/
+RUN pip install --no-cache-dir \
+      -r /conf/requirements.txt \
+      -c /conf/constraints.txt
+
+# The Git metadata is used by setuptools-scm to generate the package version.
+COPY . /build
+RUN echo "Installing dea-conflux through the Dockerfile." && \
+    pip install --no-cache-dir . -c /conf/constraints.txt && \
+    pip freeze && \
+    pip check && \
+    dea-conflux --version
+
+
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.11.4 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    PATH="/opt/venv/bin:$PATH"
+
+# Retain the packages previously available at runtime, excluding build-only
+# dependencies installed in the builder stage.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      fish \
+      git \
+      htop \
+      libpq5 \
+      python3 \
+      unzip \
+      vim \
+      wget \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+
+RUN mkdir -p /code && \
+    git config --global --add safe.directory /code && \
+    pip check && \
+    dea-conflux --version
+
 WORKDIR /code
-ADD . /code
-
-RUN echo "Installing dea-conflux through the Dockerfile."
-RUN pip install . -c /conf/constraints.txt
-RUN pip freeze && pip check
-
-# Make sure it's working
-RUN dea-conflux --version
