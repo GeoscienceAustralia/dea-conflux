@@ -281,7 +281,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
     single_polygon_df["nwi_id"] = single_polygon_df.index
-    single_polygon_df.reset_index(inplace=True)
+    single_polygon_df.reset_index(drop=True, inplace=True)
 
     # WIT Normalise Step
 
@@ -319,9 +319,8 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     single_polygon_df = dea_tools.wetlands.generate_low_quality_data_periods(single_polygon_df)
     print(single_polygon_df)
     dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
-    # Drop only the temporary reset_index column; veg_areas and overall_veg_num
-    # are retained as they are defined in the WIT data dictionary.
-    single_polygon_df.drop(["index"], axis=1, inplace=True)
+    # veg_areas and overall_veg_num are retained as they are defined in the WIT
+    # data dictionary.
     single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)
     # Reorder to match WIT_CSV_COLUMN_ORDER; any unlisted columns go at the end.
     ordered = [c for c in WIT_CSV_COLUMN_ORDER if c in single_polygon_df.columns]

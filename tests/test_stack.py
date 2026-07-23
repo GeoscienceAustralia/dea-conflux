@@ -119,14 +119,23 @@ def test_wit_csv_column_names_match_data_dictionary(tmp_path, monkeypatch):
     )
 
     csv = pd.read_csv(output)
-    assert {
+    assert list(csv.columns) == [
         "nwi_id",
+        "date",
         "green_vegetation",
         "dry_vegetation",
         "bare_soil",
         "wetness",
-    }.issubset(csv.columns)
-    assert not {"feature_id", "pv", "npv", "bs", "wet"}.intersection(csv.columns)
+        "water",
+        "veg_areas",
+        "overall_veg_num",
+        "norm_bs",
+        "norm_pv",
+        "norm_npv",
+        "off_value",
+        "pc_missing",
+    ]
+    assert csv.loc[0, "nwi_id"] == WIT_POLYGON_ID
 
 
 # def test_wit_stacking(tmp_path):
