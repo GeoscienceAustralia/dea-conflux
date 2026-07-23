@@ -280,7 +280,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
     if remove_duplicated_data:
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
-    single_polygon_df["feature_id"] = single_polygon_df.index
+    single_polygon_df["nwi_id"] = single_polygon_df.index
     single_polygon_df.reset_index(inplace=True)
 
     # WIT Normalise Step
