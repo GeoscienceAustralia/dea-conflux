@@ -22,7 +22,7 @@ jobs:
     - name: Build dea-conflux image
       run: |
         docker compose build
-        docker image inspect "$(docker compose images -q conflux)" --format='dea-conflux image size: {{.Size}} bytes'
+        docker image inspect "$(docker compose config --images | grep -- '-conflux$')" --format='dea-conflux image size: {{.Size}} bytes'
 
     - name: Setup dea-conflux test environment
       run: |
