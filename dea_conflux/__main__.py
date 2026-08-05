@@ -6,6 +6,7 @@ Geoscience Australia
 """
 
 import importlib.util
+import datetime
 import json
 import logging
 import sys
@@ -393,6 +394,139 @@ def run_one(
         logger.error(f"Found {uuid} has TypeError: {str(typeerr)}")
     except RasterioIOError as ioerror:
         logger.error(f"Found {uuid} has RasterioIOError: {str(ioerror)}")
+    finally:
+        return 0
+
+
+@main.command(no_args_is_help=True)
+@click.option(
+    "--plugin",
+    "-p",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to Conflux plugin (.py).",
+)
+@click.option(
+    "--local-data-root",
+    "-r",
+    type=click.Path(exists=True, file_okay=False),
+    required=True,
+    help=(
+        "Root directory of locally synced DEA data. "
+        "Must contain subdirectories named after each product, "
+        "e.g. ga_ls8c_ard_3/092/084/2026/01/15/."
+    ),
+)
+@click.option("--path", type=int, required=True, help="Landsat WRS-2 path number.")
+@click.option("--row", type=int, required=True, help="Landsat WRS-2 row number.")
+@click.option(
+    "--date",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    required=True,
+    help="Scene acquisition date (YYYY-MM-DD).",
+)
+@click.option(
+    "--shapefile",
+    "-s",
+    type=click.Path(),
+    required=True,
+    help="Path to the polygon shapefile.",
+)
+@click.option(
+    "--use-id",
+    "-u",
+    type=str,
+    default=None,
+    help="Optional. Unique key id field in shapefile.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    required=True,
+    help="Path to the output directory.",
+)
+@click.option(
+    "--partial/--no-partial",
+    default=True,
+    help="Include polygons that only partially intersect the scene.",
+)
+@click.option(
+    "--dump-empty-dataframe/--not-dump-empty-dataframe",
+    default=True,
+    help="Always write a Parquet file even when the result is empty.",
+)
+@click.option("-v", "--verbose", count=True)
+def run_one_local(
+    plugin,
+    local_data_root,
+    path,
+    row,
+    date,
+    shapefile,
+    use_id,
+    output,
+    partial,
+    dump_empty_dataframe,
+    verbose,
+):
+    """Run dea-conflux on one locally synced scene (no OpenDataCube required).
+
+    Data must have been pre-synced from S3, e.g.:
+
+    \b
+        aws s3 sync s3://dea-public-data/baseline/ga_ls8c_ard_3/092/084/2026/ \\
+            /data/ga_ls8c_ard_3/092/084/2026/
+        aws s3 sync s3://dea-public-data/baseline/ga_ls_wo_3/092/084/2026/ \\
+            /data/ga_ls_wo_3/092/084/2026/
+        aws s3 sync s3://dea-public-data/baseline/ga_ls_fc_3/092/084/2026/ \\
+            /data/ga_ls_fc_3/092/084/2026/
+
+    Then run with --local-data-root /data --path 92 --row 84 --date 2026-01-15.
+    """
+    logging_setup(verbose)
+
+    plugin = run_plugin(plugin)
+    logger.info(f"Using plugin {plugin.__file__}")
+    validate_plugin(plugin)
+
+    crs = plugin.output_crs if hasattr(plugin, "output_crs") else get_crs(shapefile)
+    resolution = plugin.resolution
+
+    id_field = guess_id_field(shapefile, use_id)
+    logger.debug(f"Guessed ID field: {id_field}")
+
+    shapefile_gdf = load_and_reproject_shapefile(shapefile, id_field, crs)
+
+    scene_date = date.date()
+    # Use path/row/date as the scene identifier in the output filename.
+    scene_id = f"{path:03d}{row:03d}_{scene_date.isoformat()}"
+    centre_date = datetime.datetime.combine(scene_date, datetime.time(0, 0))
+
+    try:
+        table = dea_conflux.drill.drill_local(
+            plugin,
+            shapefile_gdf,
+            local_data_root,
+            path,
+            row,
+            scene_date,
+            crs,
+            resolution,
+            partial=partial,
+        )
+
+        if dump_empty_dataframe or not table.empty:
+            dea_conflux.io.write_table(
+                plugin.product_name, scene_id, centre_date, table, output
+            )
+    except FileNotFoundError as fnf:
+        logger.error(f"Missing local data for {scene_id}: {fnf}")
+    except KeyError as keyerr:
+        logger.error(f"{scene_id} KeyError: {keyerr}")
+    except TypeError as typeerr:
+        logger.error(f"{scene_id} TypeError: {typeerr}")
+    except RasterioIOError as ioerror:
+        logger.error(f"{scene_id} RasterioIOError: {ioerror}")
     finally:
         return 0
 

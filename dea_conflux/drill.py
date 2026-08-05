@@ -6,9 +6,11 @@ Geoscience Australia
 """
 
 import collections
+import dataclasses
 import datetime
 import logging
 import multiprocessing
+import pathlib
 import warnings
 from functools import partial
 from types import ModuleType
@@ -19,6 +21,7 @@ import geohash
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import rasterio
 import rasterio.features
 import shapely.geometry
 import tqdm
@@ -28,6 +31,107 @@ from datacube.utils.geometry import assign_crs
 from dea_conflux.types import CRS
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class LocalSceneRef:
+    """Duck-typed replacement for datacube.model.Dataset used in filter functions.
+
+    filter_shapefile_quick and filter_shapefile_full only need .extent (a shapely
+    geometry in the native CRS) and .crs (a CRS string).
+    """
+
+    extent: shapely.geometry.base.BaseGeometry
+    crs: str
+    center_time: datetime.datetime
+    id: str  # used for logging only
+
+
+def _find_local_tif(
+    local_root: str, product: str, path: int, row: int, date: datetime.date, band: str
+) -> str:
+    """Find a local GeoTIFF for a given product/path/row/date/band.
+
+    Expects the DEA Collection 3 directory structure mirrored from S3:
+      {local_root}/{product}/{path:03d}/{row:03d}/{year}/{month:02d}/{day:02d}/*.tif
+
+    The file must contain the band name anywhere in its filename, e.g.:
+      ga_ls8c_ard_3_092084_20260115_final_nbart_blue.tif
+
+    Arguments
+    ---------
+    local_root : str
+        Root of the synced data tree.
+    product : str
+        Product name, e.g. "ga_ls8c_ard_3".
+    path : int
+        Landsat WRS-2 path number.
+    row : int
+        Landsat WRS-2 row number.
+    date : datetime.date
+        Scene acquisition date.
+    band : str
+        Band name to locate, e.g. "nbart_blue".
+
+    Returns
+    -------
+    str
+        Absolute path to the matching GeoTIFF.
+    """
+    scene_dir = (
+        pathlib.Path(local_root)
+        / product
+        / f"{path:03d}"
+        / f"{row:03d}"
+        / str(date.year)
+        / f"{date.month:02d}"
+        / f"{date.day:02d}"
+    )
+    matches = list(scene_dir.glob(f"*{band}*.tif"))
+    if not matches:
+        raise FileNotFoundError(
+            f"No GeoTIFF found for band '{band}' under {scene_dir}"
+        )
+    if len(matches) > 1:
+        logger.warning(
+            f"Multiple files found for band '{band}' under {scene_dir}, "
+            f"using first: {matches[0]}"
+        )
+    return str(matches[0])
+
+
+def _resampling_for_band(resampling_spec, band: str):
+    """Resolve a rasterio Resampling enum for a specific band.
+
+    Handles both a plain string ("nearest") and the per-band dict form
+    used by WIT plugins, e.g. {"water": "nearest", "*": "bilinear"}.
+
+    Arguments
+    ---------
+    resampling_spec : str or dict
+        Plugin resampling attribute.
+    band : str
+        Band name to resolve.
+
+    Returns
+    -------
+    rasterio.enums.Resampling
+    """
+    from rasterio.enums import Resampling
+
+    _MAP = {
+        "nearest": Resampling.nearest,
+        "bilinear": Resampling.bilinear,
+        "cubic": Resampling.cubic,
+        "average": Resampling.average,
+        "mode": Resampling.mode,
+        "lanczos": Resampling.lanczos,
+    }
+    if isinstance(resampling_spec, dict):
+        method = resampling_spec.get(band, resampling_spec.get("*", "bilinear"))
+    else:
+        method = resampling_spec
+    return _MAP.get(str(method), Resampling.nearest)
 
 
 def xr_rasterise(
@@ -717,5 +821,234 @@ def drill(
             intersection_features,
             how="left",
         )
+
+    return summary_df
+
+
+def drill_local(
+    plugin: ModuleType,
+    shapefile: gpd.GeoDataFrame,
+    local_root: str,
+    path: int,
+    row: int,
+    date: datetime.date,
+    crs: CRS,
+    resolution: (int, int),
+    partial: bool = True,
+) -> pd.DataFrame:
+    """Perform a polygon drill using locally synced GeoTIFF files.
+
+    Drop-in replacement for drill() when data has been pre-synced from S3
+    with ``aws s3 sync``.  Does not require a running OpenDataCube index.
+
+    Expected directory structure (mirrors DEA Collection 3 on S3)::
+
+        {local_root}/{product}/{path:03d}/{row:03d}/{year}/{month:02d}/{day:02d}/
+            *{band}*.tif
+
+    For example, after::
+
+        aws s3 sync s3://dea-public-data/baseline/ga_ls8c_ard_3/092/084/2026/ \\
+            /data/ga_ls8c_ard_3/092/084/2026/
+
+    set ``local_root="/data"``.
+
+    Arguments
+    ---------
+    plugin : module
+        Conflux plugin, e.g. wit_ls8.conflux.py.
+    shapefile : GeoDataFrame
+        Polygons already reprojected into ``crs``, with ID as index.
+    local_root : str
+        Root of the synced data tree.
+    path : int
+        Landsat WRS-2 path number.
+    row : int
+        Landsat WRS-2 row number.
+    date : datetime.date
+        Scene acquisition date.
+    crs : CRS
+        Output CRS (should match plugin.output_crs).
+    resolution : (int, int)
+        Output resolution as (-metres, metres), e.g. (-30, 30).
+    partial : bool
+        Include polygons that partially overlap the scene (default True).
+
+    Returns
+    -------
+    pd.DataFrame
+        Same structure as drill(): index = polygon ID, columns = output bands.
+    """
+    import rioxarray  # noqa: F401 – registers the .rio accessor on xarray objects
+
+    assert str(shapefile.crs).lower() == str(crs).lower()
+
+    # Determine pixel resolution (rioxarray uses positive metres).
+    res_y, res_x = resolution  # e.g. (-30, 30)
+    pixel_size = abs(res_x)
+
+    # ------------------------------------------------------------------ #
+    # 1. Open the first band of the first product to get the scene extent  #
+    #    and native CRS without loading the full array into memory.        #
+    # ------------------------------------------------------------------ #
+    reference_product = next(iter(plugin.input_products))
+    reference_band = plugin.input_products[reference_product][0]
+
+    ref_tif = _find_local_tif(local_root, reference_product, path, row, date, reference_band)
+    with rasterio.open(ref_tif) as src:
+        native_crs = src.crs.to_string()
+        left, bottom, right, top = src.bounds
+    scene_extent = shapely.geometry.box(left, bottom, right, top)
+
+    scene_ref = LocalSceneRef(
+        extent=scene_extent,
+        crs=native_crs,
+        center_time=datetime.datetime.combine(date, datetime.time(0, 0)),
+        id=f"{path:03d}{row:03d}_{date.isoformat()}",
+    )
+
+    # ------------------------------------------------------------------ #
+    # 2. Assign one-indexed column so polygons can be rasterised.         #
+    # ------------------------------------------------------------------ #
+    attr_col = "_conflux_one_index"
+    shapefile[attr_col] = range(1, len(shapefile.index) + 1)
+    one_index_to_id = {v: k for k, v in shapefile[attr_col].to_dict().items()}
+
+    # ------------------------------------------------------------------ #
+    # 3. Filter polygons to this scene (reuses existing filter functions). #
+    # ------------------------------------------------------------------ #
+    _n_initial = len(shapefile)
+    shapefile = filter_shapefile_quick(shapefile, scene_ref, buffer=partial)
+    logger.debug(f"Quick filter removed {_n_initial - len(shapefile)} polygons")
+    shapefile = filter_shapefile_full(shapefile, scene_ref)
+    logger.debug(f"{len(shapefile)} polygons remain after full filter")
+
+    if len(shapefile) == 0:
+        logger.warning(f"No polygons found in scene {path:03d}/{row:03d} {date}")
+        return pd.DataFrame({})
+
+    # ------------------------------------------------------------------ #
+    # 4. Load the reference band reprojected to the target CRS.           #
+    #    All other bands are reproject_match-ed to this, so they are      #
+    #    guaranteed to be pixel-aligned.                                   #
+    # ------------------------------------------------------------------ #
+    resampling_spec = getattr(plugin, "resampling", "nearest")
+
+    ref_da = (
+        rioxarray.open_rasterio(ref_tif, masked=True)
+        .squeeze("band", drop=True)
+        .rio.reproject(
+            crs,
+            resolution=pixel_size,
+            resampling=_resampling_for_band(resampling_spec, reference_band),
+        )
+    )
+    # Attach a geobox so xr_rasterise (which calls da.geobox) works.
+    ref_da = assign_crs(ref_da, str(crs))
+
+    # ------------------------------------------------------------------ #
+    # 5. Load every band from every product, aligned to the reference.    #
+    # ------------------------------------------------------------------ #
+    bands = {}
+    for product, measurements in plugin.input_products.items():
+        for band in measurements:
+            assert band not in bands, f"Duplicate band name across products: {band}"
+            tif_path = _find_local_tif(local_root, product, path, row, date, band)
+            da = (
+                rioxarray.open_rasterio(tif_path, masked=True)
+                .squeeze("band", drop=True)
+                .rio.reproject_match(
+                    ref_da,
+                    resampling=_resampling_for_band(resampling_spec, band),
+                )
+            )
+            bands[band] = da
+
+    ds = xr.Dataset(bands)
+
+    # ------------------------------------------------------------------ #
+    # 6. Detect edge intersections (only needed when partial=True).       #
+    # ------------------------------------------------------------------ #
+    # The scene footprint must be expressed in the output CRS for the
+    # intersection geometry test.
+    scene_poly_output_crs = (
+        gpd.GeoDataFrame(geometry=[scene_extent], crs=native_crs)
+        .to_crs(crs)
+        .geometry[0]
+    )
+    if partial:
+        intersection_features = get_intersections(shapefile, scene_poly_output_crs)
+        intersection_features.rename(
+            inplace=True,
+            columns={
+                "North": "conflux_n",
+                "South": "conflux_s",
+                "East": "conflux_e",
+                "West": "conflux_w",
+            },
+        )
+
+    # ------------------------------------------------------------------ #
+    # 7. Build the enumerated polygon raster.                             #
+    # ------------------------------------------------------------------ #
+    polygon_raster = xr_rasterise(shapefile, ref_da, attr_col)
+
+    # ------------------------------------------------------------------ #
+    # 8. Apply the plugin transform.                                      #
+    # ------------------------------------------------------------------ #
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        ds_transformed = plugin.transform(ds)
+    transformed_bands = list(ds_transformed.keys())
+
+    # ------------------------------------------------------------------ #
+    # 9. Summarise each polygon.                                          #
+    # ------------------------------------------------------------------ #
+    flat_bands = xr.Dataset(
+        data_vars={
+            band: xr.DataArray(ds_transformed[band].values.ravel(), dims=["idx"])
+            for band in transformed_bands
+        }
+    )
+    flat_ids = polygon_raster.values.ravel()
+
+    id_to_indexes = collections.defaultdict(list)
+    for i, v in enumerate(flat_ids):
+        if v > 0:
+            id_to_indexes[v].append(i)
+
+    summaries = {}
+    for oid in id_to_indexes:
+        if oid == 0:
+            continue
+        values = flat_bands.isel(idx=id_to_indexes[oid])
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+            summary = plugin.summarise(values)
+        summaries[oid] = dataset_to_dict(summary)
+
+    summary_df = pd.DataFrame(
+        {one_index_to_id[int(k)]: summaries[k] for k in summaries}
+    ).T
+
+    # ------------------------------------------------------------------ #
+    # 10. WIT geohash column.                                             #
+    # ------------------------------------------------------------------ #
+    if hasattr(plugin, "product_name") and plugin.product_name.startswith("wit_"):
+        result_ids = summary_df.index
+        present = shapefile.loc[shapefile.index.isin(result_ids)]
+        centroids_4326 = (
+            gpd.GeoSeries(present.geometry.centroid, crs=shapefile.crs)
+            .to_crs(epsg=4326)
+        )
+        summary_df["geohash_wetland_id"] = [
+            geohash.encode(c.y, c.x, precision=12) for c in centroids_4326
+        ]
+
+    # ------------------------------------------------------------------ #
+    # 11. Merge edge information.                                         #
+    # ------------------------------------------------------------------ #
+    if partial:
+        summary_df = summary_df.join(intersection_features, how="left")
 
     return summary_df
