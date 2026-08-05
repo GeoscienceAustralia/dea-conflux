@@ -32,6 +32,19 @@ pip install -e .
 
 Conflux provides a command-line tool `dea-conflux` for running each step of the polygon drill. Descriptions of the commands are available with `dea-conflux --help`. Conflux requires a Datacube configuration to work.
 
+## Airflow DAG step mapping
+
+| `dea-conflux` command | Airflow task | Task group |
+|---|---|---|
+| `get-ids` | `getids` | `wit-conflux-{plugin}` |
+| `make` | `getids` (queue creation) | `wit-conflux-{plugin}` |
+| `push-to-queue` | `getids` (queue population) | `wit-conflux-{plugin}` |
+| `filter-from-queue` | `filter` | `wit-conflux-{plugin}` |
+| `run-from-queue` | `run` | `wit-conflux-{plugin}` |
+| `delete` | `delqueue` | `wit-conflux-{plugin}` |
+| `stack` | `makecsvs` | — (top-level) |
+
+
 ### `run-one`
 
 Run a polygon drill on a single scene.
