@@ -32,17 +32,204 @@ pip install -e .
 
 Conflux provides a command-line tool `dea-conflux` for running each step of the polygon drill. Descriptions of the commands are available with `dea-conflux --help`. Conflux requires a Datacube configuration to work.
 
-To run Conflux on a single scene, give it a scene UUID present in the Datacube, a plugin describing the polygon drill, a place to put output files, and a shapefile defining the polygons:
+### `run-one`
+
+Run a polygon drill on a single scene.
 
 ```bash
-dea-conflux run-one --uuid SCENE_ID --plugin PLUGIN_PATH -o OUTPUT_PATH -s SHAPEFILE_PATH
+dea-conflux run-one --plugin PLUGIN_PATH --uuid SCENE_ID --shapefile SHAPEFILE_PATH --output OUTPUT_PATH [OPTIONS]
 ```
 
-Conflux can also read from an AWS SQS queue. Messages must be the UUID of a scene.
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--plugin` | `-p` | required | Path to Conflux plugin (`.py`). |
+| `--uuid` | `-i` | required | ID of scene to process. |
+| `--shapefile` | `-s` | required | Path to the polygon shapefile to run polygon drill on. |
+| `--output` | `-o` | required | Path to the output directory. |
+| `--use-id` | `-u` | auto-detected | Unique key ID field in shapefile. |
+| `--partial/--no-partial` | | `--partial` | Include polygons that only partially intersect the scene. |
+| `--overedge/--no-overedge` | | `--overedge` | Include data from over the scene boundary. |
+| `--dump-empty-dataframe/--not-dump-empty-dataframe` | | `--dump-empty-dataframe` | Always write an output Parquet file, even if the DataFrame is empty. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `run-from-queue`
+
+Run a polygon drill on scenes from an AWS SQS queue. Messages must be the UUID of a scene.
 
 ```bash
-dea-conflux run-from-queue --queue QUEUE_NAME --plugin PLUGIN_PATH -o OUTPUT_PATH -s SHAPEFILE_PATH
+dea-conflux run-from-queue --plugin PLUGIN_PATH --queue QUEUE_NAME --shapefile SHAPEFILE_PATH --output OUTPUT_PATH [OPTIONS]
 ```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--plugin` | `-p` | required | Path to Conflux plugin (`.py`). |
+| `--queue` | `-q` | required | Queue to read IDs from. |
+| `--shapefile` | `-s` | required | Path to the polygon shapefile to run polygon drill on. |
+| `--output` | `-o` | required | Path to the output directory. |
+| `--use-id` | `-u` | auto-detected | Unique key ID field in shapefile. |
+| `--partial/--no-partial` | | `--partial` | Include polygons that only partially intersect the scene. |
+| `--overedge/--no-overedge` | | `--overedge` | Include data from over the scene boundary. |
+| `--overwrite/--no-overwrite` | | `--no-overwrite` | Rerun scenes that have already been processed. |
+| `--dump-empty-dataframe/--not-dump-empty-dataframe` | | `--dump-empty-dataframe` | Always write an output Parquet file, even if the DataFrame is empty. |
+| `--timeout` | | `1080` | Seconds a received SQS message is invisible. |
+| `--db/--no-db` | | `--db` | Write results to the Waterbodies database. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `nrt-run-from-queue`
+
+Run a polygon drill in Near Real Time mode from an AWS SQS queue, with immediate CSV output.
+
+```bash
+dea-conflux nrt-run-from-queue --plugin PLUGIN_PATH --queue QUEUE_NAME --shapefile SHAPEFILE_PATH --output OUTPUT_PATH --csv-output CSV_OUTPUT_PATH [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--plugin` | `-p` | required | Path to Conflux plugin (`.py`). |
+| `--queue` | `-q` | required | Queue to read IDs from. |
+| `--shapefile` | `-s` | required | Path to the polygon shapefile to run polygon drill on. |
+| `--output` | `-o` | required | Path to the output directory. |
+| `--csv-output` | | required | Output directory for Waterbodies-style CSVs. |
+| `--use-id` | `-u` | auto-detected | Unique key ID field in shapefile. |
+| `--partial/--no-partial` | | `--partial` | Include polygons that only partially intersect the scene. |
+| `--overedge/--no-overedge` | | `--overedge` | Include data from over the scene boundary. |
+| `--overwrite/--no-overwrite` | | `--no-overwrite` | Rerun scenes that have already been processed. |
+| `--dump-empty-dataframe/--not-dump-empty-dataframe` | | `--dump-empty-dataframe` | Always write an output Parquet file, even if the DataFrame is empty. |
+| `--timeout` | | `1080` | Seconds a received SQS message is invisible. |
+| `--db/--no-db` | | `--db` | Write results to the Waterbodies database. |
+| `--jobs` | `-j` | `8` | Number of workers for CSV generation. |
+| `--index-num` | `-i` | `0` | Waterbodies ID chunk index (used with `--split-num`). |
+| `--split-num` | | `1` | Number of chunks to split the overall waterbodies ID list into. |
+| `--remove-duplicated-data/--no-remove-duplicated-data` | | `--remove-duplicated-data` | Remove duplicate timeseries data. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `filter-from-queue`
+
+Read scene IDs from one SQS queue, filter them by shapefile intersection, and push matching IDs to another queue.
+
+```bash
+dea-conflux filter-from-queue --input-queue INPUT_QUEUE --output-queue OUTPUT_QUEUE --shapefile SHAPEFILE_PATH [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--input-queue` | `-iq` | required | Queue to read all IDs from. |
+| `--output-queue` | `-oq` | required | Queue to save filtered IDs to. |
+| `--shapefile` | `-s` | required | Path to the polygon shapefile to filter datasets by. |
+| `--use-id` | `-u` | auto-detected | Unique key ID field in shapefile. |
+| `--timeout` | | `3600` | Seconds a received SQS message is invisible. |
+| `--num-worker` | | `4` | Number of processes to filter datasets. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `get-ids`
+
+Find and print dataset IDs matching a search expression, optionally filtering by shapefile.
+
+```bash
+dea-conflux get-ids PRODUCT [EXPRESSIONS] [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `PRODUCT` | | required | Datacube product name to search. |
+| `--shapefile` | `-s` | none | Path to shapefile to spatially filter datasets. |
+| `--use-id` | `-u` | auto-detected | Unique key ID field in shapefile. |
+| `--s3/--stdout` | | `--stdout` | Write output to S3 instead of stdout. |
+| `--num-worker` | | `4` | Number of processes for filtering. |
+| `--bucket-name` | | `dea-public-data-dev` | S3 bucket for output when using `--s3`. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `stack`
+
+Stack Parquet outputs from `run-one` or `run-from-queue` into other formats.
+
+```bash
+dea-conflux stack --parquet-path PARQUET_PATH [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--parquet-path` | | required | Path to the Parquet directory. |
+| `--output` | | none | Output directory for waterbodies-style stack. |
+| `--pattern` | | `.*` | Regular expression for filename matching. |
+| `--mode` | | `waterbodies` | Output mode: `waterbodies`, `waterbodies_db`, or `wit_tooling`. |
+| `--drop/--no-drop` | | `--no-drop` | Drop the database before writing (only applies to `waterbodies_db` mode). |
+| `--remove-duplicated-data/--no-remove-duplicated-data` | | `--remove-duplicated-data` | Remove duplicate timeseries data. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `package-delivery`
+
+Concatenate all polygon-based CSV files into a single CSV and single Parquet file for delivery.
+
+```bash
+dea-conflux package-delivery --csv-path CSV_PATH --output OUTPUT_PATH [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--csv-path` | | required | Path to the polygon base (CSV files) result directory. |
+| `--output` | | required | Output directory for single-file delivery. |
+| `--precision` | | `4` | Decimal precision for rounding output values. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `db-to-csv`
+
+Export Waterbodies-style CSVs from the database.
+
+```bash
+dea-conflux db-to-csv --output OUTPUT_PATH --shapefile SHAPEFILE_PATH [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--output` | | required | Output directory for Waterbodies-style CSVs. |
+| `--shapefile` | `-s` | required | Path to the polygon shapefile. |
+| `--jobs` | `-j` | `8` | Number of workers. |
+| `--index-num` | `-i` | `0` | Waterbodies ID chunk index (used with `--split-num`). |
+| `--split-num` | | `1` | Number of chunks to split the overall waterbodies ID list into. |
+| `--remove-duplicated-data/--no-remove-duplicated-data` | | `--remove-duplicated-data` | Remove duplicate timeseries data. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `push-to-queue`
+
+Push lines from a text file as messages to an AWS SQS queue.
+
+```bash
+dea-conflux push-to-queue --txt TXT_PATH --queue QUEUE_NAME [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `--txt` | | required | Path to the TXT file to push to the queue. |
+| `--queue` | | required | Queue name to push to. |
+| `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |
+
+### `make`
+
+Create an AWS SQS queue (and a corresponding dead-letter queue).
+
+```bash
+dea-conflux make QUEUE_NAME [OPTIONS]
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `NAME` | | required | Name of the queue to create. |
+| `--timeout` | | `1080` | Visibility timeout in seconds. |
+| `--retention-period` | | `604800` (7 days) | Message retention period in seconds. |
+| `--retries` | | `5` | Number of retries for AWS API calls. |
+
+### `delete`
+
+Delete an AWS SQS queue and its associated dead-letter queue.
+
+```bash
+dea-conflux delete QUEUE_NAME
+```
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `NAME` | | required | Name of the queue to delete. |
 
 Note:
 

@@ -35,7 +35,6 @@ from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
 import dea_tools.bandindices
 import dea_tools.datahandling
-import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +274,7 @@ def save_df_as_csv(single_polygon_df, feature_id, outpath, remove_duplicated_dat
         Remove timeseries duplicated data or not
     """
     # feature_id, single_polygon_df = item
+    import dea_tools.wetlands
     filename = f"{outpath}/{feature_id}.csv"
 
     if remove_duplicated_data:
