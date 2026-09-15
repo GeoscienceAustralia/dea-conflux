@@ -1,4 +1,4 @@
-FROM ghcr.io/osgeo/gdal:ubuntu-small-3.12.4 AS builder
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.13.3 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
