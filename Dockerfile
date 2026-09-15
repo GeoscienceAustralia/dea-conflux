@@ -1,5 +1,6 @@
-ARG GDAL_IMAGE_VERSION="3.13.3"
-ghcr.io/osgeo/gdal:ubuntu-small-${GDAL_IMAGE_VERSION} AS builder
+ARG GDAL_IMAGE=ghcr.io/osgeo/gdal:ubuntu-small-3.13.3
+
+FROM ${GDAL_IMAGE} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
@@ -35,7 +36,8 @@ RUN echo "Installing dea-conflux through the Dockerfile." && \
     pip check && \
     dea-conflux --version
 
-FROM ghcr.io/osgeo/gdal:ubuntu-small-${GDAL_IMAGE_VERSION} AS runtime
+
+FROM ${GDAL_IMAGE} AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
