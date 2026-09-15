@@ -59,7 +59,7 @@ fonttools==4.63.0
 fqdn==1.5.1
 frozenlist==1.8.0
 fsspec==2026.4.0
-GDAL==3.11.0
+GDAL==3.12.4
 GeoAlchemy2==0.19.0
 geographiclib==2.1
 Geohash==1.0
