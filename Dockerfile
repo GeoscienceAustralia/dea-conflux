@@ -1,4 +1,4 @@
-ARG GDAL_IMAGE=ghcr.io/osgeo/gdal:ubuntu-small-3.13.3
+ARG GDAL_IMAGE=ghcr.io/osgeo/gdal:ubuntu-small-3.12.4
 
 FROM ${GDAL_IMAGE} AS builder
 
