@@ -1,31 +1,6 @@
 from setuptools import setup
 
+# All package metadata now lives in pyproject.toml ([project] table).
+# This shim is kept only so that legacy `python setup.py` invocations work.
 if __name__ == "__main__":
-    setup(
-        # setuptools_scm
-        use_scm_version=True,
-        setup_requires=["setuptools_scm"],
-        # package metadata
-        name="dea-conflux",
-        packages=["dea_conflux"],
-        python_requires=">=3.6",
-        install_requires=[
-            "click",
-            "pytest",
-            "coverage",
-            "geopandas",
-            "datacube",
-            "boto3",
-            "botocore",
-            "pyarrow",
-            "fsspec",
-            "s3fs",
-            "moto[all]",
-            "tqdm",
-            "SQLAlchemy",
-            "python-geohash",
-        ],
-        entry_points={
-            "console_scripts": ["dea-conflux=dea_conflux.__main__:main"],
-        },
-    )
+    setup()

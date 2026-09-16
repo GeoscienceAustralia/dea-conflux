@@ -28,14 +28,15 @@ import s3fs
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from tqdm.auto import tqdm
 
+import dea_tools.bandindices
+import dea_tools.datahandling
+import dea_tools.wetlands
+
 import dea_conflux.db
 import dea_conflux.io
 from dea_conflux.db import Engine
 from dea_conflux.io import CSV_EXTENSIONS, PARQUET_EXTENSIONS
 
-import dea_tools.bandindices
-import dea_tools.datahandling
-import dea_tools.wetlands
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,26 @@ WIT_CSV_COLUMN_RENAMES = {
     "bs": "bare_soil",
     "wet": "wetness",
 }
+
+# Column order matches the Wetlands Insight Tool (WIT) data dictionary (Table 2).
+# pc_missing is appended last as it is not in the data dictionary but retained
+# for QA purposes. Any other unlisted columns are appended after pc_missing.
+WIT_CSV_COLUMN_ORDER = [
+    "nwi_id",
+    "date",
+    "green_vegetation",
+    "dry_vegetation",
+    "bare_soil",
+    "wetness",
+    "water",
+    "veg_areas",
+    "overall_veg_num",
+    "norm_bs",
+    "norm_pv",
+    "norm_npv",
+    "off_value",
+    "pc_missing",
+]
 
 
 class StackMode(enum.Enum):
@@ -325,8 +346,8 @@ def save_df_as_csv(
     elif remove_duplicated_data:
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
-    single_polygon_df["feature_id"] = single_polygon_df.index
-    single_polygon_df.reset_index(inplace=True)
+    single_polygon_df["nwi_id"] = single_polygon_df.index
+    single_polygon_df.reset_index(drop=True, inplace=True)
 
     # WIT Normalise Step
 
@@ -357,15 +378,19 @@ def save_df_as_csv(
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
     # single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
-    single_polygon_df = single_polygon_df.reset_index()
+    single_polygon_df = single_polygon_df.reset_index(drop=True)
     single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
-    print(single_polygon_df)
+    # Compute off_value: 100 where data quality is low (SLC-off gap or fewer
+    # than 4 observations within any 365-day window), 0 otherwise.
+    single_polygon_df = dea_tools.wetlands.generate_low_quality_data_periods(single_polygon_df)
     dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
-    # remove the temp column
-    single_polygon_df.drop(
-        ["overall_veg_num", "veg_areas", "index"], axis=1, inplace=True
-    )
+    # veg_areas and overall_veg_num are retained as they are defined in the WIT
+    # data dictionary.
     single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)
+    # Reorder to match WIT_CSV_COLUMN_ORDER; any unlisted columns go at the end.
+    ordered = [c for c in WIT_CSV_COLUMN_ORDER if c in single_polygon_df.columns]
+    extras = [c for c in single_polygon_df.columns if c not in WIT_CSV_COLUMN_ORDER]
+    single_polygon_df = single_polygon_df[ordered + extras]
     if not outpath.startswith("s3://"):
         os.makedirs(Path(filename).parent, exist_ok=True)
     with fsspec.open(filename, "w") as f:
@@ -498,7 +523,10 @@ def stack_wit_tooling(
 
     logger.info("Writing polygon base result...")
 
-    polygon_groups = wit_result.groupby(wit_result.index)
+    # Group by the index level rather than by the index object: pandas reads a
+    # length-1 list-like as a list of group keys, so a single-polygon result
+    # would otherwise need get_group((feature_id,)) instead of get_group(feature_id).
+    polygon_groups = wit_result.groupby(level=0)
     feature_ids = wit_result.index.unique()
 
     # delete the temp result to release RAM

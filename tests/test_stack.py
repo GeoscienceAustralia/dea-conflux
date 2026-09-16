@@ -10,6 +10,8 @@ import pandas as pd
 import pytest
 # from moto import mock_aws
 
+import dea_tools.wetlands
+
 import dea_conflux.db
 import dea_conflux.stack
 
@@ -94,7 +96,7 @@ def test_waterbodies_stacking(tmp_path):
 
 def test_wit_csv_column_names_match_data_dictionary(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        dea_conflux.stack.dea_tools.wetlands,
+        dea_tools.wetlands,
         "display_wit_stack_with_df",
         lambda *args, **kwargs: None,
     )
@@ -140,7 +142,7 @@ def test_wit_csv_column_names_match_data_dictionary(tmp_path, monkeypatch):
 
 def test_wit_stacking_outputs_ard_scene_id(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        dea_conflux.stack.dea_tools.wetlands,
+        dea_tools.wetlands,
         "display_wit_stack_with_df",
         lambda *args, **kwargs: None,
     )

@@ -284,7 +284,7 @@ def write_output(input_path, layer_map, color, n_colors, output_path):
         del gdf, layer_color
         gc.collect()
         per_set = "  ".join(
-            f"set{c+1}={int((color[start:end] == c).sum())}" for c in range(n_colors)
+            f"set{c + 1}={int((color[start:end] == c).sum())}" for c in range(n_colors)
         )
         log.info("  %-60s  %s  (%.1fs)", str(lname), per_set, time.time() - t0)
 
@@ -328,9 +328,9 @@ def main():
         log.info("Loading colouring checkpoint from %s …", checkpoint_path)
         with open(checkpoint_path, "rb") as fh:
             ckpt = pickle.load(fh)
-        color       = ckpt["color"]
-        layer_map   = ckpt["layer_map"]
-        n_colors    = ckpt["n_colors"]
+        color = ckpt["color"]
+        layer_map = ckpt["layer_map"]
+        n_colors = ckpt["n_colors"]
         total_input = ckpt["total_input"]
         log.info("Checkpoint loaded: %d polygons, %d colours", total_input, n_colors)
     else:
