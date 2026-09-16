@@ -19,21 +19,29 @@ dependencies = [
     "datacube",
     # 0.4.10 moved dea_tools.wetlands off the removed datacube.utils.geometry API.
     "dea-tools>=0.4.10",
+    "fiona",
     "fsspec",
     "geopandas",
     "numpy",
     "pandas",
+    # datacube's PostgreSQL driver; required at runtime but never imported directly.
+    "psycopg2-binary",
     "pyarrow",
     "python-geohash",
+    "rasterio",
+    "rioxarray",
     "s3fs",
+    "shapely",
     "SQLAlchemy",
     "tqdm",
+    "xarray",
 ]
 
 [project.optional-dependencies]
+# Plain moto, not moto[all]: the suite only mocks SQS.
 test = [
     "coverage",
-    "moto[all]",
+    "moto",
     "pytest",
 ]
 
