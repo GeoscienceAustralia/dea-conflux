@@ -1378,7 +1378,9 @@ def push_to_queue(txt, queue, verbose):
 )
 @click.option(
     "--mode",
-    type=click.Choice(["waterbodies", "waterbodies_db", "wit_tooling"]),
+    type=click.Choice(
+        ["waterbodies", "waterbodies_db", "wit_tooling", "wit_tooling_aggregate"]
+    ),
     default="waterbodies",
     required=False,
 )
@@ -1402,10 +1404,11 @@ def stack(parquet_path, output, pattern, mode, verbose, drop, remove_duplicated_
         "waterbodies": dea_conflux.stack.StackMode.WATERBODIES,
         "waterbodies_db": dea_conflux.stack.StackMode.WATERBODIES_DB,
         "wit_tooling": dea_conflux.stack.StackMode.WITTOOLING,
+        "wit_tooling_aggregate": dea_conflux.stack.StackMode.WITTOOLING_AGGREGATE,
     }
 
     kwargs = {}
-    if mode == "waterbodies" or mode == "wit_tooling":
+    if mode in ("waterbodies", "wit_tooling", "wit_tooling_aggregate"):
         kwargs["output_dir"] = output
         kwargs["remove_duplicated_data"] = remove_duplicated_data
     elif mode == "waterbodies_db":

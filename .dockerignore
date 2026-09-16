@@ -1,0 +1,21 @@
+# Source-control and local development environments
+.github
+.claude
+.venv
+.vscode
+.pytest_cache
+__pycache__
+**/__pycache__
+*.py[cod]
+
+# Test-only artefacts and coverage output
+tests/
+htmlcov/
+.coverage
+coverage.xml
+
+# Documentation and local helper artefacts
+notebooks/
+doc/
+README.md
+LICENSE
