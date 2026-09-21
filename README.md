@@ -165,7 +165,7 @@ dea-conflux stack --parquet-path PARQUET_PATH [OPTIONS]
 | `--parquet-path` | | required | Path to the Parquet directory. |
 | `--output` | | none | Output directory for waterbodies-style stack. |
 | `--pattern` | | `.*` | Regular expression for filename matching. |
-| `--mode` | | `waterbodies` | Output mode: `waterbodies`, `waterbodies_db`, `wit_tooling`, or `wit_tooling_aggregate` (best-quality observation per fixed 16-day window). |
+| `--mode` | | `waterbodies` | Output mode: `waterbodies`, `waterbodies_db`, or `wit_tooling`. |
 | `--drop/--no-drop` | | `--no-drop` | Drop the database before writing (only applies to `waterbodies_db` mode). |
 | `--remove-duplicated-data/--no-remove-duplicated-data` | | `--remove-duplicated-data` | Remove duplicate timeseries data. |
 | `--verbose` | `-v` | off | Increase logging verbosity (use `-v` or `-vv`). |

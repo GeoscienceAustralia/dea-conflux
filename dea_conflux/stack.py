@@ -73,7 +73,6 @@ class StackMode(enum.Enum):
     WATERBODIES = "waterbodies"
     WATERBODIES_DB = "waterbodies_db"
     WITTOOLING = "wit_tooling"
-    WITTOOLING_AGGREGATE = "wit_tooling_aggregate"
     WITTOOLING_SINGLE_FILE_DELIVERY = "wit_tooling_single_file_delivery"
 
 
@@ -239,59 +238,6 @@ def remove_timeseries_with_duplicated(df: pd.DataFrame) -> pd.DataFrame:
     return df.drop(columns=["DAY"])
 
 
-def aggregate_timeseries_in_16_day_windows(df: pd.DataFrame) -> pd.DataFrame:
-    """Keep the best observation from each fixed 16-day window.
-
-    WIT observations may be available more often than Landsat's nominal
-    16-day revisit interval when a feature intersects multiple paths. This
-    reduces those observations to a consistent 16-day cadence by retaining
-    the observation with the lowest ``pc_missing`` in each window. Windows
-    are anchored at 1970-01-01 so their boundaries are stable across runs.
-
-    Arguments
-    ---------
-    df : pd.DataFrame
-        Polygon time-series result with a ``date`` column.
-
-    Returns
-    -------
-    pd.DataFrame
-        One best-quality observation per 16-day window, sorted by date.
-    """
-    if "date" not in df.columns:
-        raise ValueError("16-day WIT aggregation requires a date column")
-
-    result = df.copy()
-    dates = pd.to_datetime(result["date"], utc=True)
-    epoch = pd.Timestamp("1970-01-01", tz="UTC")
-    result["_conflux_window"] = ((dates - epoch).dt.days // 16).astype("int64")
-    result["_conflux_date"] = dates
-
-    if {"ard_product", "ard_scene_id"}.issubset(result.columns):
-        result["_conflux_scene_id"] = (
-            result["ard_product"] + "_" + result["ard_scene_id"]
-        )
-        scene_ids = (
-            result.sort_values("_conflux_date")
-            .groupby("_conflux_window")["_conflux_scene_id"]
-            .agg(lambda values: ",".join(dict.fromkeys(values)))
-        )
-    else:
-        scene_ids = None
-
-    result = result.sort_values(
-        ["_conflux_window", "pc_missing", "_conflux_date"], ascending=True
-    )
-    result = result.drop_duplicates("_conflux_window", keep="first")
-    result = result.sort_values("_conflux_date")
-
-    if scene_ids is not None:
-        result["ard_scene_ids"] = result["_conflux_window"].map(scene_ids)
-        result = result.drop(columns=["ard_scene_id", "_conflux_scene_id"])
-
-    return result.drop(columns=["_conflux_window", "_conflux_date"])
-
-
 def load_pq_file(path):
     """Load Parquet file from given path.
 
@@ -320,7 +266,6 @@ def save_df_as_csv(
     feature_id,
     outpath,
     remove_duplicated_data,
-    aggregate_16_days=False,
 ):
     """Save polygon base pandas.DataFrame as
     CSV file in output folder.
@@ -335,15 +280,11 @@ def save_df_as_csv(
         Path (s3 or local) to save the CSV files.
     remove_duplicated_data: bool
         Remove timeseries duplicated data or not
-    aggregate_16_days: bool
-        Consolidate observations into fixed 16-day windows.
     """
     # feature_id, single_polygon_df = item
     filename = f"{outpath}/{feature_id}.csv"
 
-    if aggregate_16_days:
-        single_polygon_df = aggregate_timeseries_in_16_day_windows(single_polygon_df)
-    elif remove_duplicated_data:
+    if remove_duplicated_data:
         # Remove the timeseries duplicated data
         single_polygon_df = remove_timeseries_with_duplicated(single_polygon_df)
     single_polygon_df["nwi_id"] = single_polygon_df.index
@@ -474,7 +415,6 @@ def stack_wit_tooling(
     paths: [str],
     output_dir: str,
     remove_duplicated_data: bool = True,
-    aggregate_16_days: bool = False,
     verbose: bool = False,
 ):
     """Stack wit tooling parquet result files into CSVs.
@@ -487,8 +427,6 @@ def stack_wit_tooling(
         Path to output directory.
     remove_duplicated_data: bool
         Remove timeseries duplicated data
-    aggregate_16_days: bool
-        Consolidate observations into fixed 16-day windows.
 
     verbose : bool
     """
@@ -542,7 +480,6 @@ def stack_wit_tooling(
                     feature_id,
                     output_dir,
                     remove_duplicated_data,
-                    aggregate_16_days,
                 ): feature_id
                 for feature_id in feature_ids
             }
@@ -888,9 +825,5 @@ def stack(
         return stack_waterbodies_db(paths, verbose=verbose, **kwargs)
     if mode == StackMode.WITTOOLING:
         return stack_wit_tooling(paths, verbose=verbose, **kwargs)
-    if mode == StackMode.WITTOOLING_AGGREGATE:
-        return stack_wit_tooling(
-            paths, verbose=verbose, aggregate_16_days=True, **kwargs
-        )
     if mode == StackMode.WITTOOLING_SINGLE_FILE_DELIVERY:
         return stack_wit_tooling_to_single_file(paths, verbose=verbose, **kwargs)

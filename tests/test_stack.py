@@ -157,36 +157,6 @@ def test_wit_stacking_outputs_ard_scene_id(tmp_path, monkeypatch):
     assert csv["ard_scene_id"].eq("aa7116e4-b27d-466b-b987-7c99f7f29b63").all()
 
 
-def test_wit_16_day_aggregation_keeps_best_quality_observation():
-    source = pd.DataFrame(
-        {
-            "date": [
-                "2024-01-01T00:00:00Z",
-                "2024-01-05T00:00:00Z",
-                "2024-01-06T00:00:00Z",
-                "2024-01-12T00:00:00Z",
-            ],
-            "pc_missing": [0.4, 0.1, 0.3, 0.2],
-            "water": [0.1, 0.2, 0.3, 0.4],
-            "ard_product": ["ls7", "ls7", "ls7", "ls7"],
-            "ard_scene_id": ["scene-1", "scene-2", "scene-3", "scene-4"],
-        }
-    )
-
-    result = dea_conflux.stack.aggregate_timeseries_in_16_day_windows(source)
-
-    assert result["date"].tolist() == [
-        "2024-01-05T00:00:00Z",
-        "2024-01-12T00:00:00Z",
-    ]
-    assert result["water"].tolist() == [0.2, 0.4]
-    assert result["ard_scene_ids"].tolist() == [
-        "ls7_scene-1,ls7_scene-2",
-        "ls7_scene-3,ls7_scene-4",
-    ]
-    assert "ard_scene_id" not in result.columns
-
-
 # def test_wit_stacking(tmp_path):
 #     dea_conflux.stack.stack(
 #         TEST_WIT_PQ_DATA,
