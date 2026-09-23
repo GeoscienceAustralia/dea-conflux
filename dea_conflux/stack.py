@@ -468,7 +468,11 @@ def display_wit_stack_with_df(
         for label in ax.get_xticklabels(which="major"):
             label.set(rotation=30, horizontalalignment="right")
 
-    x_label_text = "The Fractional Cover algorithm developed by the Joint Remote Sensing Research Program and\n the Water Observations from Space algorithm developed by Geoscience Australia are used in the production of this data"
+    x_label_text = (
+        "The Fractional Cover algorithm developed by the Joint Remote Sensing Research Program and\n"
+        " the Water Observations from Space algorithm developed by Geoscience Australia are used in "
+        "the production of this data"
+    )
 
     ax.set_xlabel(x_label_text, style="italic")
 
