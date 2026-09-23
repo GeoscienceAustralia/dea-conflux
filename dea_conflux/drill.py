@@ -27,6 +27,7 @@ import shapely.geometry
 import tqdm
 import xarray as xr
 from datacube.utils.geometry import assign_crs
+from odc.geo.geom import Geometry as OdcGeometry
 
 from dea_conflux.types import CRS
 
@@ -675,7 +676,7 @@ def drill(
         # search for all the datasets we need to cover the area
         # of the polygons.
         reference_product = reference_dataset.type.name
-        geopolygon = datacube.utils.geometry.Geometry(
+        geopolygon = OdcGeometry(
             shapely.geometry.box(*shapefile.total_bounds), crs=shapefile.crs
         )
         time_span = (
