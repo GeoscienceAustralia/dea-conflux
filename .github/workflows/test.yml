@@ -28,7 +28,7 @@ jobs:
       run: |
           docker compose up -d
           ./tests/setup_test_datacube.sh
-          docker compose exec -T conflux bash -c "pip install -e '.[test]'"
+          docker compose exec -T conflux bash -c "uv sync --locked --extra test"
 
     - name: Run dea-conflux test
       run: |

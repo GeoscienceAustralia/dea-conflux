@@ -1,16 +1,17 @@
-# Direct dependencies only. Transitive packages are pinned in constraints.txt,
-# which the Dockerfile passes as `pip install -r requirements.txt -c constraints.txt`.
-# Keep this list in sync with [project] in pyproject.toml.
+# Direct runtime dependencies for legacy pip-based installs. Docker builds
+# resolve [project] with uv.lock instead. Keep this list in sync with [project]
+# in pyproject.toml. Test dependencies live in the `test` extra and are
+# installed only by the CI workflow.
 
 # Runtime
 boto3
 botocore
 click
 datacube
-dea-tools>=0.4.10
 fiona
 fsspec
 geopandas
+matplotlib
 numpy
 pandas
 psycopg2-binary  # datacube's PostgreSQL driver; not imported directly
@@ -19,12 +20,8 @@ python-geohash
 rasterio
 rioxarray
 s3fs
+seaborn
 shapely
 SQLAlchemy
 tqdm
 xarray
-
-# Test (the CI image runs the suite with `coverage run -m pytest`)
-coverage
-moto
-pytest

@@ -10,8 +10,6 @@ import pandas as pd
 import pytest
 # from moto import mock_aws
 
-import dea_tools.wetlands
-
 import dea_conflux.db
 import dea_conflux.stack
 
@@ -52,7 +50,7 @@ TEST_WOFL_ID = "234fec8f-1de7-488a-a115-818ebd4bfec4"
 TEST_FC_ID = "4d243358-152e-404c-bb65-7ea64b21ca38"
 
 
-def setup_module(module):
+def setup_module(_module):
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
 
 
@@ -94,12 +92,7 @@ def test_waterbodies_stacking(tmp_path):
     assert len(csv.columns) == 4  # 3 bands + date
 
 
-def test_wit_csv_column_names_match_data_dictionary(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        dea_tools.wetlands,
-        "display_wit_stack_with_df",
-        lambda *args, **kwargs: None,
-    )
+def test_wit_csv_column_names_match_data_dictionary(tmp_path):
     source = pd.DataFrame(
         {
             "water": [0.2],
@@ -140,12 +133,7 @@ def test_wit_csv_column_names_match_data_dictionary(tmp_path, monkeypatch):
     assert csv.loc[0, "nwi_id"] == WIT_POLYGON_ID
 
 
-def test_wit_stacking_outputs_ard_scene_id(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        dea_tools.wetlands,
-        "display_wit_stack_with_df",
-        lambda *args, **kwargs: None,
-    )
+def test_wit_stacking_outputs_ard_scene_id(tmp_path):
     output_dir = tmp_path / "testout"
     dea_conflux.stack.stack_wit_tooling(
         [TEST_WIT_PQ_DATA_FILE],

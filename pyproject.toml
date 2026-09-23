@@ -8,7 +8,7 @@ name = "dea-conflux"
 description = "A prototype tool for processing bulk polygon drills."
 readme = "README.md"
 license = { text = "Apache-2.0" }
-# Floor set by datacube (>=3.10) and dea-tools (>=3.10, <4.0).
+# Floor set by datacube.
 requires-python = ">=3.10"
 # Version comes from setuptools_scm, see [tool.setuptools_scm] below.
 dynamic = ["version"]
@@ -17,11 +17,10 @@ dependencies = [
     "botocore",
     "click",
     "datacube",
-    # 0.4.10 moved dea_tools.wetlands off the removed datacube.utils.geometry API.
-    "dea-tools>=0.4.10",
     "fiona",
     "fsspec",
     "geopandas",
+    "matplotlib",
     "numpy",
     "pandas",
     # datacube's PostgreSQL driver; required at runtime but never imported directly.
@@ -31,6 +30,7 @@ dependencies = [
     "rasterio",
     "rioxarray",
     "s3fs",
+    "seaborn",
     "shapely",
     "SQLAlchemy",
     "tqdm",

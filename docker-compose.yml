@@ -25,6 +25,7 @@ services:
   conflux:
     build:
       context: .
+      target: test
       args:
         - ENVIRONMENT=dev
     environment:

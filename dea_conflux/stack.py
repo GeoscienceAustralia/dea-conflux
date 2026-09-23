@@ -28,9 +28,9 @@ import s3fs
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from tqdm.auto import tqdm
 
-import dea_tools.bandindices
-import dea_tools.datahandling
-import dea_tools.wetlands
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import dea_conflux.db
 import dea_conflux.io
@@ -318,13 +318,13 @@ def save_df_as_csv(
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
-    # single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
+    single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
     single_polygon_df = single_polygon_df.reset_index(drop=True)
     single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
     # Compute off_value: 100 where data quality is low (SLC-off gap or fewer
     # than 4 observations within any 365-day window), 0 otherwise.
-    single_polygon_df = dea_tools.wetlands.generate_low_quality_data_periods(single_polygon_df)
-    dea_tools.wetlands.display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
+    single_polygon_df = generate_low_quality_data_periods(single_polygon_df)
+    display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
     # veg_areas and overall_veg_num are retained as they are defined in the WIT
     # data dictionary.
     single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)
@@ -337,6 +337,145 @@ def save_df_as_csv(
     with fsspec.open(filename, "w") as f:
         single_polygon_df.to_csv(f, index=False)
     return filename
+
+
+def generate_low_quality_data_periods(df):
+    # default: all data points are good
+    df.loc[:, "off_value"] = 0
+
+    # Add the first no-data times (SLC-off only)
+    LS5_8_gap_start = datetime.datetime(2011, 11, 1)
+    LS5_8_gap_end = datetime.datetime(2013, 4, 1)
+
+    df.loc[
+        df[(df["date"] >= LS5_8_gap_start) & (df["date"] <= LS5_8_gap_end)].index,
+        "off_value",
+    ] = 100
+
+    # periods with an observation density of less than four observations within a twelve month (365 days) period
+    for i in range(3, len(df) - 3):
+        # can change to another threshold (like: 100 days) to test dynamic no-data-period display
+        if ((df.loc[i + 3, "date"] - df.loc[i, "date"]).days) > 365:
+            df.loc[
+                df[(df["date"] >= df.loc[i, "date"]) & (df["date"] <= df.loc[i + 3, "date"])].index,
+                "off_value",
+            ] = 100
+
+    return df
+
+
+def display_wit_stack_with_df(
+    polygon_base_df,
+    polygon_name="your_wetland_name",
+    png_name="your_file_name",
+    width=32,
+    height=6,
+    x_axis_labels="years",
+):
+    """
+    This functions produces WIT plots. Function displays a stack plot and saves as a png.
+
+    Last modified: July 2023
+
+    Parameters
+    ----------
+    polygon_base_df : pandas DataFrame with columns including:
+    ['date',
+     'wet',
+     'water',
+     'norm_bs',
+     'norm_pv',
+     'norm_npv']
+     polygon_name : string
+     png_name : string
+     x_axis_labels : string with options of "years" or "months"
+     to set either years or months on the x axis as labels
+
+
+    """
+
+    plt.rcParams["axes.facecolor"] = "white"
+    plt.rcParams["savefig.facecolor"] = "white"
+    plt.rcParams["text.usetex"] = False
+
+    fig = plt.figure()
+    fig.set_size_inches(width, height)
+    ax = fig.add_subplot(111)
+    ax.autoscale(enable=True)
+
+    pal = [
+        sns.xkcd_rgb["cobalt blue"],
+        sns.xkcd_rgb["neon blue"],
+        sns.xkcd_rgb["grass"],
+        sns.xkcd_rgb["beige"],
+        sns.xkcd_rgb["brown"],
+    ]
+
+    plt.title(
+        f"Percentage of area dominated by WOfS, Wetness, Fractional Cover for\n {polygon_name}",
+        fontsize=16,
+    )
+
+    ax.stackplot(
+        polygon_base_df["date"],
+        polygon_base_df["water"] * 100,
+        polygon_base_df["wet"] * 100,
+        polygon_base_df["norm_pv"] * 100,
+        polygon_base_df["norm_npv"] * 100,
+        polygon_base_df["norm_bs"] * 100,
+        colors=pal,
+        alpha=0.7,
+    )
+
+    # manually change the legend display order
+    legend = ax.legend(
+        ["open water", "wet", "green veg", "dry veg", "bare soil"][::-1],
+        loc="lower left",
+    )
+    handles = legend.legend_handles
+
+    for i, handle in enumerate(handles):
+        handle.set_facecolor(pal[::-1][i])
+        handle.set_alpha(0.7)
+
+    # setup the display ranges
+    ax.set_ylim(0, 100)
+    ax.set_xlim(polygon_base_df["date"].min(), polygon_base_df["date"].max())
+
+    # add a new column: 'off_value' based on low quality data setting
+    polygon_base_df = generate_low_quality_data_periods(polygon_base_df)
+
+    ax.fill_between(
+        polygon_base_df["date"],
+        0,
+        100,
+        where=polygon_base_df["off_value"] == 100,
+        color="white",
+        alpha=0.5,
+        hatch="//",
+    )
+
+    if x_axis_labels == "years":
+        # modify the xaxis settings
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+
+    if x_axis_labels == "months":
+        # modify the xaxis settings
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b-%Y"))
+        # Rotates and right-aligns the x labels so they don't crowd each other.
+        for label in ax.get_xticklabels(which="major"):
+            label.set(rotation=30, horizontalalignment="right")
+
+    x_label_text = "The Fractional Cover algorithm developed by the Joint Remote Sensing Research Program and\n the Water Observations from Space algorithm developed by Geoscience Australia are used in the production of this data"
+
+    ax.set_xlabel(x_label_text, style="italic")
+
+    plt.savefig(f"{png_name}.png", bbox_inches="tight")
+    plt.show()
+
+    plt.close(fig)
 
 
 def stack_wit_tooling_to_single_file(
