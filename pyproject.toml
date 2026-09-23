@@ -13,16 +13,19 @@ requires-python = ">=3.10"
 # Version comes from setuptools_scm, see [tool.setuptools_scm] below.
 dynamic = ["version"]
 dependencies = [
+    "aiohttp>=3.14.3",
     "boto3",
     "botocore",
     "click",
     "datacube",
     "fiona",
     "fsspec",
-    "geopandas",
+    "geopandas>=1.1.4",
     "matplotlib",
+    "msgpack>=1.2.2",
     "numpy",
     "pandas",
+    "pillow>=12.3.0",
     # datacube's PostgreSQL driver; required at runtime but never imported directly.
     "psycopg2-binary",
     "pyarrow",
@@ -33,7 +36,9 @@ dependencies = [
     "seaborn",
     "shapely",
     "SQLAlchemy",
+    "tornado>=6.5.10",
     "tqdm",
+    "urllib3>=2.8.0",
     "xarray",
 ]
 
@@ -41,6 +46,7 @@ dependencies = [
 # Plain moto, not moto[all]: the suite only mocks SQS.
 test = [
     "coverage",
+    "cryptography>=50.0.0",
     "moto",
     "pytest",
 ]

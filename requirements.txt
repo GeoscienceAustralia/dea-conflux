@@ -4,16 +4,19 @@
 # installed only by the CI workflow.
 
 # Runtime
+aiohttp>=3.14.3
 boto3
 botocore
 click
 datacube
 fiona
 fsspec
-geopandas
+geopandas>=1.1.4
 matplotlib
+msgpack>=1.2.2
 numpy
 pandas
+pillow>=12.3.0
 psycopg2-binary  # datacube's PostgreSQL driver; not imported directly
 pyarrow
 python-geohash
@@ -23,5 +26,7 @@ s3fs
 seaborn
 shapely
 SQLAlchemy
+tornado>=6.5.10
 tqdm
+urllib3>=2.8.0
 xarray
