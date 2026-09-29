@@ -49,7 +49,7 @@ jobs:
     #     password: ${{ secrets.DOCKER_PASSWORD }}
     #     image_tag: latest,${{ env.RELEASE }}
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v5
+      uses: aws-actions/configure-aws-credentials@v1
       if: github.event_name != 'release'
       with:
         role-to-assume: arn:aws:iam::538673716275:role/dea-conflux_github-actions-role
@@ -76,5 +76,5 @@ jobs:
       with:
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
-        image_tag: dev
-        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
+        image_tag: "${{ env.RELEASE }}.dev"
+        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}.dev"}'
