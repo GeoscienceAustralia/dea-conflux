@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-      - develop
-
+    tags:
+      - '*dev'
   release:
     types: [published, edited]
 
@@ -56,7 +56,7 @@ jobs:
         aws-region: ap-southeast-2
     - name: Push image to ECR with release tag
       uses: whoan/docker-build-with-cache-action@master
-      if: startsWith(github.ref, 'refs/heads/main')
+      if: github.event_name != 'release'
       with:
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
@@ -64,17 +64,9 @@ jobs:
         build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
     - name: Push image to ECR with latest tag
       uses: whoan/docker-build-with-cache-action@master
-      if: startsWith(github.ref, 'refs/heads/main')
+      if: github.event_name != 'release'
       with:
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
-        image_tag: latest
+        image_tag: develop
         build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
-    - name: Push image to ECR with dev tag
-      uses: whoan/docker-build-with-cache-action@master
-      if: startsWith(github.ref, 'refs/heads/develop')
-      with:
-        registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
-        image_name: ${{ env.IMAGE_NAME }}
-        image_tag: "${{ env.RELEASE }}.dev"
-        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}.dev"}'
