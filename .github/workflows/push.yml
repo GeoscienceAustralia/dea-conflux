@@ -31,14 +31,14 @@ jobs:
       if: github.event_name == 'release'
       run: |
         echo "RELEASE=${GITHUB_REF/refs\/tags\/}" >> $GITHUB_ENV
-    - name: Build and Push semver tagged Docker Image for Release
-      uses: whoan/docker-build-with-cache-action@v4
-      if: github.event_name == 'release'
-      with:
-        image_name: ${{ env.IMAGE_NAME }}
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        image_tag: ${{ env.RELEASE }}
+    # - name: Build and Push semver tagged Docker Image for Release
+    #   uses: whoan/docker-build-with-cache-action@v4
+    #   if: github.event_name == 'release'
+    #   with:
+    #     image_name: ${{ env.IMAGE_NAME }}
+    #     username: ${{ secrets.DOCKER_USERNAME }}
+    #     password: ${{ secrets.DOCKER_PASSWORD }}
+    #     image_tag: ${{ env.RELEASE }}
     - name: Get git commit hash for push to main
       if: github.event_name != 'release'
       run: |
