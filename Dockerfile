@@ -74,3 +74,12 @@ WORKDIR /code
 FROM runtime-base AS runtime
 
 WORKDIR /code
+
+# Keep the package assets and bundled plugins available in the final image,
+# matching the December 2025 image's source layout without retaining build tools.
+COPY --from=builder /build/dea_conflux ./dea_conflux
+COPY --from=builder /build/examples ./examples
+
+RUN test -f dea_conflux/ids9.txt && \
+    test -f examples/wit_ls9.conflux.py && \
+    PYTHONDONTWRITEBYTECODE=1 dea-conflux --version
