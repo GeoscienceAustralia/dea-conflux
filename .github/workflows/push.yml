@@ -4,11 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'dea_conflux/**'
-      - 'examples/**'
-      - '.github/workflows/push.yml'
-      - 'Dockerfile'
+      - develop
 
   release:
     types: [published, edited]
@@ -23,14 +19,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     - name: Get tag for this build if it exists
       if: github.event_name == 'release'
       run: |
-    #     echo "RELEASE=${GITHUB_REF/refs\/tags\/}" >> $GITHUB_ENV
+        echo "RELEASE=${GITHUB_REF/refs\/tags\/}" >> $GITHUB_ENV
     # - name: Build and Push semver tagged Docker Image for Release
     #   uses: whoan/docker-build-with-cache-action@v4
     #   if: github.event_name == 'release'
@@ -39,7 +35,7 @@ jobs:
     #     username: ${{ secrets.DOCKER_USERNAME }}
     #     password: ${{ secrets.DOCKER_PASSWORD }}
     #     image_tag: ${{ env.RELEASE }}
-    - name: Get git commit hash for push to main
+    - name: Get version for branch build
       if: github.event_name != 'release'
       run: |
         git fetch --all --tags
@@ -60,7 +56,7 @@ jobs:
         aws-region: ap-southeast-2
     - name: Push image to ECR with release tag
       uses: whoan/docker-build-with-cache-action@master
-      if: github.event_name != 'release'
+      if: startsWith(github.ref, 'refs/heads/main')
       with:
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
@@ -68,9 +64,17 @@ jobs:
         build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
     - name: Push image to ECR with latest tag
       uses: whoan/docker-build-with-cache-action@master
-      if: github.event_name != 'release'
+      if: startsWith(github.ref, 'refs/heads/main')
       with:
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
         image_tag: latest
         build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
+    - name: Push image to ECR with dev tag
+      uses: whoan/docker-build-with-cache-action@master
+      if: startsWith(github.ref, 'refs/heads/develop')
+      with:
+        registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
+        image_name: ${{ env.IMAGE_NAME }}
+        image_tag: "${{ env.RELEASE }}.dev"
+        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}.dev"}'
