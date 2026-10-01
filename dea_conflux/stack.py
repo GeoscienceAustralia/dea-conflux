@@ -318,13 +318,13 @@ def save_df_as_csv(
             / single_polygon_df.loc[norm_veg_index, "overall_veg_num"]
             * single_polygon_df.loc[norm_veg_index, "veg_areas"]
         )
-    single_polygon_df = single_polygon_df[~(single_polygon_df['pc_missing'] > 0.1)]
     single_polygon_df = single_polygon_df.reset_index(drop=True)
     single_polygon_df['date'] = pd.to_datetime(single_polygon_df['date']).dt.tz_localize(None)
     # Compute off_value: 100 where data quality is low (SLC-off gap or fewer
     # than 4 observations within any 365-day window), 0 otherwise.
     single_polygon_df = generate_low_quality_data_periods(single_polygon_df)
-    display_wit_stack_with_df(single_polygon_df, feature_id, feature_id, x_axis_labels="years")
+    graph_df = single_polygon_df.loc[~(single_polygon_df["pc_missing"] > 0.1)]
+    display_wit_stack_with_df(graph_df, feature_id, feature_id, x_axis_labels="years")
     # veg_areas and overall_veg_num are retained as they are defined in the WIT
     # data dictionary.
     single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)

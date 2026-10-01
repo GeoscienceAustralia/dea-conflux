@@ -133,6 +133,41 @@ def test_wit_csv_column_names_match_data_dictionary(tmp_path):
     assert csv.loc[0, "nwi_id"] == WIT_POLYGON_ID
 
 
+def test_wit_csv_retains_high_pc_missing_rows_but_excludes_them_from_graph(
+    tmp_path, monkeypatch
+):
+    source = pd.DataFrame(
+        {
+            "water": [0.2, 0.3],
+            "wet": [0.1, 0.2],
+            "pv": [0.3, 0.2],
+            "npv": [0.2, 0.1],
+            "bs": [0.1, 0.2],
+            "date": ["2026-02-24T23:56:28Z", "2026-03-24T23:56:28Z"],
+            "pc_missing": [0.0, 0.2],
+        },
+        index=pd.Index([WIT_POLYGON_ID, WIT_POLYGON_ID], name="source_id"),
+    )
+    graph_dataframes = []
+
+    def capture_graph_data(dataframe, *_args, **_kwargs):
+        graph_dataframes.append(dataframe.copy())
+
+    monkeypatch.setattr(dea_conflux.stack, "display_wit_stack_with_df", capture_graph_data)
+
+    output = dea_conflux.stack.save_df_as_csv(
+        source,
+        WIT_POLYGON_ID,
+        str(tmp_path),
+        remove_duplicated_data=False,
+    )
+
+    csv = pd.read_csv(output)
+    assert list(csv["pc_missing"]) == [0.0, 0.2]
+    assert len(graph_dataframes) == 1
+    assert list(graph_dataframes[0]["pc_missing"]) == [0.0]
+
+
 def test_wit_stacking_outputs_ard_scene_id(tmp_path):
     output_dir = tmp_path / "testout"
     dea_conflux.stack.stack_wit_tooling(
