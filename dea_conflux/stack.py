@@ -344,20 +344,22 @@ def generate_low_quality_data_periods(df):
     df.loc[:, "off_value"] = 0
 
     # Add the first no-data times (SLC-off only)
-    LS5_8_gap_start = datetime.datetime(2011, 11, 1)
-    LS5_8_gap_end = datetime.datetime(2013, 4, 1)
+    ls5_8_gap_start = datetime.datetime(2011, 11, 1)
+    ls5_8_gap_end = datetime.datetime(2013, 4, 1)
 
     df.loc[
-        df[(df["date"] >= LS5_8_gap_start) & (df["date"] <= LS5_8_gap_end)].index,
+        (df["date"] >= ls5_8_gap_start) & (df["date"] <= ls5_8_gap_end),
         "off_value",
     ] = 100
 
     # periods with an observation density of less than four observations within a twelve month (365 days) period
     for i in range(3, len(df) - 3):
         # can change to another threshold (like: 100 days) to test dynamic no-data-period display
-        if ((df.loc[i + 3, "date"] - df.loc[i, "date"]).days) > 365:
+        start_date = df.iloc[i]["date"]
+        end_date = df.iloc[i + 3]["date"]
+        if (end_date - start_date).days > 365:
             df.loc[
-                df[(df["date"] >= df.loc[i, "date"]) & (df["date"] <= df.loc[i + 3, "date"])].index,
+                (df["date"] >= start_date) & (df["date"] <= end_date),
                 "off_value",
             ] = 100
 

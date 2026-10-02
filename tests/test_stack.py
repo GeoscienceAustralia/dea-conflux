@@ -136,22 +136,24 @@ def test_wit_csv_column_names_match_data_dictionary(tmp_path):
 def test_wit_csv_retains_high_pc_missing_rows_but_excludes_them_from_graph(
     tmp_path, monkeypatch
 ):
+    dates = pd.date_range("2024-01-01", periods=9, freq="180D")
     source = pd.DataFrame(
         {
-            "water": [0.2, 0.3],
-            "wet": [0.1, 0.2],
-            "pv": [0.3, 0.2],
-            "npv": [0.2, 0.1],
-            "bs": [0.1, 0.2],
-            "date": ["2026-02-24T23:56:28Z", "2026-03-24T23:56:28Z"],
-            "pc_missing": [0.0, 0.2],
+            "water": [0.2] * len(dates),
+            "wet": [0.1] * len(dates),
+            "pv": [0.3] * len(dates),
+            "npv": [0.2] * len(dates),
+            "bs": [0.1] * len(dates),
+            "date": dates.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "pc_missing": [0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0],
         },
-        index=pd.Index([WIT_POLYGON_ID, WIT_POLYGON_ID], name="source_id"),
+        index=pd.Index([WIT_POLYGON_ID] * len(dates), name="source_id"),
     )
     graph_dataframes = []
 
     def capture_graph_data(dataframe, *_args, **_kwargs):
         graph_dataframes.append(dataframe.copy())
+        dea_conflux.stack.generate_low_quality_data_periods(dataframe)
 
     monkeypatch.setattr(dea_conflux.stack, "display_wit_stack_with_df", capture_graph_data)
 
@@ -163,9 +165,10 @@ def test_wit_csv_retains_high_pc_missing_rows_but_excludes_them_from_graph(
     )
 
     csv = pd.read_csv(output)
-    assert list(csv["pc_missing"]) == [0.0, 0.2]
+    assert list(csv["pc_missing"]) == [0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0]
     assert len(graph_dataframes) == 1
-    assert list(graph_dataframes[0]["pc_missing"]) == [0.0]
+    assert list(graph_dataframes[0].index) == [0, 1, 2, 3, 5, 6, 7, 8]
+    assert list(graph_dataframes[0]["pc_missing"]) == [0.0] * 8
 
 
 def test_wit_stacking_outputs_ard_scene_id(tmp_path):
