@@ -1,6 +1,7 @@
 import datetime
 import logging
 import sys
+import threading
 from pathlib import Path
 
 # import boto3
@@ -181,6 +182,41 @@ def test_wit_stacking_outputs_ard_scene_id(tmp_path):
 
     csv = pd.read_csv(output_dir / f"{WIT_POLYGON_ID}.csv")
     assert csv["ard_scene_id"].eq("aa7116e4-b27d-466b-b987-7c99f7f29b63").all()
+    assert (output_dir / f"{WIT_POLYGON_ID}.png").exists()
+
+
+def test_wit_stacking_saves_features_on_calling_thread(tmp_path, monkeypatch):
+    feature_ids = ["first-feature", "second-feature"]
+    sources = {
+        path: pd.DataFrame(
+            {
+                "water": [0.2],
+                "wet": [0.1],
+                "pv": [0.3],
+                "npv": [0.2],
+                "bs": [0.1],
+                "pc_missing": [0.0],
+            },
+            index=pd.Index([feature_id], name="source_id"),
+        )
+        for path, feature_id in zip(["first.pq", "second.pq"], feature_ids)
+    }
+    saved_thread_ids = []
+
+    monkeypatch.setattr(
+        dea_conflux.stack, "load_pq_file", lambda path: sources[path]
+    )
+    monkeypatch.setattr(
+        dea_conflux.stack,
+        "save_df_as_csv",
+        lambda *_args: saved_thread_ids.append(threading.get_ident()),
+    )
+
+    dea_conflux.stack.stack_wit_tooling(
+        list(sources), str(tmp_path), remove_duplicated_data=False
+    )
+
+    assert saved_thread_ids == [threading.get_ident()] * len(feature_ids)
 
 
 # def test_wit_stacking(tmp_path):

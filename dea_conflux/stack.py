@@ -277,7 +277,7 @@ def save_df_as_csv(
     feature_id: str
         Polygon unique ID.
     outpath : str
-        Path (s3 or local) to save the CSV files.
+        Path (s3 or local) to save the CSV and PNG files.
     remove_duplicated_data: bool
         Remove timeseries duplicated data or not
     """
@@ -324,7 +324,10 @@ def save_df_as_csv(
     # than 4 observations within any 365-day window), 0 otherwise.
     single_polygon_df = generate_low_quality_data_periods(single_polygon_df)
     graph_df = single_polygon_df.loc[~(single_polygon_df["pc_missing"] > 0.1)]
-    display_wit_stack_with_df(graph_df, feature_id, feature_id, x_axis_labels="years")
+    png_filename = f"{outpath}/{feature_id}"
+    display_wit_stack_with_df(
+        graph_df, feature_id, png_filename, x_axis_labels="years"
+    )
     # veg_areas and overall_veg_num are retained as they are defined in the WIT
     # data dictionary.
     single_polygon_df.rename(columns=WIT_CSV_COLUMN_RENAMES, inplace=True)
@@ -615,22 +618,14 @@ def stack_wit_tooling(
     # delete the temp result to release RAM
     del wit_result
     with tqdm(total=len(feature_ids)) as bar:
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=multiprocessing.cpu_count()
-        ) as executor:
-            futures = {
-                executor.submit(
-                    save_df_as_csv,
-                    polygon_groups.get_group(feature_id),
-                    feature_id,
-                    output_dir,
-                    remove_duplicated_data,
-                ): feature_id
-                for feature_id in feature_ids
-            }
-            for future in concurrent.futures.as_completed(futures):
-                _ = future.result()
-                bar.update(1)
+        for feature_id in feature_ids:
+            save_df_as_csv(
+                polygon_groups.get_group(feature_id),
+                feature_id,
+                output_dir,
+                remove_duplicated_data,
+            )
+            bar.update(1)
 
 
 def stack_waterbodies(

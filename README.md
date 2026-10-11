@@ -163,7 +163,7 @@ dea-conflux stack --parquet-path PARQUET_PATH [OPTIONS]
 | Flag | Short | Default | Description |
 |---|---|---|---|
 | `--parquet-path` | | required | Path to the Parquet directory. |
-| `--output` | | none | Output directory for waterbodies-style stack. |
+| `--output` | | none | Output directory. `wit_tooling` writes its per-feature CSV and PNG graph files here. |
 | `--pattern` | | `.*` | Regular expression for filename matching. |
 | `--mode` | | `waterbodies` | Output mode: `waterbodies`, `waterbodies_db`, or `wit_tooling`. |
 | `--drop/--no-drop` | | `--no-drop` | Drop the database before writing (only applies to `waterbodies_db` mode). |
