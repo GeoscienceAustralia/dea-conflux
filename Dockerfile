@@ -44,6 +44,10 @@ RUN echo "Installing dea-conflux through the Dockerfile." && \
 
 FROM ${GDAL_IMAGE} AS runtime-base
 
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \

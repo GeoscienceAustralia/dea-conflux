@@ -8,8 +8,8 @@ name = "dea-conflux"
 description = "A prototype tool for processing bulk polygon drills."
 readme = "README.md"
 license = { text = "Apache-2.0" }
-# Floor set by datacube.
-requires-python = ">=3.10"
+# Pillow 13 requires Python 3.11 or newer.
+requires-python = ">=3.11"
 # Version comes from setuptools_scm, see [tool.setuptools_scm] below.
 dynamic = ["version"]
 dependencies = [
@@ -25,7 +25,7 @@ dependencies = [
     "msgpack>=1.2.2",
     "numpy",
     "pandas",
-    "pillow>=12.3.0",
+    "pillow>=13.0.0",
     # datacube's PostgreSQL driver; required at runtime but never imported directly.
     "psycopg2-binary",
     "pyarrow",

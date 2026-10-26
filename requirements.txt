@@ -16,7 +16,7 @@ matplotlib
 msgpack>=1.2.2
 numpy
 pandas
-pillow>=12.3.0
+pillow>=13.0.0
 psycopg2-binary  # datacube's PostgreSQL driver; not imported directly
 pyarrow
 python-geohash
