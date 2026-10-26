@@ -17,30 +17,30 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Pre-pull layers
-      run: docker-compose pull
+      run: docker compose pull
 
-    - name: Activate Docker cache
-      uses: satackey/action-docker-layer-caching@v0.0.8
-      # Ignore the failure of a step and avoid terminating the job.
-      continue-on-error: true
+    # - name: Activate Docker cache
+    #   uses: satackey/action-docker-layer-caching@v0.0.8
+    #   # Ignore the failure of a step and avoid terminating the job.
+    #   continue-on-error: true
 
     - name: Build dea-conflux image
       run: |
-        docker-compose build
+        dockercompose build
 
     - name: Setup dea-conflux test environment
       run: |
-          docker-compose up -d
+          docker compose up -d
           ./tests/setup_test_datacube.sh
-          docker-compose exec -T conflux bash -c "pip install -e ."
+          docker compose exec -T conflux bash -c "pip install -e ."
 
     - name: Run dea-conflux test
       run: |
-          docker-compose exec -T conflux bash -c "coverage run -m pytest ."
-          docker-compose exec -T conflux bash -c "coverage report -m"
-          docker-compose exec -T conflux bash -c "coverage xml"
-          docker-compose exec -T conflux bash -c "coverage html"
-          docker-compose down
+          docker compose exec -T conflux bash -c "coverage run -m pytest ."
+          docker compose exec -T conflux bash -c "coverage report -m"
+          docker compose exec -T conflux bash -c "coverage xml"
+          docker compose exec -T conflux bash -c "coverage html"
+          docker compose down
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
