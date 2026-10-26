@@ -34,9 +34,11 @@ WORKDIR /code
 ADD . /code
 
 RUN echo "Installing dea-conflux through the Dockerfile."
-RUN pip install --extra-index-url="https://packages.dea.ga.gov.au" .
-
-RUN pip freeze && pip check
+COPY . /code
+RUN echo "Installing dea-conflux through the Dockerfile." && \
+    pip install --no-cache-dir . -c /conf/constraints.txt && \
+    pip freeze && \
+    pip check
 
 # Make sure it's working
 RUN dea-conflux --version
