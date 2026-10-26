@@ -36,7 +36,7 @@ moto==4.2.2
 msgpack==1.0.3
 netCDF4==1.5.8
 numpy==1.21.4
-packaging==21.3
+packaging>=22
 pandas==1.3.5
 partd==1.2.0
 pluggy==1.3.0
