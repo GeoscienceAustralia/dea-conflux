@@ -26,7 +26,7 @@ jobs:
 
     - name: Build dea-conflux image
       run: |
-        dockercompose build
+        docker compose build
 
     - name: Setup dea-conflux test environment
       run: |
