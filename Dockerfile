@@ -1,7 +1,38 @@
 ARG GDAL_IMAGE=ghcr.io/osgeo/gdal:ubuntu-small-3.12.4
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.8.8
+ARG AWSCLI_VERSION=2.39.0
+ARG AWSCLI_ARCH=x86_64
 
 FROM ${UV_IMAGE} AS uv
+
+FROM ${GDAL_IMAGE} AS awscli
+
+ARG AWSCLI_VERSION
+ARG AWSCLI_ARCH
+
+COPY docker/aws-cli-public-key.asc /tmp/aws-cli-public-key.asc
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates \
+      curl \
+      gnupg \
+      unzip \
+    && curl --fail --silent --show-error --location \
+      "https://awscli.amazonaws.com/awscli-exe-linux-${AWSCLI_ARCH}-${AWSCLI_VERSION}.zip" \
+      --output /tmp/awscliv2.zip \
+    && curl --fail --silent --show-error --location \
+      "https://awscli.amazonaws.com/awscli-exe-linux-${AWSCLI_ARCH}-${AWSCLI_VERSION}.zip.sig" \
+      --output /tmp/awscliv2.zip.sig \
+    && gpg --batch --import /tmp/aws-cli-public-key.asc \
+    && gpg --batch --verify /tmp/awscliv2.zip.sig /tmp/awscliv2.zip \
+    && unzip -q /tmp/awscliv2.zip -d /tmp \
+    && /tmp/aws/install \
+      --bin-dir /usr/local/bin \
+      --install-dir /usr/local/aws-cli \
+    && aws --version \
+    && rm -rf /root/.gnupg /tmp/aws /tmp/awscliv2.zip /tmp/awscliv2.zip.sig \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM ${GDAL_IMAGE} AS builder
 
@@ -53,6 +84,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PATH="/opt/venv/bin:$PATH"
 
+COPY --from=awscli /usr/local/aws-cli /usr/local/aws-cli
+RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws
 COPY --from=builder /opt/venv /opt/venv
 
 FROM runtime-base AS test
@@ -86,4 +119,5 @@ COPY --from=builder /build/examples ./examples
 
 RUN test -f dea_conflux/ids9.txt && \
     test -f examples/wit_ls9.conflux.py && \
+    aws --version && \
     PYTHONDONTWRITEBYTECODE=1 dea-conflux --version
