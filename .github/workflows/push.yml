@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - '*dev'
+      - '*'
   release:
     types: [published, edited]
 
