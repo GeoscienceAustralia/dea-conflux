@@ -1,6 +1,6 @@
 ARG GDAL_IMAGE=ghcr.io/osgeo/gdal:ubuntu-small-3.12.4
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.8.8
-ARG AWSCLI_VERSION=2.39.0
+ARG AWSCLI_VERSION=2.39.1
 ARG AWSCLI_ARCH=x86_64
 
 FROM ${UV_IMAGE} AS uv
