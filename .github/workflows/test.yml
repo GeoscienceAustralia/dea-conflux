@@ -24,6 +24,29 @@ jobs:
         docker compose build
         docker image inspect "$(docker compose config --images | grep -- '-conflux$')" --format='dea-conflux image size: {{.Size}} bytes'
 
+    - name: Check Brotli security fix
+      run: |
+        IMAGE="$(docker compose config --images | grep -- '-conflux$')"
+
+        echo "Brotli packages installed in $IMAGE:"
+        docker run --rm "$IMAGE" \
+          dpkg-query -W -f='${Package} ${Version}\n' 'libbrotli*'
+
+        docker run --rm "$IMAGE" bash -c '
+          installed="$(dpkg-query -W -f="${Version}" libbrotli1)"
+          required="1.1.0-2ubuntu0.1"
+
+          echo "Installed libbrotli1: $installed"
+          echo "Minimum required:      $required"
+
+          if ! dpkg --compare-versions "$installed" ge "$required"; then
+            echo "::error::libbrotli1 $installed is vulnerable to CVE-2026-111497"
+            exit 1
+          fi
+
+          echo "libbrotli1 is patched for CVE-2026-111497"
+        '
+        
     - name: Setup dea-conflux test environment
       run: |
           docker compose up -d
