@@ -69,4 +69,4 @@ jobs:
         registry: 538673716275.dkr.ecr.ap-southeast-2.amazonaws.com
         image_name: ${{ env.IMAGE_NAME }}
         image_tag: develop
-        build_extra_args: '{"--build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
+        build_extra_args: '{" --no-cache --build-arg": "UPDATE_VERSION=${{ env.RELEASE }}"}'
