@@ -36,6 +36,10 @@ RUN apt-get update && \
 
 FROM ${GDAL_IMAGE} AS builder
 
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+    
 ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
@@ -90,6 +94,10 @@ COPY --from=builder /opt/venv /opt/venv
 
 FROM runtime-base AS test
 
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+    
 # Git and uv are only required by the Compose-based test workflow, which syncs
 # the mounted checkout with its test extra.
 ENV UV_LINK_MODE=copy \
