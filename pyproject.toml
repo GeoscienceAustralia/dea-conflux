@@ -21,8 +21,10 @@ dependencies = [
     "fiona",
     "fsspec",
     "geopandas>=1.1.4",
+    "mako>=1.4.2",  # CVE-2026-102991
     "matplotlib",
-    "msgpack>=1.2.2",
+    "msgpack>=1.2.3",  # CVE-2026-114613
+    "multidict>=6.9.1",  # CVE-2026-104874
     "numpy",
     "pandas",
     "pillow>=13.0.0",
@@ -36,7 +38,7 @@ dependencies = [
     "seaborn",
     "shapely",
     "SQLAlchemy",
-    "tornado>=6.5.10",
+    "tornado>=6.6",  # CVE-2026-115927
     "tqdm",
     "urllib3>=2.8.0",
     "xarray",
