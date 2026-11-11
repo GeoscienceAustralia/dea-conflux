@@ -273,6 +273,57 @@ def main():
 
 @main.command(no_args_is_help=True)
 @click.option(
+    "--multi-scene",
+    is_flag=True,
+    required=True,
+    help="Run the independent polygon-based WIT multi-scene workflow.",
+)
+@click.option(
+    "--plugin", "-p", type=click.Path(exists=True, dir_okay=False), required=True,
+    help="Path to a wit_* Conflux plugin.",
+)
+@click.option("--shapefile", "-s", type=click.Path(), required=True)
+@click.option("--use-id", "-u", type=str, default=None)
+@click.option("--start-date", type=click.DateTime(formats=["%Y-%m-%d"]), required=True)
+@click.option("--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), required=True)
+@click.option("--output", "-o", type=click.Path(), required=True, help="Parquet output directory.")
+@click.option("--csv-output", type=click.Path(), required=True, help="Polygon CSV and PNG output directory.")
+@click.option(
+    "--window-days", type=click.IntRange(min=1), default=15, show_default=True,
+    help="Days per composite, anchored to the first observation.",
+)
+@click.option(
+    "--tile-size", type=click.IntRange(min=1), default=1024, show_default=True,
+    help="Maximum tile width and height in pixels.",
+)
+@click.option("-v", "--verbose", count=True)
+def run(
+    multi_scene, plugin, shapefile, use_id, start_date, end_date, output,
+    csv_output, window_days, tile_size, verbose,
+):
+    """Run WIT composites for all polygons over an inclusive date range."""
+    from dea_conflux import wit_multiscene, wit_multiscene_stack
+
+    logging_setup(verbose)
+    if start_date > end_date:
+        raise click.BadParameter("must not be after --end-date", param_hint="--start-date")
+    plugin = run_plugin(plugin)
+    validate_plugin(plugin)
+    wit_multiscene.validate_plugin(plugin)
+    id_field = guess_id_field(shapefile, use_id)
+    polygons = load_and_reproject_shapefile(shapefile, id_field, plugin.output_crs)
+    paths = wit_multiscene.run(
+        plugin, polygons, start_date, end_date, output,
+        days=window_days, tile_size=tile_size,
+    )
+    if not paths:
+        raise click.ClickException("No complete WIT observations found for any polygon")
+    csvs = wit_multiscene_stack.write_csvs(paths, csv_output)
+    logger.info("Wrote %d Parquet files and %d CSV/PNG pairs", len(paths), len(csvs))
+
+
+@main.command(no_args_is_help=True)
+@click.option(
     "--plugin",
     "-p",
     type=click.Path(exists=True, dir_okay=False),

@@ -32,6 +32,50 @@ pip install -e .
 
 Conflux provides a command-line tool `dea-conflux` for running each step of the polygon drill. Descriptions of the commands are available with `dea-conflux --help`. Conflux requires a Datacube configuration to work.
 
+### WIT multi-scene polygon processing
+
+Use the separate multi-scene workflow for wetlands that cross Landsat path/row
+boundaries. It requires an indexed Datacube and one of the `wit_ls*.conflux.py`
+plugins. For example:
+
+```bash
+dea-conflux run --multi-scene \
+  --plugin examples/wit_ls8.conflux.py \
+  --shapefile /path/to/wetlands.shp --use-id fid \
+  --start-date 2020-01-01 --end-date 2020-12-31 \
+  --output /path/to/parquet --csv-output /path/to/csv
+```
+
+Dates are inclusive. Each polygon is processed independently, including
+overlapping polygons. Observations from the plugin's Landsat satellite and its
+matching WOfS and fractional-cover datasets are joined by acquisition time.
+Incomplete observations are logged and skipped. In each polygon's time series,
+the first observation starts a 15-day window; observations strictly before its
+end fill pixels that were not valid in earlier observations. The first
+observation after the window starts the next window. Set `--window-days` to
+change the window, or `--tile-size` to limit memory use (default 1024 pixels).
+Water is retained where WOfS reports valid open water; other pixels require
+valid WOfS, reflectance and fractional-cover data. Rasterization includes all
+pixels touched by the polygon, as in WIT tooling.
+
+The workflow writes Conflux-compatible, timestamped Parquet files and a WIT
+CSV and PNG graph for each polygon. The CSV and PNG are saved alongside each
+other in `--csv-output` and use the polygon ID as their filename. Graphs use
+the existing WIT stack plotting style and exclude observations with more than
+10% missing data, while CSVs retain all observations. If none meet that
+threshold, the graph is empty and labelled accordingly. A single valid
+observation is labelled and plotted over a 24-hour span so the stacked areas
+remain visible. CSVs and graphs are generated only from Parquet files written
+by this invocation; existing files in the output directory are not included.
+The CSV contains the existing WIT stack's normalised vegetation and quality
+columns, with `composite_id` identifying the composite rather than an ARD
+scene.
+
+The workflow computes the WIT mean and missing-pixel summaries over tiles;
+custom plugin summarise functions are not applied. Use separate output
+directories for different runs. `--use-id` is optional if a unique ID field
+can be detected. Existing `run-one` and queue commands are unchanged.
+
 ## Airflow DAG step mapping
 
 | `dea-conflux` command | Airflow task | Task group |
