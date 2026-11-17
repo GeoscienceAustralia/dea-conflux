@@ -769,9 +769,11 @@ def stack_waterbodies_db(
             key = uid_to_key[uid]
             obs = dea_conflux.db.WaterbodyObservation(
                 wb_id=key,
-                px_wet=series.px_wet,
-                pc_wet=series.pc_wet,
-                pc_missing=series.pc_missing,
+                # psycopg2 renders floats via repr(), which is "np.float64(...)"
+                # under numpy 2, so pass plain Python floats.
+                px_wet=float(series.px_wet),
+                pc_wet=float(series.pc_wet),
+                pc_missing=float(series.pc_missing),
                 platform="UNK",
                 date=date,
             )
