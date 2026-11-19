@@ -76,6 +76,13 @@ custom plugin summarise functions are not applied. Use separate output
 directories for different runs. `--use-id` is optional if a unique ID field
 can be detected. Existing `run-one` and queue commands are unchanged.
 
+For a Datacube-index-free STAC workflow, see the
+[multi-scene WIT notebook](notebooks/DEA_Wetlands_Insight_Tool_Multiscene.ipynb).
+Install the notebook dependencies with `pip install -e '.[notebook]'`.
+With uv, use `uv pip install --python /path/to/venv/bin/python -e '.[notebook]'`.
+It processes Landsat 5, 7, 8 and 9 scenes in resumable 15-day composites and
+writes a normalised graph and CSV for each polygon.
+
 ## Airflow DAG step mapping
 
 | `dea-conflux` command | Airflow task | Task group |

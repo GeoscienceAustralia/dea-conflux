@@ -45,6 +45,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+notebook = [
+    "ipykernel",
+    "jupyterlab",
+    "odc-stac",
+    "pystac-client",
+]
 # Plain moto, not moto[all]: the suite only mocks SQS.
 test = [
     "coverage",
