@@ -78,10 +78,30 @@ can be detected. Existing `run-one` and queue commands are unchanged.
 
 For a Datacube-index-free STAC workflow, see the
 [multi-scene WIT notebook](notebooks/DEA_Wetlands_Insight_Tool_Multiscene.ipynb).
-Install the notebook dependencies with `pip install -e '.[notebook]'`.
-With uv, use `uv pip install --python /path/to/venv/bin/python -e '.[notebook]'`.
+The notebook is self-contained and does not require `dea-conflux`. Install its
+Python dependencies in the Jupyter kernel environment:
+
+```bash
+python -m pip install geopandas numpy pandas rasterio shapely matplotlib seaborn \
+  "odc-stac[botocore]" pystac-client ipykernel jupyterlab
+```
+
+With uv, use `uv pip install --python /path/to/venv/bin/python` followed by the
+same package names.
 It processes Landsat 5, 7, 8 and 9 scenes in resumable 15-day composites and
 writes a normalised graph and CSV for each polygon.
+
+A self-contained, bounded parallel variant is available in
+[WIT_multiscene_parallelised.ipynb](notebooks/WIT_multiscene_parallelised.ipynb).
+Its performance depends on available I/O and memory.
+
+For an indexed Open Data Cube instead of STAC, use the self-contained
+[ODC WIT notebook](notebooks/DEA_Wetlands_Insight_Tool_Multiscene_ODC.ipynb).
+It requires a configured index containing the Landsat ARD, WOfS and FC
+Collection 3 products; installation and index requirements are in the notebook.
+A local thread pool schedules up to four independent windows at once by
+default; adjust `max_workers` for available memory and I/O, or set it to `1`
+for serial processing. Existing checkpoints are reusable with either setting.
 
 ## Airflow DAG step mapping
 
